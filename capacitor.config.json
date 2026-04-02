@@ -1,0 +1,26 @@
+{
+  "appId": "com.finanza.app",
+  "appName": "Finanza",
+  "webDir": "frontend",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "backgroundColor": "#0d0f14",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "Dark",
+      "backgroundColor": "#0d0f14"
+    }
+  },
+  "android": {
+    "buildOptions": {
+      "keystorePath": "finanza.keystore",
+      "keystoreAlias": "finanza"
+    }
+  }
+}

@@ -1,0 +1,42 @@
+name: Deploy Finanza
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  # ── Deploy frontend para GitHub Pages ──────────────────────────
+  deploy-frontend:
+    name: GitHub Pages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./frontend   # pasta onde está o financas.html
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # ── Notifica Render para fazer redeploy ────────────────────────
+  deploy-backend:
+    name: Trigger Render Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render webhook
+        run: |
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+        # RENDER_DEPLOY_HOOK: pegue em Render > seu serviço > Settings > Deploy Hook
