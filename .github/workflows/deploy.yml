@@ -3,21 +3,32 @@ name: Deploy Finanza
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
-  # ── Deploy frontend para GitHub Pages ──────────────────────────
   deploy-frontend:
     name: GitHub Pages
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Preparar pasta de deploy
+        run: |
+          mkdir -p _site
+          cp frontend/financas.html _site/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -25,13 +36,12 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./frontend   # pasta onde está o financas.html
+          path: '_site'
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
 
-  # ── Notifica Render para fazer redeploy ────────────────────────
   deploy-backend:
     name: Trigger Render Deploy
     runs-on: ubuntu-latest
@@ -39,4 +49,4 @@ jobs:
       - name: Trigger Render webhook
         run: |
           curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
-        # RENDER_DEPLOY_HOOK: pegue em Render > seu serviço > Settings > Deploy Hook
+        continue-on-error: true
