@@ -53,6 +53,10 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .setup-err.show{display:block;}
 .setup-sep{text-align:center;margin-top:18px;padding-top:18px;border-top:1px solid var(--border);}
 .setup-sep a{font-size:13px;color:var(--muted);cursor:pointer;text-decoration:underline;}
+.setup-mode-btn{display:flex;align-items:center;gap:14px;padding:16px;background:var(--surface2);border:1px solid var(--border);border-radius:14px;cursor:pointer;text-align:left;width:100%;font-family:'DM Sans',sans-serif;color:var(--text);transition:border-color .15s,background .15s;}
+.setup-mode-btn:hover{border-color:var(--accent);background:rgba(200,245,90,.05);}
+.setup-back-btn{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:18px;padding:0;}
+.setup-back-btn:hover{color:var(--text);}
 
 /* ═══ CONN BADGE ════════════════════════════════════ */
 .conn-badge{display:flex;align-items:center;gap:6px;font-size:11px;padding:5px 11px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);cursor:pointer;transition:border-color .15s;user-select:none;}
@@ -384,14 +388,90 @@ select.sel:focus{border-color:var(--accent);}
   <div class="setup-box">
     <div class="setup-logo">fin<span>anza</span></div>
     <div class="setup-tagline">Controle financeiro pessoal</div>
-    <div id="setupErr" class="setup-err"></div>
-    <label class="setup-label">URL da API</label>
-    <input type="text" class="setup-input" id="setupUrl" placeholder="https://finanza-api.onrender.com" value="">
-    <div class="setup-hint">💡 A URL do seu serviço no Render — ex: https://finanza-api.onrender.com</div>
-    <label class="setup-label">Chave de Acesso (API_SECRET)</label>
-    <input type="password" class="setup-input" id="setupKey" placeholder="Valor de API_SECRET do Render">
-    <button class="setup-btn" id="setupBtn" onclick="doSetup()"><span id="setupBtnTxt">Conectar →</span></button>
-    <div class="setup-sep"><a onclick="useOfflineMode()">Usar sem servidor (dados locais)</a></div>
+
+    <!-- MODO SELECTOR -->
+    <div id="setupModeScreen">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6">Como você quer usar o Finanza?</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button class="setup-mode-btn" onclick="showSetupMode('online')">
+          <span style="font-size:22px">☁️</span>
+          <div>
+            <div style="font-weight:600;margin-bottom:2px">Online (recomendado)</div>
+            <div style="font-size:11px;color:var(--muted)">Sincroniza entre todos os dispositivos</div>
+          </div>
+          <span style="margin-left:auto;color:var(--muted)">›</span>
+        </button>
+        <button class="setup-mode-btn" onclick="showSetupMode('local')">
+          <span style="font-size:22px">💾</span>
+          <div>
+            <div style="font-weight:600;margin-bottom:2px">Local (sem internet)</div>
+            <div style="font-size:11px;color:var(--muted)">Dados salvos neste dispositivo</div>
+          </div>
+          <span style="margin-left:auto;color:var(--muted)">›</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- MODO ONLINE -->
+    <div id="setupOnlineScreen" style="display:none">
+      <button class="setup-back-btn" onclick="showSetupMode('main')">← Voltar</button>
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px">Entrar com chave de acesso</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:20px">Use a chave gerada para você pelo administrador do servidor</div>
+      <div id="setupErr" class="setup-err"></div>
+      <label class="setup-label">URL do Servidor</label>
+      <input type="text" class="setup-input" id="setupUrl" placeholder="https://finanza-api.onrender.com">
+      <div class="setup-hint">💡 Ex: https://finanza-api.onrender.com</div>
+      <label class="setup-label">Sua Chave de Acesso</label>
+      <input type="password" class="setup-input" id="setupKey" placeholder="Cole a chave que você recebeu">
+      <div class="setup-hint">🔑 Cada pessoa tem sua própria chave — seus dados são separados dos outros</div>
+      <button class="setup-btn" id="setupBtn" onclick="doSetup()"><span id="setupBtnTxt">Entrar →</span></button>
+      <div class="setup-sep"><a onclick="showSetupMode('newuser')">Sou admin — quero criar um novo usuário</a></div>
+    </div>
+
+    <!-- CRIAR USUÁRIO (admin) -->
+    <div id="setupNewUserScreen" style="display:none">
+      <button class="setup-back-btn" onclick="showSetupMode('online')">← Voltar</button>
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px">Criar novo usuário</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:20px">Requer a API_SECRET do servidor (chave de admin do Render)</div>
+      <div id="newUserErr" class="setup-err"></div>
+      <label class="setup-label">URL do Servidor</label>
+      <input type="text" class="setup-input" id="newUserUrl" placeholder="https://finanza-api.onrender.com">
+      <label class="setup-label">Admin Key (API_SECRET do Render)</label>
+      <input type="password" class="setup-input" id="newUserAdminKey" placeholder="API_SECRET definida no Render">
+      <label class="setup-label">Nome do usuário</label>
+      <input type="text" class="setup-input" id="newUserName" placeholder="Ex: João, Maria...">
+      <button class="setup-btn" onclick="createNewUser()">Criar usuário →</button>
+      <!-- Resultado -->
+      <div id="newUserResult" style="display:none;margin-top:16px;background:rgba(200,245,90,.1);border:1px solid rgba(200,245,90,.3);border-radius:12px;padding:16px;">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px">✅ Usuário criado! Chave de acesso:</div>
+        <div id="newUserKeyDisplay" style="font-family:monospace;font-size:11px;word-break:break-all;background:var(--surface2);padding:10px;border-radius:8px;color:var(--text);"></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px">Copie e envie esta chave para o usuário. Ela não pode ser recuperada depois.</div>
+        <button class="setup-btn" style="margin-top:12px" onclick="copyNewUserKey()">📋 Copiar chave</button>
+      </div>
+    </div>
+
+    <!-- MODO LOCAL -->
+    <div id="setupLocalScreen" style="display:none">
+      <button class="setup-back-btn" onclick="showSetupMode('main')">← Voltar</button>
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px">Modo local</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.6">
+        Os dados ficam salvo neste dispositivo. Você pode exportar/importar um arquivo JSON para fazer backup ou migrar para outro aparelho.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+        <button class="setup-mode-btn" onclick="startLocalFresh()">
+          <span style="font-size:20px">✨</span>
+          <div><div style="font-weight:600;margin-bottom:2px">Começar do zero</div><div style="font-size:11px;color:var(--muted)">Cria um perfil novo neste dispositivo</div></div>
+          <span style="margin-left:auto;color:var(--muted)">›</span>
+        </button>
+        <label class="setup-mode-btn" style="cursor:pointer" for="importFileInput">
+          <span style="font-size:20px">📂</span>
+          <div><div style="font-weight:600;margin-bottom:2px">Importar backup</div><div style="font-size:11px;color:var(--muted)">Carregar arquivo .json exportado antes</div></div>
+          <span style="margin-left:auto;color:var(--muted)">›</span>
+          <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importLocalFile(this)">
+        </label>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -412,9 +492,9 @@ select.sel:focus{border-color:var(--accent);}
   </nav>
   <div class="sidebar-footer">
     <div class="user-card">
-      <div class="user-avatar">EU</div>
+      <div class="user-avatar" id="userAvatar">EU</div>
       <div>
-        <div class="user-name">Minha Conta</div>
+        <div class="user-name" id="userName">Minha Conta</div>
         <div class="user-role" id="sidebarMode">—</div>
       </div>
     </div>
@@ -638,6 +718,42 @@ select.sel:focus{border-color:var(--accent);}
     </div>
     <div class="settings-row">
       <div><div class="settings-row-label">Banco de dados</div><div class="settings-row-sub">PostgreSQL via Render</div></div>
+    </div>
+  </div>
+
+  <!-- Local: importar/exportar -->
+  <div class="settings-section" id="settingsLocalBtns" style="display:none">
+    <div class="settings-section-title">Dados locais</div>
+    <div class="settings-row">
+      <div><div class="settings-row-label">Exportar backup JSON</div><div class="settings-row-sub">Salva todos os dados num arquivo</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="exportLocalBackup()">💾 Exportar</button>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-row-label">Importar backup</div><div class="settings-row-sub">Carrega dados de um arquivo .json</div></div>
+      <label class="btn btn-ghost btn-sm" for="settingsImportFile" style="cursor:pointer;display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);font-size:12px;font-weight:600;">
+        📂 Importar
+        <input type="file" id="settingsImportFile" accept=".json" style="display:none" onchange="importLocalFile(this)">
+      </label>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-row-label">Migrar para online</div><div class="settings-row-sub">Conectar a um servidor e enviar os dados locais</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="migrateLocalToOnline()">☁️ Migrar</button>
+    </div>
+  </div>
+
+  <!-- Online: ações da conta -->
+  <div class="settings-section" id="settingsOnlineBtns" style="display:none">
+    <div class="settings-section-title">Conta online</div>
+    <div class="settings-row">
+      <div><div class="settings-row-label">Usuário</div><div class="settings-row-sub" id="settingsUserName">—</div></div>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-row-label">Alterar servidor</div><div class="settings-row-sub">Mudar URL ou chave de acesso</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="openSettingsModal()">Editar</button>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-row-label" style="color:var(--danger)">Sair da conta</div><div class="settings-row-sub">Volta para a tela de login</div></div>
+      <button class="btn btn-danger btn-sm" onclick="logout()">Sair</button>
     </div>
   </div>
 
@@ -893,8 +1009,29 @@ async function api(method,path,body=null){
 // ════════════════════════════════════════════════════════
 // SETUP / SETTINGS / CONNECTION
 // ════════════════════════════════════════════════════════
-function showSetup(){document.getElementById('setupScreen').classList.add('visible');}
+// ════════════════════════════════════════════════════════
+// SETUP — MULTI-MODO
+// ════════════════════════════════════════════════════════
+function showSetup(){
+  document.getElementById('setupScreen').classList.add('visible');
+  showSetupMode('main');
+}
 function hideSetup(){document.getElementById('setupScreen').classList.remove('visible');}
+
+function showSetupMode(mode){
+  ['main','online','local','newuser'].forEach(m=>{
+    const el=document.getElementById('setupModeScreen');
+    const online=document.getElementById('setupOnlineScreen');
+    const local=document.getElementById('setupLocalScreen');
+    const nu=document.getElementById('setupNewUserScreen');
+    if(el)  el.style.display  = mode==='main'    ? 'block' : 'none';
+    if(online)online.style.display = mode==='online'  ? 'block' : 'none';
+    if(local)local.style.display  = mode==='local'   ? 'block' : 'none';
+    if(nu)  nu.style.display  = mode==='newuser' ? 'block' : 'none';
+  });
+}
+
+// ── ONLINE: entrar com chave ─────────────────
 async function doSetup(){
   const url=document.getElementById('setupUrl').value.trim().replace(/\/$/,'');
   const key=document.getElementById('setupKey').value.trim();
@@ -904,22 +1041,97 @@ async function doSetup(){
   const btn=document.getElementById('setupBtn'),txt=document.getElementById('setupBtnTxt');
   btn.disabled=true;txt.textContent='Conectando...';
   try{
-    const r=await fetch(url+'/health',{headers:{'x-api-key':key}});
+    // Verifica health
+    const r=await fetch(url+'/health');
     if(!r.ok)throw new Error('Servidor retornou '+r.status);
-    cfg={url,key,mode:'api'};localStorage.setItem(CFG_KEY,JSON.stringify(cfg));
+    // Verifica a chave do usuário
+    const me=await fetch(url+'/api/me',{headers:{'x-api-key':key}});
+    if(!me.ok)throw new Error('Chave inválida — verifique e tente novamente');
+    const user=await me.json();
+    cfg={url,key,mode:'api',userName:user.name,userId:user.id};
+    localStorage.setItem(CFG_KEY,JSON.stringify(cfg));
     hideSetup();await initApp();
+    showToast(`Bem-vindo, ${user.name}! ✓`,'success');
   }catch(e){
     err.textContent='Falha: '+e.message;err.classList.add('show');
-    btn.disabled=false;txt.textContent='Conectar →';
+    btn.disabled=false;txt.textContent='Entrar →';
   }
 }
-function useOfflineMode(){cfg={url:'',key:'',mode:'local'};localStorage.setItem(CFG_KEY,JSON.stringify(cfg));hideSetup();initApp();}
+
+// ── ONLINE: criar novo usuário (admin) ───────
+let _newUserKey='';
+async function createNewUser(){
+  const url=document.getElementById('newUserUrl').value.trim().replace(/\/$/,'');
+  const adminKey=document.getElementById('newUserAdminKey').value.trim();
+  const name=document.getElementById('newUserName').value.trim()||'Usuário';
+  const err=document.getElementById('newUserErr');
+  err.classList.remove('show');
+  if(!url||!adminKey){err.textContent='Preencha URL e Admin Key.';err.classList.add('show');return;}
+  try{
+    const r=await fetch(url+'/api/users',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':adminKey},
+      body:JSON.stringify({name})
+    });
+    if(!r.ok){const e=await r.json();throw new Error(e.error||'Erro '+r.status);}
+    const data=await r.json();
+    _newUserKey=data.api_key;
+    document.getElementById('newUserKeyDisplay').textContent=data.api_key;
+    document.getElementById('newUserResult').style.display='block';
+  }catch(e){
+    err.textContent='Erro: '+e.message;err.classList.add('show');
+  }
+}
+function copyNewUserKey(){
+  navigator.clipboard.writeText(_newUserKey).then(()=>showToast('Chave copiada! ✓','success'));
+}
+
+// ── LOCAL: começar do zero ───────────────────
+function startLocalFresh(){
+  cfg={url:'',key:'',mode:'local',userName:'Eu'};
+  localStorage.setItem(CFG_KEY,JSON.stringify(cfg));
+  hideSetup();initApp();
+}
+
+// ── LOCAL: importar arquivo JSON ─────────────
+function importLocalFile(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.transactions&&!data.budgets&&!data.goals)
+        throw new Error('Arquivo inválido — não parece um backup do Finanza');
+      localStorage.setItem(LOCAL_KEY,JSON.stringify(data));
+      cfg={url:'',key:'',mode:'local',userName:'Eu'};
+      localStorage.setItem(CFG_KEY,JSON.stringify(cfg));
+      hideSetup();initApp();
+      showToast('Dados importados! ✓','success');
+    }catch(err){
+      alert('Erro ao importar: '+err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── EXPORT LOCAL ─────────────────────────────
+function exportLocalBackup(){
+  const data=JSON.stringify(state,null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`finanza_backup_${today()}.json`;
+  a.click();
+  showToast('Backup JSON exportado! ✓','success');
+}
+
+function useOfflineMode(){startLocalFresh();}
 function openSettings(){openSettingsModal();}
 async function saveSettings(){
   const url=document.getElementById('settingsUrl').value.trim().replace(/\/$/,'');
   const key=document.getElementById('settingsKey').value.trim();
   if(!url||!key){showToast('Preencha URL e chave','error');return;}
-  cfg={url,key,mode:'api'};localStorage.setItem(CFG_KEY,JSON.stringify(cfg));
+  cfg={...cfg,url,key,mode:'api'};localStorage.setItem(CFG_KEY,JSON.stringify(cfg));
   closeModal('settingsModal');await initApp();showToast('Salvo!','success');
 }
 function setConn(s){
@@ -927,7 +1139,7 @@ function setConn(s){
   const L={online:'API ativa ☁️',offline:'Modo local 💾',error:'Sem conexão ⚠️'};
   const R={online:'API ☁️',offline:'Local 💾',error:'Erro ⚠️'};
   document.getElementById('connLabel').textContent=L[s];
-  document.getElementById('sidebarMode').textContent=R[s];
+  document.getElementById('sidebarMode').textContent=cfg.mode==='api'?(cfg.userName||'Online'):'Local 💾';
   // sync settings page
   const sd=document.getElementById('settingsConnDot');
   const sl=document.getElementById('settingsConnLabel');
@@ -1757,28 +1969,28 @@ function seedDemo(){
 // ════════════════════════════════════════════════════════
 function renderSettings(){
   const isDark=document.documentElement.dataset.theme==='dark';
-  // theme toggle
   const tt=document.getElementById('themeToggleSettings');
   if(tt)tt.checked=isDark;
-  // connection
   const dot=document.getElementById('settingsConnDot');
   const lbl=document.getElementById('settingsConnLabel');
   const status=document.getElementById('settingsConnStatus');
   const urlDisp=document.getElementById('settingsUrlDisplay');
   const modeDisp=document.getElementById('settingsModeDisplay');
-  if(dot&&lbl){
-    const connDot=document.getElementById('connDot');
-    if(connDot){dot.className=connDot.className;}
-    lbl.textContent=document.getElementById('connLabel')?.textContent||'—';
-  }
-  if(status)status.textContent=cfg.mode==='api'?'Conectado ao servidor':'Dados salvos localmente';
-  if(urlDisp)urlDisp.textContent=cfg.url||'Não configurado';
-  if(modeDisp)modeDisp.textContent=cfg.mode==='api'?'API (PostgreSQL)':'Local (localStorage)';
-  // stats
+  if(dot){const cd=document.getElementById('connDot');if(cd)dot.className=cd.className;}
+  if(lbl)lbl.textContent=document.getElementById('connLabel')?.textContent||'—';
+  if(status)status.textContent=cfg.mode==='api'?`Conectado como ${cfg.userName||'Usuário'}`:'Dados locais neste dispositivo';
+  if(urlDisp)urlDisp.textContent=cfg.url||'Modo local';
+  if(modeDisp)modeDisp.textContent=cfg.mode==='api'?'Online (API + PostgreSQL)':'Local (neste dispositivo)';
   const txCount=document.getElementById('settingsTxCount');
   const accCount=document.getElementById('settingsAccCount');
   if(txCount)txCount.textContent=state.transactions.length;
   if(accCount)accCount.textContent=state.accounts.length;
+
+  // Mostrar/ocultar opções específicas de cada modo
+  const localBtns=document.getElementById('settingsLocalBtns');
+  const onlineBtns=document.getElementById('settingsOnlineBtns');
+  if(localBtns)localBtns.style.display=cfg.mode==='local'?'flex':'none';
+  if(onlineBtns)onlineBtns.style.display=cfg.mode==='api'?'flex':'none';
 }
 function openSettingsModal(){
   document.getElementById('settingsUrl').value=cfg.url;
@@ -1792,6 +2004,50 @@ function clearLocalData(){
   setTimeout(()=>location.reload(),1000);
 }
 
+function logout(){
+  if(!confirm('Sair da conta? Seus dados online continuam salvos no servidor.'))return;
+  localStorage.removeItem(CFG_KEY);
+  localStorage.removeItem(LOCAL_KEY);
+  location.reload();
+}
+
+async function migrateLocalToOnline(){
+  const url=prompt('URL do servidor:');
+  if(!url)return;
+  const key=prompt('Sua chave de acesso:');
+  if(!key)return;
+  showToast('Migrando dados...','info');
+  try{
+    const me=await fetch(url.replace(/\/$/,'')+'/api/me',{headers:{'x-api-key':key}});
+    if(!me.ok)throw new Error('Chave inválida');
+    const user=await me.json();
+    // Envia todas as transações
+    let ok=0;
+    for(const t of state.transactions){
+      await fetch(url.replace(/\/$/,'')+'/api/transactions',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':key},
+        body:JSON.stringify({type:t.type,description:t.desc,amount:t.amount,category:t.category,date:t.date,note:t.note||''})
+      });
+      ok++;
+    }
+    // Envia orçamentos
+    for(const b of state.budgets){
+      await fetch(url.replace(/\/$/,'')+'/api/budgets',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':key},
+        body:JSON.stringify({category:b.category,limit:b.limit})
+      });
+    }
+    // Conecta
+    cfg={url:url.replace(/\/$/,''),key,mode:'api',userName:user.name,userId:user.id};
+    localStorage.setItem(CFG_KEY,JSON.stringify(cfg));
+    showToast(`${ok} transações migradas! ✓`,'success');
+    await initApp();
+    showPage('settings');
+  }catch(e){showToast('Erro: '+e.message,'error');}
+}
+
 // ════════════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════════════
@@ -1800,6 +2056,15 @@ async function initApp(){
   populateAccountSelects();
   updateMonthLabel();
   renderDashboard();
+  // Update user display
+  const name=cfg.userName||'Eu';
+  const nameEl=document.getElementById('userName');
+  const avatarEl=document.getElementById('userAvatar');
+  if(nameEl)nameEl.textContent=name;
+  if(avatarEl)avatarEl.textContent=name.slice(0,2).toUpperCase();
+  // Update settings user name
+  const sun=document.getElementById('settingsUserName');
+  if(sun)sun.textContent=name+(cfg.mode==='api'?' (online)':' (local)');
 }
 initTheme();
 (function boot(){
