@@ -1,27 +1,21 @@
+# Render Blueprint — Finanza v3 (Supabase ou Render DB)
+# Deploy: render.com/deploy → New Blueprint → conectar repo
+
 services:
   - type: web
     name: finanza-api
     runtime: node
-    region: oregon
+    region: ohio
     plan: free
     rootDir: server
     buildCommand: npm install
-    startCommand: node index.js
+    startCommand: npm start
+    healthCheckPath: /health
     envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: finanza-db
-          property: connectionString
-      - key: API_SECRET
-        sync: false        # você preenche manualmente no painel do Render
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
-
-databases:
-  - name: finanza-db
-    databaseName: finanza
-    user: finanza_user
-    plan: free
-    region: oregon
+      - key: DATABASE_URL
+        sync: false          # ← cole a URL do Supabase/Neon/Render DB aqui
+      - key: API_SECRET
+        generateValue: true  # ← chave admin gerada automaticamente
+    autoDeploy: true

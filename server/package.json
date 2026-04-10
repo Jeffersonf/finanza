@@ -1,18 +1,16 @@
 {
   "name": "finanza-api",
-  "version": "1.0.0",
-  "description": "API do app Finanza",
+  "version": "3.0.0",
+  "description": "Finanza API — multi-usuário",
   "main": "index.js",
+  "engines": { "node": ">=18" },
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "node --watch index.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "pg": "^8.11.3"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.2"
   }
 }
