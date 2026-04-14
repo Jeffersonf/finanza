@@ -4,25 +4,21 @@
   "webDir": "frontend",
   "server": {
     "androidScheme": "https",
-    "cleartext": false,
-    "hostname": "app.finanza"
+    "cleartext": false
   },
   "plugins": {
     "SplashScreen": {
-      "launchShowDuration": 800,
-      "launchAutoHide": true,
-      "backgroundColor": "#08090d",
+      "launchShowDuration": 1200,
+      "backgroundColor": "#0d0f14",
       "androidSplashResourceName": "splash",
       "androidScaleType": "CENTER_CROP",
       "showSpinner": false,
       "splashFullScreen": true,
-      "splashImmersive": true,
-      "fadeInDuration": 200,
-      "fadeOutDuration": 200
+      "splashImmersive": true
     },
     "StatusBar": {
       "style": "Dark",
-      "backgroundColor": "#08090d",
+      "backgroundColor": "#0d0f14",
       "overlaysWebView": false
     },
     "Keyboard": {
@@ -33,8 +29,13 @@
   },
   "android": {
     "allowMixedContent": false,
-    "backgroundColor": "#08090d",
-    "minWebViewVersion": 60,
-    "appendUserAgent": "Finanza/1.0"
+    "backgroundColor": "#0d0f14",
+    "buildOptions": {
+      "keystorePath": "finanza.keystore",
+      "keystoreAlias": "finanza"
+    }
+  },
+  "ios": {
+    "backgroundColor": "#0d0f14"
   }
 }
