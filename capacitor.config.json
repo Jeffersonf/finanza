@@ -9,32 +9,32 @@
   },
   "plugins": {
     "SplashScreen": {
-      "launchShowDuration": 600,
+      "launchShowDuration": 800,
       "launchAutoHide": true,
       "backgroundColor": "#08090d",
       "androidSplashResourceName": "splash",
       "androidScaleType": "CENTER_CROP",
       "showSpinner": false,
       "splashFullScreen": true,
-      "splashImmersive": true
+      "splashImmersive": true,
+      "fadeInDuration": 200,
+      "fadeOutDuration": 200
     },
     "StatusBar": {
       "style": "Dark",
       "backgroundColor": "#08090d",
-      "overlaysWebView": true
+      "overlaysWebView": false
     },
     "Keyboard": {
       "resize": "body",
       "style": "dark",
       "resizeOnFullScreen": true
-    },
-    "EdgeToEdge": {
-      "enabled": true
     }
   },
   "android": {
     "allowMixedContent": false,
     "backgroundColor": "#08090d",
-    "appendUserAgent": "FinanzaApp/3.0"
+    "minWebViewVersion": 60,
+    "appendUserAgent": "Finanza/1.0"
   }
 }
