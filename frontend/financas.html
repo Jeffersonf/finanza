@@ -942,6 +942,120 @@ select.sel {
   .mc-val{font-size:16px;}
 }
 
+
+/* ─── DASHBOARD LAYOUT FIX ─────────────────────────────────── */
+.dash-section { margin-bottom: 20px; }
+.dash-section:empty { display: none; }
+
+/* Cards sumário com gap correto */
+.g4 { gap: 14px !important; margin-bottom: 20px !important; }
+.month-compare { gap: 14px !important; margin-bottom: 14px !important; }
+.proj-card { margin-bottom: 20px; }
+.wcard { margin-bottom: 20px; }
+.anom { margin-bottom: 14px; }
+.bud-alert { margin-bottom: 8px; }
+
+/* ─── WIDGET SYSTEM ─────────────────────────────────────────── */
+.dash-widgets {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Widget toggle chips na settings */
+.widget-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.widget-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--bd);
+  background: var(--sf2);
+  cursor: pointer;
+  transition: all .15s;
+  user-select: none;
+}
+.widget-chip:hover { border-color: var(--ac); background: rgba(200,245,90,.05); }
+.widget-chip.on { border-color: var(--ac); background: rgba(200,245,90,.08); }
+.widget-chip.on .wc-dot { background: var(--ac); }
+.wc-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--bd);
+  flex-shrink: 0;
+  transition: background .15s;
+}
+.wc-ico { font-size: 20px; flex-shrink: 0; }
+.wc-info { flex: 1; min-width: 0; }
+.wc-name { font-size: 13px; font-weight: 600; }
+.wc-desc { font-size: 11px; color: var(--mt); margin-top: 1px; }
+
+/* ─── MINI STAT WIDGET ──────────────────────────────────────── */
+.mini-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.mini-stat {
+  background: var(--sf);
+  border: 1px solid var(--bd);
+  border-radius: 16px;
+  padding: 14px;
+  text-align: center;
+}
+.mini-stat .ms-ico { font-size: 20px; margin-bottom: 6px; }
+.mini-stat .ms-val { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: -.3px; }
+.mini-stat .ms-lbl { font-size: 10px; color: var(--mt); margin-top: 3px; text-transform: uppercase; letter-spacing: .4px; font-weight: 600; }
+
+/* ─── METAS WIDGET ──────────────────────────────────────────── */
+.goals-widget {
+  background: var(--sf);
+  border: 1px solid var(--bd);
+  border-radius: var(--r-lg);
+  padding: 18px 20px;
+  margin-bottom: 0;
+}
+.goals-widget-list { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+.gw-item { display: flex; align-items: center; gap: 12px; }
+.gw-icon { font-size: 22px; flex-shrink: 0; }
+.gw-info { flex: 1; min-width: 0; }
+.gw-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.gw-bar { height: 5px; background: var(--sf2); border-radius: 99px; overflow: hidden; }
+.gw-fill { height: 100%; border-radius: 99px; transition: width .6s ease; }
+.gw-pct { font-size: 12px; font-weight: 700; font-family: 'Syne', sans-serif; flex-shrink: 0; }
+
+/* ─── ORÇAMENTOS WIDGET ─────────────────────────────────────── */
+.budget-widget {
+  background: var(--sf);
+  border: 1px solid var(--bd);
+  border-radius: var(--r-lg);
+  padding: 18px 20px;
+}
+.bw-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.bw-item { display: flex; align-items: center; gap: 10px; }
+.bw-cat { font-size: 14px; flex-shrink: 0; }
+.bw-info { flex: 1; min-width: 0; }
+.bw-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.bw-name { font-size: 12px; font-weight: 500; }
+.bw-vals { font-size: 11px; color: var(--mt); }
+.bw-bar { height: 4px; background: var(--sf2); border-radius: 99px; overflow: hidden; }
+.bw-fill { height: 100%; border-radius: 99px; transition: width .6s ease; }
+
+@media(max-width:960px){
+  .g4 { gap: 10px !important; }
+  .month-compare { gap: 10px !important; }
+  .widget-grid { grid-template-columns: 1fr; }
+  .mini-stats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .mini-stat { padding: 12px 10px; }
+  .mini-stat .ms-val { font-size: 14px; }
+}
+
 </style>
 </head>
 <body>
@@ -1065,22 +1179,9 @@ select.sel {
       <button class="btn btn-p" onclick="openModal()">+ Nova</button>
     </div>
   </div>
-  <div id="projCard"></div><div id="monthCompare"></div><div id="wsum"></div><div id="anom"></div><div id="budAlerts"></div>
-  <div class="g4">
-    <div class="sc sc-glow-ac2"><span class="ci">💰</span><div class="cl">Saldo Total</div><div class="cv neu" id="totBal">—</div><div class="cc">todas as contas</div></div>
-    <div class="sc sc-glow-ac"><span class="ci">⬆️</span><div class="cl">Receitas</div><div class="cv pos" id="monInc">—</div><div class="cc up">este mês</div></div>
-    <div class="sc sc-glow-dan"><span class="ci">⬇️</span><div class="cl">Despesas</div><div class="cv neg" id="monExp">—</div><div class="cc dn">este mês</div></div>
-    <div class="sc sc-glow-fut"><span class="ci">🔮</span><div class="cl">A Pagar</div><div class="cv fut" id="dashFut">—</div><div class="cc" style="cursor:pointer;color:var(--fut)" onclick="showPage('future')">ver →</div></div>
+  <div class="dash-widgets" id="dashWidgets">
+    <!-- widgets renderizados via JS com base nas preferências -->
   </div>
-  <div class="cr">
-    <div class="cc-box">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;"><div class="ct">Fluxo de Caixa</div><div style="display:flex;gap:3px;"><button class="vbtn active" id="cBars" onclick="setChartMode('bars')" title="Barras">▦</button><button class="vbtn" id="cLine" onclick="setChartMode('line')" title="Acumulado">📈</button></div></div>
-      <div class="cs" id="chartSub">Receitas vs Despesas — últimos 6 meses</div>
-      <canvas id="flowChart"></canvas>
-    </div>
-    <div class="cc-box"><div class="ct">Categorias</div><div class="cs">Clique para filtrar</div><canvas id="catChart" style="cursor:pointer"></canvas></div>
-  </div>
-  <div class="box"><div class="bh"><div class="ct">Últimas Transações</div><button class="btn btn-g btn-sm" onclick="showPage('transactions')">Ver todas →</button></div><div class="tl" id="recList"></div></div>
 </div>
 <div class="page" id="page-accounts">
   <div class="ph"><div><div class="pt">Contas</div><div class="ps">Corrente, poupança, cartão</div></div><button class="btn btn-p" onclick="openAccModal()">+ Nova Conta</button></div>
@@ -1184,6 +1285,13 @@ select.sel {
   <div class="ss"><div class="ss-t">Aparência</div>
     <div class="ss-r"><div><div class="ss-l">Tema escuro</div></div>
       <label class="tog"><input type="checkbox" id="thmTog" onchange="thmFromSet(this.checked)"><div class="tog-t"></div><div class="tog-th"></div></label>
+    </div>
+  </div>
+  <div class="ss">
+    <div class="ss-t">Dashboard — widgets visíveis</div>
+    <div class="ss-r" style="flex-direction:column;align-items:stretch;gap:10px;padding-top:14px;">
+      <div class="widget-grid" id="widgetToggles"></div>
+      <div style="font-size:11px;color:var(--mt);padding:0 2px;">Toque para mostrar ou ocultar cada bloco do Dashboard.</div>
     </div>
   </div>
   <div class="ss"><div class="ss-t">Categorias personalizadas</div>
@@ -1644,7 +1752,7 @@ async function saveTx(){
       }
       toast(editId?'Atualizado! ✓':'Salvo! ✓','success');
     }
-    closeM('txModal');refreshAll();
+    closeM('txModal');refreshAll();setTimeout(scheduleVencimentoNotifications,500);
   }catch(e){toast('Erro: '+e.message,'error');}
   finally{btn.disabled=false;btn.textContent='Salvar';}
 }
@@ -1664,7 +1772,7 @@ async function delGrp(gid,field){
 }
 async function markPaid(id){
   const tx=S.transactions.find(t=>t.id===id);if(!tx)return;
-  tx.paid=!tx.paid;if(cfg.mode==='local')saveLocal();refreshAll();toast(tx.paid?'Marcado como pago ✓':'Desmarcado','info');
+  tx.paid=!tx.paid;if(cfg.mode==='local')saveLocal();refreshAll();toast(tx.paid?'Marcado como pago ✓':'Desmarcado','info');setTimeout(scheduleVencimentoNotifications,500);
 }
 function hlTx(id){const el=document.getElementById('tx-'+id);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.outline='2px solid var(--ac)';setTimeout(()=>el.style.outline='',2000);}}
 function exportCSV(){
@@ -1834,57 +1942,9 @@ function renderWeekly(){
 let flowChart,catChartObj;
 function setChartMode(m){
   chartMode=m;
-  document.getElementById('cBars').classList.toggle('active',m==='bars');
-  document.getElementById('cLine').classList.toggle('active',m==='line');
-  document.getElementById('chartSub').textContent=m==='bars'?'Receitas vs Despesas — últimos 6 meses':'Saldo acumulado — últimos 6 meses';
   renderDash();
 }
-function renderDash(){
-  const isDark=document.documentElement.dataset.theme==='dark';
-  const txM=getMonthTx(curDt);
-  const inc=txM.filter(t=>t.type==='income'&&!isFut(t.date)&&!t.paid).reduce((s,t)=>s+t.amount,0);
-  const exp=txM.filter(t=>t.type==='expense'&&!isFut(t.date)&&!t.paid).reduce((s,t)=>s+t.amount,0);
-  const totBal=S.accounts.reduce((s,a)=>s+getAccBal(a.id),0);
-  const futDbt=S.transactions.filter(t=>t.type==='expense'&&isFut(t.date)&&!t.paid).reduce((s,t)=>s+t.amount,0);
-  document.getElementById('totBal').textContent=fmt(totBal);document.getElementById('totBal').className='cv '+(totBal>=0?'neu':'neg');
-  document.getElementById('monInc').textContent=fmt(inc);document.getElementById('monExp').textContent=fmt(exp);document.getElementById('dashFut').textContent=fmt(futDbt);
-  renderMonthCompare();
-  renderProjection();
-  renderBudAlerts();
-  renderWeekly();
-  const sorted=[...S.transactions].filter(t=>!isFut(t.date)&&!t.paid).sort((a,b)=>b.date.localeCompare(a.date));
-  document.getElementById('recList').innerHTML=sorted.slice(0,6).length?sorted.slice(0,6).map(txHTML).join(''):`<div class="empty"><span class="ei">💸</span><p>Nenhuma transação. Use + para adicionar.</p></div>`;
-  const tick=isDark?'#5a6480':'#8591ae';const grid=isDark?'rgba(255,255,255,.04)':'rgba(0,0,0,.04)';
-  const months=[],incomes=[],expenses=[],balances=[];let runBal=0;
-  for(let i=5;i>=0;i--){
-    const d=new Date(curDt.getFullYear(),curDt.getMonth()-i,1);
-    months.push(['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][d.getMonth()]);
-    const txs=getMonthTx(d).filter(t=>!isFut(t.date)&&!t.paid);
-    const mi=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-    const me=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-    incomes.push(mi);expenses.push(me);runBal+=mi-me;balances.push(runBal);
-  }
-  if(flowChart)flowChart.destroy();
-  const ctx1=document.getElementById('flowChart').getContext('2d');
-  const scaleOpts={x:{grid:{color:grid},ticks:{color:tick,font:{family:'DM Sans',size:10}}},y:{grid:{color:grid},ticks:{color:tick,font:{family:'DM Sans',size:10},callback:v=>'R$'+(v/1000).toFixed(0)+'k'}}};
-  const legOpts={labels:{color:tick,font:{family:'DM Sans',size:10},boxWidth:8,boxHeight:8}};
-  if(chartMode==='bars'){
-    flowChart=new Chart(ctx1,{type:'bar',data:{labels:months,datasets:[{label:'Receitas',data:incomes,backgroundColor:'rgba(200,245,90,.8)',borderRadius:4,borderSkipped:false},{label:'Despesas',data:expenses,backgroundColor:'rgba(245,112,90,.7)',borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:legOpts.labels}},scales:scaleOpts}});
-  } else {
-    flowChart=new Chart(ctx1,{type:'line',data:{labels:months,datasets:[{label:'Saldo acumulado',data:balances,borderColor:'#c8f55a',backgroundColor:'rgba(200,245,90,.1)',fill:true,tension:.4,pointBackgroundColor:'#c8f55a',pointRadius:4}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:legOpts.labels}},scales:scaleOpts}});
-  }
-  const catTot={};
-  const txMF=catFilter?txM.filter(t=>t.type==='expense'&&!isFut(t.date)&&t.category===catFilter):txM.filter(t=>t.type==='expense'&&!isFut(t.date)&&!t.paid);
-  txMF.forEach(t=>{catTot[t.category]=(catTot[t.category]||0)+t.amount;});
-  const cats=Object.keys(catTot);
-  if(catChartObj)catChartObj.destroy();
-  catChartObj=new Chart(document.getElementById('catChart').getContext('2d'),{
-    type:'doughnut',
-    data:cats.length?{labels:cats,datasets:[{data:cats.map(c=>catTot[c]),backgroundColor:cats.map(c=>getCat(c).col+'cc'),borderColor:cats.map(c=>getCat(c).col),borderWidth:1.5,hoverOffset:5}]}:{labels:['Sem dados'],datasets:[{data:[1],backgroundColor:[isDark?'#1e2330':'#dde1ef'],borderWidth:0}]},
-    options:{responsive:true,maintainAspectRatio:true,cutout:'65%',onClick:(_,els)=>{if(els.length){const lbl=cats[els[0].index];catFilter=catFilter===lbl?null:lbl;renderDash();}},plugins:{legend:{display:cats.length>0,position:'right',labels:{color:tick,font:{family:'DM Sans',size:10},boxWidth:8,padding:6}},tooltip:{callbacks:{label:c=>` ${fmt(c.raw)}`}}}}
-  });
-  if(catFilter){document.getElementById('recList').innerHTML=`<div style="font-size:11px;color:var(--ac);margin-bottom:7px">🔍 ${catFilter} <a onclick="catFilter=null;renderDash()" style="cursor:pointer;text-decoration:underline">limpar</a></div>`+S.transactions.filter(t=>t.category===catFilter&&getMonthTx(curDt).includes(t)).map(txHTML).join('');}
-}
+
 // TRANSACTIONS
 function setView(v){
   curView=v;localStorage.setItem(VK,v);
@@ -2063,6 +2123,7 @@ function renderGoals(){
 // SETTINGS
 function renderSet(){
   const isDark=document.documentElement.dataset.theme==='dark';
+  renderWidgetToggles();
   const tog=document.getElementById('thmTog');if(tog)tog.checked=isDark;
   document.getElementById('setUsr').textContent=cfg.userName||'—';
   document.getElementById('setMod').textContent=cfg.mode==='api'?'Online (API + PostgreSQL)':'Local (neste dispositivo)';
@@ -2146,6 +2207,7 @@ function seedDemo(){
 }
 // INIT
 async function initApp(){
+  loadWidgetPrefs();
   await loadAll();loadCC();popCatSels();popAccSels();updM();renderDash();
   const name=cfg.userName||'Eu';
   document.getElementById('uName').textContent=name;document.getElementById('uAvatar').textContent=name.slice(0,2).toUpperCase();
@@ -2153,6 +2215,8 @@ async function initApp(){
   loadSyncQ();
   updSyncBadge();
   checkAutoBackup();
+  initDeepLink();
+  setTimeout(initNotifications, 3000);
 }
 
 // Detect Capacitor and disable blur effects
@@ -2414,6 +2478,410 @@ async function saveInlineEdit(id){
   closeInlineEdit();
   refreshAll();
   toast('Atualizado ✓','success');
+}
+
+
+// ════════════════════════════════════════════════════════════
+// NOTIFICAÇÕES LOCAIS (Capacitor)
+// ════════════════════════════════════════════════════════════
+async function initNotifications() {
+  if (!window.Capacitor) return;
+  try {
+    const { LocalNotifications } = Capacitor.Plugins;
+    if (!LocalNotifications) return;
+
+    const perm = await LocalNotifications.requestPermissions();
+    if (perm.display !== 'granted') return;
+
+    // Cancela notificações antigas antes de reagendar
+    await LocalNotifications.cancel({ notifications: [{ id: 1 }, { id: 2 }, { id: 3 }] }).catch(() => {});
+
+    scheduleVencimentoNotifications();
+  } catch (e) {
+    console.warn('Notificações não disponíveis:', e.message);
+  }
+}
+
+async function scheduleVencimentoNotifications() {
+  if (!window.Capacitor?.Plugins?.LocalNotifications) return;
+  const { LocalNotifications } = Capacitor.Plugins;
+
+  const hoje = today();
+  const em3d = offD(new Date(), 3);
+  const em7d = offD(new Date(), 7);
+
+  // Pega contas a vencer nos próximos 7 dias
+  const proximas = S.transactions.filter(t =>
+    t.type === 'expense' && !t.paid && t.date > hoje && t.date <= em7d
+  ).sort((a, b) => a.date.localeCompare(b.date));
+
+  if (!proximas.length) return;
+
+  const notifs = [];
+  const agora = new Date();
+
+  // Notificação diária às 9h se tiver contas a vencer hoje ou amanhã
+  const urgentes = proximas.filter(t => t.date <= offD(new Date(), 1));
+  if (urgentes.length) {
+    const total = urgentes.reduce((s, t) => s + t.amount, 0);
+    const schedDate = new Date();
+    schedDate.setHours(9, 0, 0, 0);
+    if (schedDate <= agora) schedDate.setDate(schedDate.getDate() + 1);
+    notifs.push({
+      id: 1,
+      title: '⚠️ Contas vencendo',
+      body: `${urgentes.length} conta${urgentes.length > 1 ? 's' : ''} a vencer: ${fmt(total)}`,
+      schedule: { at: schedDate, repeats: false },
+      sound: 'default',
+      smallIcon: 'ic_stat_icon_config_sample',
+    });
+  }
+
+  // Resumo semanal: domingo às 10h
+  const domingo = new Date();
+  domingo.setDate(domingo.getDate() + (7 - domingo.getDay()) % 7 || 7);
+  domingo.setHours(10, 0, 0, 0);
+  const totalSem = proximas.reduce((s, t) => s + t.amount, 0);
+  notifs.push({
+    id: 2,
+    title: '📅 Finanza — semana',
+    body: `${proximas.length} conta${proximas.length > 1 ? 's' : ''} nos próximos 7 dias: ${fmt(totalSem)}`,
+    schedule: { at: domingo, repeats: false },
+    sound: 'default',
+    smallIcon: 'ic_stat_icon_config_sample',
+  });
+
+  try {
+    await LocalNotifications.schedule({ notifications: notifs });
+    console.log('✅ Notificações agendadas:', notifs.length);
+  } catch (e) {
+    console.warn('Erro ao agendar notificações:', e.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// DEEP LINK — shortcut "quick-add" abre o FAB direto
+// ════════════════════════════════════════════════════════════
+function initDeepLink() {
+  if (!window.Capacitor) return;
+  try {
+    const { App } = Capacitor.Plugins;
+    if (!App) return;
+
+    // Ao abrir o app via shortcut
+    App.addListener('appUrlOpen', (data) => {
+      if (data.url?.includes('quick-add')) {
+        // Navega para transações e abre o FAB
+        setTimeout(() => {
+          showPage('transactions');
+          setTimeout(() => toggleQA(), 300);
+        }, 500);
+      }
+    });
+
+    // Verifica se foi aberto via shortcut na inicialização
+    App.getLaunchUrl().then((data) => {
+      if (data?.url?.includes('quick-add')) {
+        setTimeout(() => {
+          showPage('transactions');
+          setTimeout(() => toggleQA(), 600);
+        }, 1000);
+      }
+    }).catch(() => {});
+  } catch (e) {
+    console.warn('Deep link não disponível:', e.message);
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════
+// SISTEMA DE WIDGETS DO DASHBOARD
+// ════════════════════════════════════════════════════════════
+const WIDGETS_KEY = 'fz_widgets';
+
+// Definição de todos os widgets disponíveis
+const WIDGET_DEFS = [
+  { id:'cards',     ico:'💳', name:'Cards de saldo',       desc:'Saldo, receitas, despesas, a pagar', default:true },
+  { id:'charts',    ico:'📊', name:'Gráficos',              desc:'Fluxo de caixa e categorias',        default:true },
+  { id:'compare',   ico:'📅', name:'Comparativo mensal',    desc:'Este mês vs mês anterior',           default:true },
+  { id:'projection',ico:'🔭', name:'Projeção de saldo',     desc:'Tendência dos próximos meses',       default:true },
+  { id:'weekly',    ico:'📆', name:'Resumo semanal',        desc:'Gastos e economia da semana',        default:true },
+  { id:'anomaly',   ico:'🚨', name:'Anomalias',             desc:'Categorias acima da média',          default:true },
+  { id:'budalerts', ico:'⚠️', name:'Alertas de orçamento',  desc:'Limites próximos do teto',          default:true },
+  { id:'goals',     ico:'🏆', name:'Metas rápidas',         desc:'Progresso das suas metas',           default:true },
+  { id:'budgets',   ico:'🎯', name:'Orçamentos rápidos',    desc:'Uso mensal por categoria',           default:false },
+  { id:'recent',    ico:'💸', name:'Últimas transações',    desc:'Lançamentos recentes',               default:true },
+  { id:'ministats', ico:'📈', name:'Mini estatísticas',     desc:'Média diária, maior gasto, dias',   default:false },
+  { id:'accounts',  ico:'🏦', name:'Saldos das contas',     desc:'Saldo de cada conta bancária',      default:false },
+];
+
+let widgetPrefs = {};
+
+function loadWidgetPrefs() {
+  try {
+    const s = localStorage.getItem(WIDGETS_KEY);
+    widgetPrefs = s ? JSON.parse(s) : {};
+  } catch { widgetPrefs = {}; }
+  // Aplica defaults para widgets sem preferência salva
+  WIDGET_DEFS.forEach(w => {
+    if (widgetPrefs[w.id] === undefined) widgetPrefs[w.id] = w.default;
+  });
+}
+
+function saveWidgetPrefs() {
+  localStorage.setItem(WIDGETS_KEY, JSON.stringify(widgetPrefs));
+}
+
+function isWidgetOn(id) {
+  return widgetPrefs[id] !== false;
+}
+
+function toggleWidget(id) {
+  widgetPrefs[id] = !widgetPrefs[id];
+  saveWidgetPrefs();
+  renderWidgetToggles();
+  renderDash();
+}
+
+function renderWidgetToggles() {
+  const el = document.getElementById('widgetToggles');
+  if (!el) return;
+  el.innerHTML = WIDGET_DEFS.map(w => `
+    <div class="widget-chip ${widgetPrefs[w.id] ? 'on' : ''}" onclick="toggleWidget('${w.id}')">
+      <span class="wc-dot"></span>
+      <span class="wc-ico">${w.ico}</span>
+      <div class="wc-info">
+        <div class="wc-name">${w.name}</div>
+        <div class="wc-desc">${w.desc}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── RENDER WIDGETS INDIVIDUAIS ──────────────────────────────
+
+function widgetCards() {
+  const totBal = S.accounts.reduce((s,a) => s + getAccBal(a.id), 0);
+  const txM = getMonthTx(curDt);
+  const inc = txM.filter(t => t.type==='income'&&!isFut(t.date)&&!t.paid).reduce((s,t)=>s+t.amount,0);
+  const exp = txM.filter(t => t.type==='expense'&&!isFut(t.date)&&!t.paid).reduce((s,t)=>s+t.amount,0);
+  const fut = S.transactions.filter(t=>t.type==='expense'&&isFut(t.date)&&!t.paid).reduce((s,t)=>s+t.amount,0);
+  // Store for other widgets
+  window._dashInc = inc; window._dashExp = exp;
+  return `<div class="g4 dash-section">
+    <div class="sc sc-glow-ac2"><span class="ci">💰</span><div class="cl">Saldo Total</div><div class="cv ${totBal>=0?'neu':'neg'}">${fmt(totBal)}</div><div class="cc">todas as contas</div></div>
+    <div class="sc sc-glow-ac"><span class="ci">⬆️</span><div class="cl">Receitas</div><div class="cv pos">${fmt(inc)}</div><div class="cc up">este mês</div></div>
+    <div class="sc sc-glow-dan"><span class="ci">⬇️</span><div class="cl">Despesas</div><div class="cv neg">${fmt(exp)}</div><div class="cc dn">este mês</div></div>
+    <div class="sc sc-glow-fut" style="cursor:pointer" onclick="showPage('future')"><span class="ci">🔮</span><div class="cl">A Pagar</div><div class="cv fut">${fmt(fut)}</div><div class="cc" style="color:var(--fut)">ver →</div></div>
+  </div>`;
+}
+
+function widgetMiniStats() {
+  const txM = getMonthTx(curDt).filter(t=>!isFut(t.date)&&!t.paid&&t.type==='expense');
+  if (!txM.length) return '';
+  const total = txM.reduce((s,t)=>s+t.amount,0);
+  const dias = new Set(txM.map(t=>t.date)).size;
+  const media = total / Math.max(dias, 1);
+  const maior = Math.max(...txM.map(t=>t.amount));
+  const diasMes = new Date(curDt.getFullYear(), curDt.getMonth()+1, 0).getDate();
+  const diasRest = diasMes - curDt.getDate();
+  return `<div class="mini-stats dash-section">
+    <div class="mini-stat"><div class="ms-ico">📊</div><div class="ms-val" style="color:var(--warn)">${fmt(media)}</div><div class="ms-lbl">Média/dia</div></div>
+    <div class="mini-stat"><div class="ms-ico">🔺</div><div class="ms-val" style="color:var(--dan)">${fmt(maior)}</div><div class="ms-lbl">Maior gasto</div></div>
+    <div class="mini-stat"><div class="ms-ico">📅</div><div class="ms-val" style="color:var(--ac2)">${diasRest}</div><div class="ms-lbl">Dias restantes</div></div>
+  </div>`;
+}
+
+function widgetAccounts() {
+  if (!S.accounts.length) return '';
+  return `<div class="box dash-section">
+    <div class="bh"><div class="ct">Contas</div><button class="btn btn-g btn-sm" onclick="showPage('accounts')">Ver →</button></div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      ${S.accounts.map(a => {
+        const bal = getAccBal(a.id);
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px;border-bottom:1px solid var(--bd2)">
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">${a.icon}</span><span style="font-size:13px;font-weight:500">${a.name}</span></div>
+          <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:${bal>=0?'var(--ac)':'var(--dan)'}">${fmt(bal)}</span>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+function widgetGoals() {
+  const goals = S.goals.filter(g => (g.current/g.target) < 1).slice(0, 4);
+  if (!goals.length) return '';
+  return `<div class="goals-widget dash-section">
+    <div class="bh"><div class="ct">🏆 Metas</div><button class="btn btn-g btn-sm" onclick="showPage('goals')">Ver todas →</button></div>
+    <div class="goals-widget-list">
+      ${goals.map(g => {
+        const pct = Math.min((g.current/g.target)*100, 100);
+        const col = pct>=80?'var(--ac)':pct>=50?'var(--ac2)':'var(--warn)';
+        return `<div class="gw-item">
+          <span class="gw-icon">${g.icon}</span>
+          <div class="gw-info">
+            <div class="gw-name">${g.name}</div>
+            <div class="gw-bar"><div class="gw-fill" style="width:${pct}%;background:${col}"></div></div>
+          </div>
+          <span class="gw-pct" style="color:${col}">${Math.round(pct)}%</span>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+function widgetBudgets() {
+  const now = new Date();
+  const buds = S.budgets.map(b => {
+    const spent = S.transactions.filter(t => {
+      if (t.type!=='expense'||isFut(t.date)||t.paid) return false;
+      const d = new Date(t.date+'T12:00:00');
+      return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()&&t.category===b.category;
+    }).reduce((s,t)=>s+t.amount,0);
+    return {...b, spent, pct: Math.min((spent/b.limit)*100, 100)};
+  }).sort((a,b)=>b.pct-a.pct).slice(0,6);
+  if (!buds.length) return '';
+  return `<div class="budget-widget dash-section">
+    <div class="bh"><div class="ct">🎯 Orçamentos</div><button class="btn btn-g btn-sm" onclick="showPage('budget')">Ver todos →</button></div>
+    <div class="bw-list">
+      ${buds.map(b => {
+        const cat = getCat(b.category);
+        const col = b.pct>=100?'var(--dan)':b.pct>=80?'var(--warn)':'var(--ac)';
+        return `<div class="bw-item">
+          <span class="bw-cat">${cat.ico}</span>
+          <div class="bw-info">
+            <div class="bw-top">
+              <span class="bw-name">${b.category}</span>
+              <span class="bw-vals">${fmt(b.spent)} / ${fmt(b.limit)}</span>
+            </div>
+            <div class="bw-bar"><div class="bw-fill" style="width:${b.pct}%;background:${col}"></div></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+function widgetCharts() {
+  return `<div class="cr dash-section">
+    <div class="cc-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+        <div class="ct">Fluxo de Caixa</div>
+        <div style="display:flex;gap:3px;">
+          <button class="vbtn ${chartMode==='bars'?'active':''}" id="cBars" onclick="setChartMode('bars')" title="Barras">▦</button>
+          <button class="vbtn ${chartMode==='line'?'active':''}" id="cLine" onclick="setChartMode('line')" title="Acumulado">📈</button>
+        </div>
+      </div>
+      <div class="cs" id="chartSub">${chartMode==='bars'?'Receitas vs Despesas — últimos 6 meses':'Saldo acumulado — últimos 6 meses'}</div>
+      <canvas id="flowChart"></canvas>
+    </div>
+    <div class="cc-box"><div class="ct">Categorias</div><div class="cs">Clique para filtrar</div><canvas id="catChart" style="cursor:pointer"></canvas></div>
+  </div>`;
+}
+
+function widgetRecent() {
+  const sorted = [...S.transactions]
+    .filter(t=>!isFut(t.date)&&!t.paid)
+    .sort((a,b)=>b.date.localeCompare(a.date))
+    .slice(0,6);
+  return `<div class="box dash-section">
+    <div class="bh"><div class="ct">Últimas Transações</div><button class="btn btn-g btn-sm" onclick="showPage('transactions')">Ver todas →</button></div>
+    <div class="tl" id="recList">${sorted.length ? sorted.map(txHTML).join('') : '<div class="empty"><span class="ei">💸</span><p>Nenhuma transação ainda.</p></div>'}</div>
+  </div>`;
+}
+
+// ─── RENDER DASH PRINCIPAL ───────────────────────────────────
+function renderDash() {
+  const isDark = document.documentElement.dataset.theme === 'dark';
+
+  const sections = [];
+
+  if (isWidgetOn('cards'))      sections.push(widgetCards());
+  if (isWidgetOn('ministats'))  sections.push(widgetMiniStats());
+  if (isWidgetOn('accounts'))   sections.push(widgetAccounts());
+  if (isWidgetOn('compare'))    sections.push('<div class="dash-section" id="monthCompare"></div>');
+  if (isWidgetOn('projection')) sections.push('<div class="dash-section" id="projCard"></div>');
+  if (isWidgetOn('weekly'))     sections.push('<div class="dash-section" id="wsum"></div>');
+  if (isWidgetOn('anomaly'))    sections.push('<div class="dash-section" id="anom"></div>');
+  if (isWidgetOn('budalerts'))  sections.push('<div class="dash-section" id="budAlerts"></div>');
+  if (isWidgetOn('goals'))      sections.push(widgetGoals());
+  if (isWidgetOn('budgets'))    sections.push(widgetBudgets());
+  if (isWidgetOn('charts'))     sections.push(widgetCharts());
+  if (isWidgetOn('recent'))     sections.push(widgetRecent());
+
+  const container = document.getElementById('dashWidgets');
+  if (container) container.innerHTML = sections.join('');
+
+  // Render sub-widgets que precisam de DOM pronto
+  if (isWidgetOn('compare'))    renderMonthCompare();
+  if (isWidgetOn('projection')) renderProjection();
+  if (isWidgetOn('weekly'))     renderWeekly();
+  if (isWidgetOn('anomaly'))    renderWeekly(); // renderWeekly já inclui anomaly
+  if (isWidgetOn('budalerts'))  renderBudAlerts();
+  if (isWidgetOn('charts'))     renderCharts(isDark);
+}
+
+function renderCharts(isDark) {
+  const tick = isDark ? 'rgba(240,243,255,.4)' : 'rgba(13,16,32,.35)';
+  const grid = isDark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.04)';
+  const months=[], incomes=[], expenses=[], balances=[];
+  let runBal = 0;
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(curDt.getFullYear(), curDt.getMonth()-i, 1);
+    months.push(['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][d.getMonth()]);
+    const txs = getMonthTx(d).filter(t=>!isFut(t.date)&&!t.paid);
+    const mi = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const me = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    incomes.push(mi); expenses.push(me); runBal+=mi-me; balances.push(runBal);
+  }
+  const scaleOpts = {
+    x:{grid:{color:grid},ticks:{color:tick,font:{family:'DM Sans',size:10}}},
+    y:{grid:{color:grid},ticks:{color:tick,font:{family:'DM Sans',size:10},callback:v=>'R$'+(v/1000).toFixed(0)+'k'}}
+  };
+  const legOpts = { labels:{color:tick,font:{family:'DM Sans',size:10},boxWidth:8,boxHeight:8} };
+  if (window._flowChart) window._flowChart.destroy();
+  const ctx1 = document.getElementById('flowChart')?.getContext('2d');
+  if (ctx1) {
+    if (chartMode==='bars') {
+      window._flowChart = new Chart(ctx1,{type:'bar',data:{labels:months,datasets:[
+        {label:'Receitas',data:incomes,backgroundColor:'rgba(200,245,90,.8)',borderRadius:4,borderSkipped:false},
+        {label:'Despesas',data:expenses,backgroundColor:'rgba(245,112,90,.7)',borderRadius:4,borderSkipped:false}
+      ]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:legOpts.labels}},scales:scaleOpts}});
+    } else {
+      window._flowChart = new Chart(ctx1,{type:'line',data:{labels:months,datasets:[
+        {label:'Saldo acumulado',data:balances,borderColor:'#c8f55a',backgroundColor:'rgba(200,245,90,.1)',fill:true,tension:.4,pointBackgroundColor:'#c8f55a',pointRadius:4}
+      ]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:legOpts.labels}},scales:scaleOpts}});
+    }
+  }
+  // Donut de categorias
+  const catTot = {};
+  const txMF = catFilter
+    ? getMonthTx(curDt).filter(t=>t.type==='expense'&&!isFut(t.date)&&t.category===catFilter)
+    : getMonthTx(curDt).filter(t=>t.type==='expense'&&!isFut(t.date)&&!t.paid);
+  txMF.forEach(t=>{ catTot[t.category]=(catTot[t.category]||0)+t.amount; });
+  const cats = Object.keys(catTot);
+  if (window._catChart) window._catChart.destroy();
+  const ctx2 = document.getElementById('catChart')?.getContext('2d');
+  if (ctx2) {
+    window._catChart = new Chart(ctx2,{type:'doughnut',
+      data: cats.length
+        ? {labels:cats,datasets:[{data:cats.map(c=>catTot[c]),backgroundColor:cats.map(c=>getCat(c).col+'cc'),borderColor:cats.map(c=>getCat(c).col),borderWidth:1.5,hoverOffset:5}]}
+        : {labels:['Sem dados'],datasets:[{data:[1],backgroundColor:[isDark?'#1e2330':'#dde1ef'],borderWidth:0}]},
+      options:{responsive:true,maintainAspectRatio:true,cutout:'65%',
+        onClick:(_,els)=>{ if(els.length){const lbl=cats[els[0].index];catFilter=catFilter===lbl?null:lbl;renderDash();} },
+        plugins:{legend:{display:cats.length>0,position:'right',labels:{color:tick,font:{family:'DM Sans',size:10},boxWidth:8,padding:6}},
+          tooltip:{callbacks:{label:c=>` ${fmt(c.raw)}`}}}
+      }
+    });
+  }
+  if (catFilter) {
+    const rl = document.getElementById('recList');
+    if (rl) {
+      const filtered = S.transactions.filter(t=>t.category===catFilter&&getMonthTx(curDt).includes(t));
+      rl.innerHTML = `<div style="font-size:11px;color:var(--ac);margin-bottom:7px">🔍 ${catFilter} <a onclick="catFilter=null;renderDash()" style="cursor:pointer;text-decoration:underline">limpar</a></div>`
+        + filtered.map(txHTML).join('');
+    }
+  }
 }
 
 initTheme();
