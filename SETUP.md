@@ -1,34 +1,54 @@
-# Finanza v3 — Setup Multi-Usuário
+# Finanza v3.9 - Setup com Supabase
 
-## 1. Banco de dados (escolha um)
+Este projeto usa:
 
-### Opção A — Supabase (RECOMENDADO, free, sem expirar)
-1. Acesse supabase.com → New Project
-2. Copie a **Connection string** (Settings → Database → URI)
-3. Formato: `postgresql://postgres:[senha]@db.[ref].supabase.co:5432/postgres`
+- **API**: Node.js/Express no Render.
+- **Banco**: PostgreSQL no Supabase.
+- **Frontend**: arquivos estaticos em `frontend/`, geralmente publicados no GitHub Pages.
 
-### Opção B — Neon (PostgreSQL serverless, free)
-1. Acesse neon.tech → New Project
-2. Copie a **Connection string**
+## 1. Criar o banco no Supabase
 
-### Opção C — Render Database (expira em 90 dias no free)
-1. No Render: New → PostgreSQL
-2. Copie a **External Database URL**
+1. Acesse <https://supabase.com>.
+2. Crie um projeto novo.
+3. Va em **Project Settings** > **Database** > **Connection string**.
+4. Copie uma URL PostgreSQL.
 
----
+Use preferencialmente uma string no formato:
 
-## 2. Deploy no Render
+```text
+postgresql://postgres:[SENHA]@db.[PROJECT_REF].supabase.co:5432/postgres
+```
 
-1. Faça push do repo no GitHub
-2. render.com → New → Blueprint
-3. Cole a DATABASE_URL do banco escolhido
-4. A API_SECRET é gerada automaticamente — **anote ela após o deploy**
+Se o host onde a API roda tiver problema com IPv6, use a connection string do **pooler/session pooler** do Supabase.
 
----
+## 2. Criar as tabelas
 
-## 3. Configurar o banco (primeira vez)
+No Supabase:
 
-Após o deploy, faça UMA chamada:
+1. Abra **SQL Editor**.
+2. Cole o conteudo de `db/init.sql`.
+3. Execute.
+
+Isso cria as tabelas de usuarios, transacoes, orcamentos, metas, contas, categorias personalizadas, lista de compras, preferencias do app e log de backup.
+
+## 3. Deploy da API no Render
+
+O `render.yaml` agora cria apenas o servico da API. O banco fica no Supabase.
+
+No Render, configure as variaveis:
+
+```text
+DATABASE_URL=postgresql://postgres:[SENHA]@db.[PROJECT_REF].supabase.co:5432/postgres
+API_SECRET=uma-chave-admin-bem-grande
+NODE_ENV=production
+CORS_ORIGIN=https://SEU_USUARIO.github.io
+```
+
+`CORS_ORIGIN` pode receber mais de uma origem separada por virgula.
+
+## 4. Criar o usuario admin
+
+Depois que a API estiver no ar:
 
 ```bash
 curl -X POST https://SEU-APP.onrender.com/api/setup \
@@ -37,45 +57,43 @@ curl -X POST https://SEU-APP.onrender.com/api/setup \
   -d '{"name": "Seu Nome"}'
 ```
 
-A resposta retorna sua `admin_key` pessoal. **Guarde-a.**
+A resposta retorna a `api_key` do admin. Guarde essa chave.
 
----
-
-## 4. Criar novos usuários
+## 5. Criar usuarios
 
 ```bash
 curl -X POST https://SEU-APP.onrender.com/api/users \
   -H "x-api-key: SUA_API_SECRET" \
   -H "Content-Type: application/json" \
-  -d '{"name": "João", "email": "joao@email.com"}'
+  -d '{"name": "Joao"}'
 ```
 
-A resposta inclui a `api_key` do usuário — envie para ele.
+A resposta inclui a `api_key` do usuario.
 
----
+## 6. Entrar no app
 
-## 5. No app Finanza
+Na tela inicial do Finanza:
 
-- Tela inicial → Online
+- Escolha **Online**.
 - URL: `https://SEU-APP.onrender.com`
-- Chave: a `api_key` recebida
+- Chave: a `api_key` do usuario.
 
----
+## Endpoints principais
 
-## Endpoints disponíveis
+| Metodo | Endpoint | Auth | Descricao |
+| --- | --- | --- | --- |
+| POST | `/api/setup` | Admin | Cria o admin inicial |
+| GET | `/health` | - | Status da API |
+| GET | `/api/me` | User | Dados do usuario logado |
+| POST | `/api/users` | Admin | Cria usuario |
+| GET | `/api/users` | Admin | Lista usuarios |
+| DELETE | `/api/users/:id` | Admin | Remove usuario |
+| POST | `/api/me/regenerate-key` | User | Gera nova `api_key` |
+| GET/POST/PUT/DELETE | `/api/transactions` | User | CRUD de transacoes |
+| GET/POST/DELETE | `/api/budgets` | User | CRUD de orcamentos |
+| GET/POST/DELETE | `/api/goals` | User | CRUD de metas |
+| PATCH | `/api/goals/:id/add` | User | Adiciona valor a meta |
+| GET/PUT | `/api/state` | User | Carrega/salva contas, categorias, lista e preferencias |
+| POST | `/api/backup` | Admin | Backup via `pg_dump` quando disponivel no host |
 
-| Método | Endpoint | Auth | Descrição |
-|--------|----------|------|-----------|
-| POST | /api/setup | Admin | Cria tabelas + admin |
-| GET | /health | — | Status da API |
-| GET | /api/me | User | Dados do usuário logado |
-| POST | /api/users | Admin | Cria novo usuário |
-| GET | /api/users | Admin | Lista usuários |
-| DELETE | /api/users/:id | Admin | Remove usuário |
-| POST | /api/me/regenerate-key | User | Nova api_key |
-| GET/POST/PUT/DELETE | /api/transactions | User | CRUD transações |
-| GET/POST/DELETE | /api/budgets | User | CRUD orçamentos |
-| GET/POST/DELETE | /api/goals | User | CRUD metas |
-| PATCH | /api/goals/:id/add | User | Adiciona valor à meta |
-| GET/POST/DELETE | /api/accounts | User | CRUD contas bancárias |
-| GET | /api/export | User | Exporta todos os dados |
+O Supabase agora tambem recebe contas bancarias, vinculo de transacao com conta, status pago/pendente, categorias personalizadas, lista de compras, preferencias do dashboard, tema e taxas de referencia.

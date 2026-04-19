@@ -1,5 +1,5 @@
 // ============================================
-// Finanza API — Multi-Usuário v2
+// Finanza API - Multi-Usuario v2
 // Node.js + Express + PostgreSQL
 // ============================================
 
@@ -12,43 +12,70 @@ const path    = require('path');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
+const isProd = process.env.NODE_ENV === 'production';
 
 // ── DB ──────────────────────────────────────
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: isProd ? { rejectUnauthorized: false } : false
 });
 pool.connect()
   .then(c => { console.log('✅ PostgreSQL conectado'); c.release(); })
   .catch(e => { console.error('❌ DB erro:', e.message); process.exit(1); });
 
 // ── MIDDLEWARES ─────────────────────────────
-app.use(cors({ origin: '*', methods: ['GET','POST','PUT','PATCH','DELETE'] }));
-app.use(express.json());
+const allowedOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin(origin, cb) {
+    if (!origin || !allowedOrigins.length || allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error('Origem nao permitida'));
+  },
+  methods: ['GET','POST','PUT','PATCH','DELETE'],
+  allowedHeaders: ['Content-Type','x-api-key']
+}));
+app.use(express.json({ limit: '1mb' }));
+
+function cleanText(v, fallback = '') {
+  return typeof v === 'string' ? v : fallback;
+}
+
+async function replaceRows(client, table, userId, rows, insertSql, mapper) {
+  await client.query(`DELETE FROM ${table} WHERE user_id=$1`, [userId]);
+  for (const row of rows || []) {
+    await client.query(insertSql, mapper(row, userId));
+  }
+}
 
 // ── ADMIN KEY ───────────────────────────────
-// Usada apenas para criar/listar usuários
+// Usada apenas para criar/listar usuarios
+if (isProd && !process.env.API_SECRET) {
+  throw new Error('Defina API_SECRET em producao');
+}
 const ADMIN_KEY = process.env.API_SECRET || 'admin-key-troque-isso';
 
 function adminAuth(req, res, next) {
   if (req.headers['x-api-key'] !== ADMIN_KEY)
-    return res.status(401).json({ error: 'Admin key inválida' });
+    return res.status(401).json({ error: 'Admin key invalida' });
   next();
 }
 
 // ── USER AUTH ────────────────────────────────
-// Cada requisição de dados usa a api_key do usuário
+// Cada requisicao de dados usa a api_key do usuario
 async function userAuth(req, res, next) {
   const key = req.headers['x-api-key'];
-  if (!key) return res.status(401).json({ error: 'Chave não informada' });
+  if (!key) return res.status(401).json({ error: 'Chave nao informada' });
 
-  // Admin key também funciona como usuário admin
+  // Admin key tambem funciona como usuario admin
   if (key === ADMIN_KEY) {
     try {
       const { rows } = await pool.query(
         'SELECT * FROM users WHERE is_admin = TRUE LIMIT 1'
       );
-      if (!rows.length) return res.status(401).json({ error: 'Admin user não existe' });
+      if (!rows.length) return res.status(401).json({ error: 'Admin user nao existe' });
       req.user = rows[0];
       return next();
     } catch (e) {
@@ -60,7 +87,7 @@ async function userAuth(req, res, next) {
     const { rows } = await pool.query(
       'SELECT * FROM users WHERE api_key = $1', [key]
     );
-    if (!rows.length) return res.status(401).json({ error: 'Chave inválida' });
+    if (!rows.length) return res.status(401).json({ error: 'Chave invalida' });
     req.user = rows[0];
     next();
   } catch (e) {
@@ -79,18 +106,18 @@ app.get('/health', async (req, res) => {
 });
 
 // ════════════════════════════════════════════
-// USUÁRIOS
+// USUARIOS
 // ════════════════════════════════════════════
 
-// Verificar própria chave e retornar info do usuário
+// Verificar propria chave e retornar info do usuario
 app.get('/api/me', userAuth, (req, res) => {
   res.json({ id: req.user.id, name: req.user.name, is_admin: req.user.is_admin });
 });
 
-// Criar usuário (requer admin key)
+// Criar usuario (requer admin key)
 app.post('/api/users', adminAuth, async (req, res) => {
   try {
-    const { name = 'Usuário' } = req.body;
+    const { name = 'Usuario' } = req.body;
     const api_key = crypto.randomBytes(32).toString('hex');
     const { rows } = await pool.query(
       'INSERT INTO users (name, api_key) VALUES ($1, $2) RETURNING id, name, api_key, created_at',
@@ -102,11 +129,11 @@ app.post('/api/users', adminAuth, async (req, res) => {
   }
 });
 
-// Criar usuário admin inicial (só funciona se não existir nenhum admin)
+// Criar usuario admin inicial (so funciona se nao existir nenhum admin)
 app.post('/api/setup', adminAuth, async (req, res) => {
   try {
     const { rows: existing } = await pool.query('SELECT id FROM users WHERE is_admin = TRUE');
-    if (existing.length) return res.status(409).json({ error: 'Admin já existe', id: existing[0].id });
+    if (existing.length) return res.status(409).json({ error: 'Admin ja existe', id: existing[0].id });
 
     const { name = 'Admin' } = req.body;
     const api_key = crypto.randomBytes(32).toString('hex');
@@ -120,7 +147,7 @@ app.post('/api/setup', adminAuth, async (req, res) => {
   }
 });
 
-// Listar usuários (admin)
+// Listar usuarios (admin)
 app.get('/api/users', adminAuth, async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -132,7 +159,7 @@ app.get('/api/users', adminAuth, async (req, res) => {
   }
 });
 
-// Deletar usuário (admin)
+// Deletar usuario (admin)
 app.delete('/api/users/:id', adminAuth, async (req, res) => {
   try {
     await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]);
@@ -142,7 +169,7 @@ app.delete('/api/users/:id', adminAuth, async (req, res) => {
   }
 });
 
-// Regenerar api_key do próprio usuário
+// Regenerar api_key do proprio usuario
 app.post('/api/me/regenerate-key', userAuth, async (req, res) => {
   try {
     const new_key = crypto.randomBytes(32).toString('hex');
@@ -154,12 +181,14 @@ app.post('/api/me/regenerate-key', userAuth, async (req, res) => {
 });
 
 // ════════════════════════════════════════════
-// TRANSAÇÕES
+// TRANSACOES
 // ════════════════════════════════════════════
 
 app.get('/api/transactions', userAuth, async (req, res) => {
   try {
-    const { type, category, month, year, search, limit = 500, offset = 0 } = req.query;
+    const { type, category, month, year, search } = req.query;
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 500, 1), 1000);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
     const conds = ['user_id = $1'];
     const params = [req.user.id];
     let i = 2;
@@ -174,7 +203,7 @@ app.get('/api/transactions', userAuth, async (req, res) => {
 
     const where = 'WHERE ' + conds.join(' AND ');
     const q = `SELECT * FROM transactions ${where} ORDER BY date DESC, created_at DESC LIMIT $${i++} OFFSET $${i++}`;
-    params.push(Number(limit), Number(offset));
+    params.push(limit, offset);
 
     const [{ rows }, { rows: tot }] = await Promise.all([
       pool.query(q, params),
@@ -187,16 +216,18 @@ app.get('/api/transactions', userAuth, async (req, res) => {
 app.post('/api/transactions', userAuth, async (req, res) => {
   try {
     const { type, description, amount, category, date, note = '',
+            account_id, paid=false, pending=false,
             installment_group, installment_num, installment_total, recur_group } = req.body;
     if (!type || !description || !amount || !category || !date)
-      return res.status(400).json({ error: 'Campos obrigatórios faltando' });
+      return res.status(400).json({ error: 'Campos obrigatorios faltando' });
 
     const { rows } = await pool.query(
       `INSERT INTO transactions
         (user_id, type, description, amount, category, date, note,
-         installment_group, installment_num, installment_total, recur_group)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+         account_id, paid, pending, installment_group, installment_num, installment_total, recur_group)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
       [req.user.id, type, description, amount, category, date, note,
+       account_id||null, !!paid, !!pending,
        installment_group||null, installment_num||null, installment_total||null, recur_group||null]
     );
     res.status(201).json(rows[0]);
@@ -205,13 +236,18 @@ app.post('/api/transactions', userAuth, async (req, res) => {
 
 app.put('/api/transactions/:id', userAuth, async (req, res) => {
   try {
-    const { type, description, amount, category, date, note } = req.body;
+    const { type, description, amount, category, date, note, account_id, paid, pending } = req.body;
     const { rows } = await pool.query(
-      `UPDATE transactions SET type=$1,description=$2,amount=$3,category=$4,date=$5,note=$6
-       WHERE id=$7 AND user_id=$8 RETURNING *`,
-      [type, description, amount, category, date, note, req.params.id, req.user.id]
+      `UPDATE transactions
+       SET type=$1,description=$2,amount=$3,category=$4,date=$5,note=$6,
+           account_id=$7,paid=COALESCE($8,paid),pending=COALESCE($9,pending)
+       WHERE id=$10 AND user_id=$11 RETURNING *`,
+      [type, description, amount, category, date, note, account_id||null,
+       typeof paid === 'boolean' ? paid : null,
+       typeof pending === 'boolean' ? pending : null,
+       req.params.id, req.user.id]
     );
-    if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
+    if (!rows.length) return res.status(404).json({ error: 'Nao encontrado' });
     res.json(rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -221,13 +257,100 @@ app.delete('/api/transactions/:id', userAuth, async (req, res) => {
     const { rowCount } = await pool.query(
       'DELETE FROM transactions WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]
     );
-    if (!rowCount) return res.status(404).json({ error: 'Não encontrado' });
+    if (!rowCount) return res.status(404).json({ error: 'Nao encontrado' });
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ============================================================================
+// ESTADO COMPLETO DO APP
+// ============================================================================
+
+app.get('/api/state', userAuth, async (req, res) => {
+  try {
+    const uid = req.user.id;
+    const [accounts, categories, lists, items, settings] = await Promise.all([
+      pool.query('SELECT * FROM accounts WHERE user_id=$1 ORDER BY created_at, name', [uid]),
+      pool.query('SELECT * FROM categories WHERE user_id=$1 ORDER BY created_at, name', [uid]),
+      pool.query('SELECT * FROM shopping_lists WHERE user_id=$1 ORDER BY position, created_at', [uid]),
+      pool.query('SELECT * FROM shopping_items WHERE user_id=$1 ORDER BY created_at', [uid]),
+      pool.query('SELECT * FROM user_settings WHERE user_id=$1', [uid])
+    ]);
+    res.json({
+      accounts: accounts.rows,
+      categories: categories.rows,
+      shopping: { lists: lists.rows, items: items.rows },
+      settings: settings.rows[0] || {}
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/state', userAuth, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const uid = req.user.id;
+    const { accounts=[], categories=[], shopping={}, settings={} } = req.body || {};
+    await client.query('BEGIN');
+
+    await replaceRows(client, 'accounts', uid, accounts,
+      `INSERT INTO accounts
+       (user_id,id,name,icon,type,balance,yield_rate,yield_type,yield_val,calc_base,start_date,note)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+      (a, userId) => [userId, String(a.id), cleanText(a.name, 'Conta'), cleanText(a.icon),
+        cleanText(a.type, 'checking'), Number(a.balance)||0, Number(a.yieldRate ?? a.yield_rate)||0,
+        cleanText(a.yieldType ?? a.yield_type, 'manual'), Number(a.yieldVal ?? a.yield_val)||0,
+        cleanText(a.calcBase ?? a.calc_base, 'du'), a.startDate || a.start_date || null, cleanText(a.note)]
+    );
+
+    await replaceRows(client, 'categories', uid, categories,
+      `INSERT INTO categories (user_id,id,icon,name,color) VALUES ($1,$2,$3,$4,$5)`,
+      (c, userId) => [userId, String(c.id), cleanText(c.ico || c.icon), cleanText(c.name, 'Categoria'), cleanText(c.col || c.color, '#888')]
+    );
+
+    await replaceRows(client, 'shopping_items', uid, [], 'SELECT $1', () => [uid]);
+    await replaceRows(client, 'shopping_lists', uid, shopping.lists || [],
+      `INSERT INTO shopping_lists (user_id,id,name,icon,position) VALUES ($1,$2,$3,$4,$5)`,
+      (l, userId) => [userId, String(l.id), cleanText(l.name, 'Lista'), cleanText(l.ico || l.icon), Number(l.position)||0]
+    );
+    for (const item of shopping.items || []) {
+      await client.query(
+        `INSERT INTO shopping_items (user_id,id,list_id,name,qty,category,bought,created_ms)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [uid, String(item.id), String(item.listId || item.list_id), cleanText(item.name, 'Item'),
+         cleanText(item.qty), cleanText(item.cat || item.category), !!item.bought, Number(item.createdAt || item.created_ms)||Date.now()]
+      );
+    }
+
+    await client.query(
+      `INSERT INTO user_settings (user_id,theme,rates,widget_prefs,widget_order,tx_view,active_list)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT (user_id) DO UPDATE SET
+         theme=EXCLUDED.theme,
+         rates=EXCLUDED.rates,
+         widget_prefs=EXCLUDED.widget_prefs,
+         widget_order=EXCLUDED.widget_order,
+         tx_view=EXCLUDED.tx_view,
+         active_list=EXCLUDED.active_list,
+         updated_at=NOW()`,
+      [uid, cleanText(settings.theme, 'dark'), settings.rates || {},
+       settings.widgetPrefs || settings.widget_prefs || {},
+       settings.widgetOrder || settings.widget_order || [],
+       cleanText(settings.txView || settings.tx_view, 'n'),
+       settings.activeList || settings.active_list || null]
+    );
+
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
+  }
+});
+
 // ════════════════════════════════════════════
-// ORÇAMENTOS
+// ORCAMENTOS
 // ════════════════════════════════════════════
 
 app.get('/api/budgets', userAuth, async (req, res) => {
@@ -292,7 +415,7 @@ app.patch('/api/goals/:id/add', userAuth, async (req, res) => {
        WHERE id=$2 AND user_id=$3 RETURNING *`,
       [amount, req.params.id, req.user.id]
     );
-    if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
+    if (!rows.length) return res.status(404).json({ error: 'Nao encontrado' });
     res.json(rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -376,4 +499,4 @@ app.post('/api/backup', userAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.listen(PORT, () => console.log(`🚀 Finanza API na porta ${PORT} — multi-usuário`));
+app.listen(PORT, () => console.log(`Finanza API na porta ${PORT} - multi-usuario`));

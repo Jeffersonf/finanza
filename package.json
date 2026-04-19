@@ -1,6 +1,6 @@
 {
   "name": "finanza",
-  "version": "1.0.0",
+  "version": "3.9.0",
   "description": "App de controle financeiro pessoal",
   "scripts": {
     "sync": "npx cap sync",
