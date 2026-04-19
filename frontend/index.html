@@ -9,14 +9,14 @@
 <meta name="apple-mobile-web-app-title" content="Finanza">
 <meta name="application-name" content="Finanza">
 <meta name="theme-color" id="themeColorMeta" content="#08090d">
-<meta name="app-version" content="3.9.0">
+<meta name="app-version" content="3.9.1">
 <title>Finanza</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='10' fill='%2308090d'/%3E%3Ctext x='5' y='23' font-family='Arial Black' font-weight='900' font-size='17' fill='%23c8f55a'%3Efz%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<link rel="stylesheet" href="styles.css?v=3.9.0">
+<link rel="stylesheet" href="styles.css?v=3.9.1">
 </head>
 <body>
 
@@ -66,34 +66,34 @@
       <button class="back-btn" onclick="showS('main')">← Voltar</button>
       <div class="auth-title">Entrar</div>
       <div id="sErr" class="serr"></div>
-      <label class="slbl">Usuario</label><input type="text" class="sinp" id="sUser" placeholder="jefferson" autocomplete="username">
+      <label class="slbl">Usuário</label><input type="text" class="sinp" id="sUser" placeholder="jefferson" autocomplete="username">
       <label class="slbl">Senha</label><input type="password" class="sinp" id="sPass" placeholder="Sua senha" autocomplete="current-password">
       <div class="shint">Seus dados ficam salvos no Supabase e sincronizam entre dispositivos.</div>
       <button class="sbtn" id="sBtn" onclick="doSetup()"><span id="sBtnTxt">Entrar →</span></button>
-      <div class="slinks"><a onclick="showS('newuser')">Criar usuario</a><span></span><a onclick="showS('reset')">Esqueci a senha</a></div>
+      <div class="slinks"><a onclick="showS('newuser')">Criar usuário</a><span></span><a onclick="showS('reset')">Esqueci a senha</a></div>
     </div>
     <div id="sNewUser" style="display:none">
       <button class="back-btn" onclick="showS('online')">← Voltar</button>
-      <div class="auth-title">Criar usuario</div>
-      <div style="font-size:11px;color:var(--mt);margin-bottom:12px;line-height:1.5">Escolha um usuario e senha. A chave admin e opcional.</div>
+      <div class="auth-title">Criar usuário</div>
+      <div style="font-size:11px;color:var(--mt);margin-bottom:12px;line-height:1.5">Escolha um usuário e uma senha. A chave admin é opcional.</div>
       <div id="nuErr" class="serr"></div>
       <label class="slbl">Nome</label><input type="text" class="sinp" id="nuName" placeholder="Jefferson">
-      <label class="slbl">Usuario</label><input type="text" class="sinp" id="nuUser" placeholder="jefferson" autocomplete="username">
+      <label class="slbl">Usuário</label><input type="text" class="sinp" id="nuUser" placeholder="jefferson" autocomplete="username">
       <label class="slbl">Senha</label><input type="password" class="sinp" id="nuPass" placeholder="Crie uma senha" autocomplete="new-password">
       <label class="slbl">Chave admin (opcional)</label><input type="password" class="sinp" id="nuAdmin" placeholder="API_SECRET se o cadastro estiver fechado">
-      <button class="sbtn" onclick="createUser()">Criar usuario →</button>
+      <button class="sbtn" onclick="createUser()">Criar usuário →</button>
       <div id="nuRes" class="auth-ok" style="display:none">
-        <strong>Usuario criado.</strong>
-        <span>Entre com o usuario e a senha.</span>
+        <strong>Usuário criado.</strong>
+        <span>Entre com o usuário e a senha.</span>
         <button class="sbtn secondary" onclick="useNewUserKey()">Entrar agora</button>
       </div>
     </div>
     <div id="sReset" style="display:none">
       <button class="back-btn" onclick="showS('online')">← Voltar</button>
       <div class="auth-title">Redefinir senha</div>
-      <div style="font-size:11px;color:var(--mt);margin-bottom:12px;line-height:1.5">Por seguranca, a senha antiga nao pode ser recuperada. Crie uma nova usando a chave admin do servidor.</div>
+      <div style="font-size:11px;color:var(--mt);margin-bottom:12px;line-height:1.5">Por segurança, a senha antiga não pode ser recuperada. Crie uma nova usando a chave admin do servidor.</div>
       <div id="rpErr" class="serr"></div>
-      <label class="slbl">Usuario</label><input type="text" class="sinp" id="rpUser" autocomplete="username">
+      <label class="slbl">Usuário</label><input type="text" class="sinp" id="rpUser" autocomplete="username">
       <label class="slbl">Nova senha</label><input type="password" class="sinp" id="rpPass" autocomplete="new-password">
       <label class="slbl">Chave admin</label><input type="password" class="sinp" id="rpAdmin" placeholder="API_SECRET do Render">
       <button class="sbtn" onclick="resetPassword()">Redefinir senha →</button>
@@ -437,15 +437,15 @@
   <button class="mc" onclick="closeM('connModal')">✕</button>
   <div class="mt">Conexão</div>
   <div class="fg"><label class="fl">URL do Servidor</label><input type="text" class="fi" id="connUrl"></div>
-  <div class="fg"><label class="fl">Usuario</label><input type="text" class="fi" id="connUser" autocomplete="username"></div><div class="fg"><label class="fl">Senha</label><input type="password" class="fi" id="connPass" autocomplete="current-password"></div>
+  <div class="fg"><label class="fl">Usuário</label><input type="text" class="fi" id="connUser" autocomplete="username"></div><div class="fg"><label class="fl">Senha</label><input type="password" class="fi" id="connPass" autocomplete="current-password"></div>
   <div class="ma"><button class="btn btn-p" style="flex:1" onclick="saveConn()">Salvar</button><button class="btn btn-g" onclick="closeM('connModal')">Cancelar</button></div>
 </div></div>
 <div class="twrap" id="twrap"></div>
-<script src="app.js?v=3.9.0"></script>
-<script src="api.js?v=3.9.0"></script>
-<script src="storage.js?v=3.9.0"></script>
-<script src="charts.js?v=3.9.0"></script>
-<script src="components.js?v=3.9.0"></script>
-<script src="boot.js?v=3.9.0"></script>
+<script src="app.js?v=3.9.1"></script>
+<script src="api.js?v=3.9.1"></script>
+<script src="storage.js?v=3.9.1"></script>
+<script src="charts.js?v=3.9.1"></script>
+<script src="components.js?v=3.9.1"></script>
+<script src="boot.js?v=3.9.1"></script>
 </body>
 </html>

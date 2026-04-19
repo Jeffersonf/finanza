@@ -1,3 +1,5 @@
+@charset "UTF-8";
+
 /* ═══ DESIGN TOKENS ══════════════════════════════════════════════ */
 :root {
   --font-ui: 'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -15,6 +17,8 @@
   --blur: 14px;
   --glass-bg: rgba(255,255,255,.05);
   --glass-bd: rgba(255,255,255,.09);
+  --status-bar: 0px;
+  --app-vh: 1vh;
 }
 [data-theme=dark] {
   --bg: #08090d;
@@ -203,9 +207,12 @@ body::before {
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-top: 1px solid var(--bd);
   box-shadow: 0 -4px 24px rgba(0,0,0,.25);
+  min-height: calc(64px + env(safe-area-inset-bottom));
+  overflow-x: clip;
 }
 .fn-item {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -217,6 +224,7 @@ body::before {
   user-select: none;
   position: relative;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 .fn-item .fni {
   font-size: 24px;
@@ -927,9 +935,11 @@ select.sel {
 }
 @media(max-width:960px){
   .sidebar { display: none !important; }
-  .main { margin-left: 0; padding: calc(16px + env(safe-area-inset-top)) 14px calc(80px + env(safe-area-inset-bottom)); }
+  body.mobile-shell { min-height: calc(var(--app-vh) * 100); }
+  .main { margin-left: 0; padding: calc(16px + env(safe-area-inset-top)) 14px calc(96px + env(safe-area-inset-bottom)); }
   .pt { font-size: 24px; }
-  .ph .btn-p { display: none; }
+  .ph { align-items: center; }
+  .ph .btn-p { display: inline-flex; flex-shrink: 0; padding-inline: 12px; }
   .g4 { grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 14px; }
   .fgrid { grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 14px; }
   .g3, .bg-grid { grid-template-columns: 1fr 1fr; gap: 9px; }
@@ -941,7 +951,7 @@ select.sel {
   .pbar::-webkit-scrollbar { display: none; }
   .pb { flex-shrink: 0; }
   .ov { align-items: flex-end !important; }
-  .modal { width: 100% !important; max-width: 100% !important; border-radius: 24px 24px 0 0; max-height: 90vh; animation: sUp .24s cubic-bezier(.34,1.1,.64,1); }
+  .modal { width: 100% !important; max-width: 100% !important; border-radius: 24px 24px 0 0; max-height: min(90vh, calc(var(--app-vh) * 92)); padding-bottom: calc(24px + env(safe-area-inset-bottom)); overscroll-behavior: contain; animation: sUp .24s cubic-bezier(.34,1.1,.64,1); }
   @keyframes sUp { from { transform:translateY(100%); opacity:.4 } to { transform:none; opacity:1 } }
   .frow { grid-template-columns: 1fr; }
   #setup { align-items: flex-end; }
@@ -950,21 +960,34 @@ select.sel {
   .toast { min-width: unset; font-size: 12px; }
   .sc { padding: 14px 16px; }
   .cv { font-size: 19px; }
-  .qa-wrap { display: flex; bottom: calc(76px + env(safe-area-inset-bottom)); right: 16px; }
+  .qa-wrap { display: flex; bottom: calc(82px + env(safe-area-inset-bottom)); right: 16px; left: 16px; align-items: flex-end; }
+  .qa-panel { width: min(100%, 320px); max-height: calc(var(--app-vh) * 72); overflow-y: auto; }
   .ti { align-items: flex-start; gap: 9px; }
   .tact { align-self: center; }
-  .fr > * { min-width: 120px; }
+  .fr { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+  .fr::-webkit-scrollbar { display: none; }
+  .fr > * { min-width: 120px; flex-shrink: 0; }
   .fr .sb { min-width: 180px; flex-basis: 100%; }
+  #txChartWrap > div { grid-template-columns: 1fr !important; }
+  .sl-header { align-items: flex-start; }
+  .sl-add-row .fi { flex-basis: 100%; }
 }
 @media(max-width:440px){
   .g4, .fgrid { grid-template-columns: 1fr 1fr; }
   .g3, .bg-grid { grid-template-columns: 1fr; }
   .summary-grid { grid-template-columns: 1fr; }
-  .ti { flex-wrap: wrap; }
-  .tinf { flex-basis: calc(100% - 50px); }
-  .tr { margin-left: 49px; text-align: left; }
-  .tact { margin-left: auto; }
+  .fn-item { font-size: 10px; padding: 9px 1px 7px; }
+  .fn-item .fni { font-size: 20px; }
+  .ti { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; }
+  .tinf { flex-basis: auto; }
+  .tr { margin-left: 0; text-align: right; }
+  .tact { grid-column: 1 / -1; justify-content: flex-end; margin-left: 0; }
   .ma { flex-direction: column; }
+}
+@media(max-width:380px){
+  .g4, .fgrid, .month-compare, .mini-stats { grid-template-columns: 1fr !important; }
+  .pt { font-size: 22px; }
+  .ph .btn-p { width: 100%; justify-content: center; }
 }
 
 /* Capacitor/Android: disable blur for performance and compatibility */

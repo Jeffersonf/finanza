@@ -1,5 +1,5 @@
 // ============================================
-// Finanza API - Multi-Usuario v2
+// Finanza API - Multi-Usuário v2
 // Node.js + Express + PostgreSQL
 // ============================================
 
@@ -32,7 +32,7 @@ const allowedOrigins = (process.env.CORS_ORIGIN || '')
 app.use(cors({
   origin(origin, cb) {
     if (!origin || !allowedOrigins.length || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error('Origem nao permitida'));
+    cb(new Error('Origem não permitida'));
   },
   methods: ['GET','POST','PUT','PATCH','DELETE'],
   allowedHeaders: ['Content-Type','x-api-key']
@@ -41,6 +41,16 @@ app.use(express.json({ limit: '1mb' }));
 
 function cleanText(v, fallback = '') {
   return typeof v === 'string' ? v : fallback;
+}
+
+function normalizeCategoryName(v) {
+  return ({
+    Salario: 'Salário',
+    Alimentacao: 'Alimentação',
+    Saude: 'Saúde',
+    Educacao: 'Educação',
+    Poupanca: 'Poupança'
+  }[v]) || v;
 }
 
 function normalizeUsername(v) {
@@ -83,7 +93,7 @@ async function replaceAppState(client, userId, state = {}) {
 
   await replaceRows(client, 'categories', userId, categories,
     `INSERT INTO categories (user_id,id,icon,name,color) VALUES ($1,$2,$3,$4,$5)`,
-    (c, uid) => [uid, String(c.id), cleanText(c.ico || c.icon), cleanText(c.name, 'Categoria'), cleanText(c.col || c.color, '#888')]
+    (c, uid) => [uid, String(c.id), cleanText(c.ico || c.icon), normalizeCategoryName(cleanText(c.name, 'Categoria')), cleanText(c.col || c.color, '#888')]
   );
 
   await replaceRows(client, 'shopping_items', userId, [], 'SELECT $1', uid => [uid]);
@@ -120,31 +130,31 @@ async function replaceAppState(client, userId, state = {}) {
 }
 
 // ── ADMIN KEY ───────────────────────────────
-// Usada apenas para criar/listar usuarios
+// Usada apenas para criar/listar usuários
 if (isProd && !process.env.API_SECRET) {
-  throw new Error('Defina API_SECRET em producao');
+  throw new Error('Defina API_SECRET em produção');
 }
 const ADMIN_KEY = process.env.API_SECRET || 'admin-key-troque-isso';
 
 function adminAuth(req, res, next) {
   if (req.headers['x-api-key'] !== ADMIN_KEY)
-    return res.status(401).json({ error: 'Admin key invalida' });
+    return res.status(401).json({ error: 'Admin key inválida' });
   next();
 }
 
 // ── USER AUTH ────────────────────────────────
-// Cada requisicao de dados usa a api_key do usuario
+// Cada requisição de dados usa a api_key do usuário
 async function userAuth(req, res, next) {
   const key = req.headers['x-api-key'];
-  if (!key) return res.status(401).json({ error: 'Chave nao informada' });
+  if (!key) return res.status(401).json({ error: 'Chave não informada' });
 
-  // Admin key tambem funciona como usuario admin
+  // Admin key também funciona como usuário admin
   if (key === ADMIN_KEY) {
     try {
       const { rows } = await pool.query(
         'SELECT * FROM users WHERE is_admin = TRUE LIMIT 1'
       );
-      if (!rows.length) return res.status(401).json({ error: 'Admin user nao existe' });
+      if (!rows.length) return res.status(401).json({ error: 'Admin user não existe' });
       req.user = rows[0];
       return next();
     } catch (e) {
@@ -156,7 +166,7 @@ async function userAuth(req, res, next) {
     const { rows } = await pool.query(
       'SELECT * FROM users WHERE api_key = $1', [key]
     );
-    if (!rows.length) return res.status(401).json({ error: 'Chave invalida' });
+    if (!rows.length) return res.status(401).json({ error: 'Chave inválida' });
     req.user = rows[0];
     next();
   } catch (e) {
@@ -178,7 +188,7 @@ app.get('/health', async (req, res) => {
 // USUARIOS
 // ════════════════════════════════════════════
 
-// Verificar propria chave e retornar info do usuario
+// Verificar própria chave e retornar info do usuário
 app.get('/api/me', userAuth, (req, res) => {
   res.json({ id: req.user.id, name: req.user.name, is_admin: req.user.is_admin });
 });
@@ -187,10 +197,10 @@ app.post('/api/login', async (req, res) => {
   try {
     const username = normalizeUsername(req.body?.username);
     const password = req.body?.password || '';
-    if (!username || !password) return res.status(400).json({ error: 'Usuario e senha sao obrigatorios' });
+    if (!username || !password) return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
     const { rows } = await pool.query('SELECT * FROM users WHERE username=$1', [username]);
     if (!rows.length || !verifyPassword(password, rows[0].password_hash)) {
-      return res.status(401).json({ error: 'Usuario ou senha invalidos' });
+      return res.status(401).json({ error: 'Usuário ou senha inválidos' });
     }
     res.json({ id: rows[0].id, name: rows[0].name, is_admin: rows[0].is_admin, api_key: rows[0].api_key });
   } catch (e) {
@@ -202,19 +212,19 @@ app.post('/api/password-reset', adminAuth, async (req, res) => {
   try {
     const username = normalizeUsername(req.body?.username);
     const password = req.body?.password || '';
-    if (!username || !password) return res.status(400).json({ error: 'Usuario e nova senha sao obrigatorios' });
+    if (!username || !password) return res.status(400).json({ error: 'Usuário e nova senha são obrigatórios' });
     const { rows } = await pool.query(
       'UPDATE users SET password_hash=$1 WHERE username=$2 RETURNING id, name, username',
       [hashPassword(password), username]
     );
-    if (!rows.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
+    if (!rows.length) return res.status(404).json({ error: 'Usuário não encontrado' });
     res.json({ success: true, user: rows[0] });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// Criar usuario sem admin key apenas no primeiro acesso ou quando ALLOW_SIGNUP=true
+// Criar usuário sem admin key apenas no primeiro acesso ou quando ALLOW_SIGNUP=true
 app.post('/api/register', async (req, res) => {
   try {
     const { rows: totalRows } = await pool.query('SELECT COUNT(*)::int AS total FROM users');
@@ -223,9 +233,9 @@ app.post('/api/register', async (req, res) => {
       return res.status(403).json({ error: 'Cadastro direto desativado. Use a chave admin do servidor.' });
     }
 
-    const { name = 'Usuario', password = '' } = req.body || {};
+    const { name = 'Usuário', password = '' } = req.body || {};
     const username = normalizeUsername(req.body?.username || name);
-    if (!username || !password) return res.status(400).json({ error: 'Usuario e senha sao obrigatorios' });
+    if (!username || !password) return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
     const api_key = crypto.randomBytes(32).toString('hex');
     const { rows } = await pool.query(
       'INSERT INTO users (name, username, password_hash, api_key, is_admin) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, username, api_key, is_admin, created_at',
@@ -237,12 +247,12 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// Criar usuario (requer admin key)
+// Criar usuário (requer admin key)
 app.post('/api/users', adminAuth, async (req, res) => {
   try {
-    const { name = 'Usuario', password = '' } = req.body;
+    const { name = 'Usuário', password = '' } = req.body;
     const username = normalizeUsername(req.body?.username || name);
-    if (!username || !password) return res.status(400).json({ error: 'Usuario e senha sao obrigatorios' });
+    if (!username || !password) return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
     const api_key = crypto.randomBytes(32).toString('hex');
     const { rows } = await pool.query(
       'INSERT INTO users (name, username, password_hash, api_key) VALUES ($1, $2, $3, $4) RETURNING id, name, username, api_key, created_at',
@@ -254,15 +264,15 @@ app.post('/api/users', adminAuth, async (req, res) => {
   }
 });
 
-// Criar usuario admin inicial (so funciona se nao existir nenhum admin)
+// Criar usuário admin inicial (só funciona se não existir nenhum admin)
 app.post('/api/setup', adminAuth, async (req, res) => {
   try {
     const { rows: existing } = await pool.query('SELECT id FROM users WHERE is_admin = TRUE');
-    if (existing.length) return res.status(409).json({ error: 'Admin ja existe', id: existing[0].id });
+    if (existing.length) return res.status(409).json({ error: 'Admin já existe', id: existing[0].id });
 
     const { name = 'Admin', password = '' } = req.body;
     const username = normalizeUsername(req.body?.username || name);
-    if (!username || !password) return res.status(400).json({ error: 'Usuario e senha sao obrigatorios' });
+    if (!username || !password) return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
     const api_key = crypto.randomBytes(32).toString('hex');
     const { rows } = await pool.query(
       'INSERT INTO users (name, username, password_hash, api_key, is_admin) VALUES ($1, $2, $3, $4, TRUE) RETURNING id, name, username, api_key',
@@ -274,7 +284,7 @@ app.post('/api/setup', adminAuth, async (req, res) => {
   }
 });
 
-// Listar usuarios (admin)
+// Listar usuários (admin)
 app.get('/api/users', adminAuth, async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -286,7 +296,7 @@ app.get('/api/users', adminAuth, async (req, res) => {
   }
 });
 
-// Deletar usuario (admin)
+// Deletar usuário (admin)
 app.delete('/api/users/:id', adminAuth, async (req, res) => {
   try {
     await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]);
@@ -296,7 +306,7 @@ app.delete('/api/users/:id', adminAuth, async (req, res) => {
   }
 });
 
-// Regenerar api_key do proprio usuario
+// Regenerar api_key do próprio usuário
 app.post('/api/me/regenerate-key', userAuth, async (req, res) => {
   try {
     const new_key = crypto.randomBytes(32).toString('hex');
@@ -346,14 +356,14 @@ app.post('/api/transactions', userAuth, async (req, res) => {
             account_id, paid=false, pending=false,
             installment_group, installment_num, installment_total, recur_group } = req.body;
     if (!type || !description || !amount || !category || !date)
-      return res.status(400).json({ error: 'Campos obrigatorios faltando' });
+      return res.status(400).json({ error: 'Campos obrigatórios faltando' });
 
     const { rows } = await pool.query(
       `INSERT INTO transactions
         (user_id, type, description, amount, category, date, note,
          account_id, paid, pending, installment_group, installment_num, installment_total, recur_group)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
-      [req.user.id, type, description, amount, category, date, note,
+      [req.user.id, type, description, amount, normalizeCategoryName(category), date, note,
        account_id||null, !!paid, !!pending,
        installment_group||null, installment_num||null, installment_total||null, recur_group||null]
     );
@@ -369,12 +379,12 @@ app.put('/api/transactions/:id', userAuth, async (req, res) => {
        SET type=$1,description=$2,amount=$3,category=$4,date=$5,note=$6,
            account_id=$7,paid=COALESCE($8,paid),pending=COALESCE($9,pending)
        WHERE id=$10 AND user_id=$11 RETURNING *`,
-      [type, description, amount, category, date, note, account_id||null,
+      [type, description, amount, normalizeCategoryName(category), date, note, account_id||null,
        typeof paid === 'boolean' ? paid : null,
        typeof pending === 'boolean' ? pending : null,
        req.params.id, req.user.id]
     );
-    if (!rows.length) return res.status(404).json({ error: 'Nao encontrado' });
+    if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
     res.json(rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -384,7 +394,7 @@ app.delete('/api/transactions/:id', userAuth, async (req, res) => {
     const { rowCount } = await pool.query(
       'DELETE FROM transactions WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]
     );
-    if (!rowCount) return res.status(404).json({ error: 'Nao encontrado' });
+    if (!rowCount) return res.status(404).json({ error: 'Não encontrado' });
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -440,8 +450,8 @@ app.put('/api/import', userAuth, async (req, res) => {
         (user_id,type,description,amount,category,date,note,account_id,paid,pending,
          installment_group,installment_num,installment_total,recur_group)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
-      (t, userId) => [userId, cleanText(t.type, 'expense'), cleanText(t.desc || t.description, 'Lancamento'),
-        Number(t.amount)||0, cleanText(t.category, 'A classificar'), t.date, cleanText(t.note),
+      (t, userId) => [userId, cleanText(t.type, 'expense'), cleanText(t.desc || t.description, 'Lançamento'),
+        Number(t.amount)||0, normalizeCategoryName(cleanText(t.category, 'A classificar')), t.date, cleanText(t.note),
         t.accountId || t.account_id || null, !!t.paid, !!t.pending,
         t.installmentGroup || t.installment_group || null, t.installmentNum || t.installment_num || null,
         t.installmentTotal || t.installment_total || null, t.recurGroup || t.recur_group || null]
@@ -450,7 +460,7 @@ app.put('/api/import', userAuth, async (req, res) => {
     await replaceRows(client, 'budgets', uid, data.budgets || [],
       `INSERT INTO budgets (user_id,category,"limit") VALUES ($1,$2,$3)
        ON CONFLICT (user_id, category) DO UPDATE SET "limit"=EXCLUDED."limit", updated_at=NOW()`,
-      (b, userId) => [userId, cleanText(b.category, 'Categoria'), Number(b.limit)||1]
+      (b, userId) => [userId, normalizeCategoryName(cleanText(b.category, 'Categoria')), Number(b.limit)||1]
     );
 
     await replaceRows(client, 'goals', uid, data.goals || [],
@@ -506,7 +516,7 @@ app.post('/api/budgets', userAuth, async (req, res) => {
       `INSERT INTO budgets (user_id, category, "limit") VALUES ($1,$2,$3)
        ON CONFLICT (user_id, category) DO UPDATE SET "limit"=$3, updated_at=NOW()
        RETURNING *`,
-      [req.user.id, category, limit]
+      [req.user.id, normalizeCategoryName(category), limit]
     );
     res.status(201).json(rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -552,7 +562,7 @@ app.patch('/api/goals/:id/add', userAuth, async (req, res) => {
        WHERE id=$2 AND user_id=$3 RETURNING *`,
       [amount, req.params.id, req.user.id]
     );
-    if (!rows.length) return res.status(404).json({ error: 'Nao encontrado' });
+    if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
     res.json(rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -636,4 +646,4 @@ app.post('/api/backup', userAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.listen(PORT, () => console.log(`Finanza API na porta ${PORT} - multi-usuario`));
+app.listen(PORT, () => console.log(`Finanza API na porta ${PORT} - multi-usuário`));

@@ -96,4 +96,4 @@ Na tela inicial do Finanza:
 | GET/PUT | `/api/state` | User | Carrega/salva contas, categorias, lista e preferencias |
 | POST | `/api/backup` | Admin | Backup via `pg_dump` quando disponivel no host |
 
-O Supabase agora tambem recebe contas bancarias, vinculo de transacao com conta, status pago/pendente, categorias personalizadas, lista de compras, preferencias do dashboard, tema e taxas de referencia.
+O Supabase agora também recebe contas bancárias, vínculo de transação com conta, status pago/pendente, categorias personalizadas, lista de compras, preferências do dashboard, tema e taxas de referência.
