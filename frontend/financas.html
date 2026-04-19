@@ -48,21 +48,22 @@
              radial-gradient(ellipse 50% 40% at 15% 80%, rgba(167,139,250,.06) 0%, transparent 60%);
 }
 [data-theme=light] {
-  --bg: #f0f4ff;
-  --bg2: #e8eeff;
-  --sf: rgba(255,255,255,.82);
-  --sf2: rgba(255,255,255,.5);
-  --sf-solid: #ffffff;
-  --bd: rgba(0,0,20,.1);
-  --bd2: rgba(0,0,20,.06);
-  --tx: #0d1020;
-  --tx2: rgba(13,16,32,.72);
-  --mt: rgba(13,16,32,.45);
-  --sh: rgba(0,10,40,.1);
-  --glow-ac: rgba(180,235,50,.12);
-  --glow-ac2: rgba(60,225,180,.1);
-  --grad-bg: radial-gradient(ellipse 80% 50% at 50% -5%, rgba(180,235,50,.1) 0%, transparent 65%),
-             radial-gradient(ellipse 50% 40% at 90% 80%, rgba(60,225,180,.08) 0%, transparent 55%);
+  --bg: #e8ecf5;
+  --bg2: #dde3f0;
+  --sf: rgba(248,250,255,.92);
+  --sf2: rgba(228,232,248,.7);
+  --sf-solid: #f4f6ff;
+  --bd: rgba(80,90,160,.14);
+  --bd2: rgba(80,90,160,.07);
+  --tx: #0a0d1a;
+  --tx2: rgba(10,13,26,.75);
+  --mt: rgba(10,13,26,.5);
+  --sh: rgba(20,30,80,.12);
+  --glow-ac: rgba(160,215,30,.15);
+  --glow-ac2: rgba(40,205,160,.12);
+  --grad-bg: radial-gradient(ellipse 90% 55% at 50% -5%, rgba(160,215,30,.14) 0%, transparent 65%),
+             radial-gradient(ellipse 55% 45% at 92% 85%, rgba(40,205,160,.1) 0%, transparent 55%),
+             radial-gradient(ellipse 40% 35% at 8% 75%, rgba(140,120,240,.07) 0%, transparent 50%);
 }
 
 /* Android WebView fallback - backdrop-filter not supported */
@@ -1085,7 +1086,7 @@ select.sel {
 .sl-cat-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--mt);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
 .sl-items{display:flex;flex-direction:column;gap:3px;}
 
-.sl-item{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:12px;transition:background .1s;cursor:pointer;position:relative;}
+.sl-item{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:12px;transition:background .12s,transform .12s;cursor:pointer;position:relative;}
 .sl-item:hover{background:var(--sf2);}
 .sl-item.bought{opacity:.45;}
 .sl-item.bought .sl-name{text-decoration:line-through;color:var(--mt);}
@@ -1093,8 +1094,8 @@ select.sel {
 .sl-item.bought .sl-check{background:var(--grn);border-color:var(--grn);}
 .sl-check-ico{color:#fff;font-size:11px;font-weight:700;opacity:0;transition:opacity .12s;}
 .sl-item.bought .sl-check-ico{opacity:1;}
-.sl-name{font-size:14px;font-weight:500;flex:1;}
-.sl-qty{font-size:12px;color:var(--mt);flex-shrink:0;}
+.sl-name{font-size:14px;font-weight:500;flex:1;min-width:0;word-break:break-word;line-height:1.3;}
+.sl-qty{font-size:11px;color:var(--mt);flex-shrink:0;background:var(--sf2);border:1px solid var(--bd);border-radius:6px;padding:1px 7px;}
 .sl-item-del{width:24px;height:24px;border-radius:7px;border:none;background:transparent;color:var(--mt);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .1s;flex-shrink:0;}
 .sl-item-del:hover{background:rgba(245,112,90,.12);color:var(--dan);}
 
@@ -1134,6 +1135,140 @@ select.sel {
   .sl-add-row{flex-wrap:wrap;}
   .sl-add-row .fi{min-width:0;}
 }
+
+
+/* Light theme: garantir legibilidade máxima */
+[data-theme=light] .cl { opacity: 1; color: rgba(10,13,26,.55); }
+[data-theme=light] .cc { color: rgba(10,13,26,.55); }
+[data-theme=light] .cs { color: rgba(10,13,26,.55); }
+[data-theme=light] .ps { color: rgba(10,13,26,.55); }
+[data-theme=light] .nav-lbl { color: rgba(10,13,26,.45); }
+[data-theme=light] .ss-s { color: rgba(10,13,26,.55); }
+[data-theme=light] .tdt { color: rgba(10,13,26,.5); }
+[data-theme=light] .tcat { color: rgba(10,13,26,.55); }
+[data-theme=light] .urole { color: rgba(10,13,26,.5); }
+[data-theme=light] .wc-desc { color: rgba(10,13,26,.55); }
+[data-theme=light] .sl-cat-label { color: rgba(10,13,26,.55); }
+[data-theme=light] body::before { opacity: 1; }
+[data-theme=light] .sc { box-shadow: 0 2px 12px rgba(20,30,80,.08), inset 0 1px 0 rgba(255,255,255,.6); }
+[data-theme=light] .box { box-shadow: 0 2px 8px rgba(20,30,80,.06); }
+[data-theme=light] .cc-box { box-shadow: 0 2px 8px rgba(20,30,80,.06); }
+
+
+/* ─── CARD HOVER MELHORADO ─────────────────────────────── */
+.sc {
+  transition: transform .2s cubic-bezier(.34,1.2,.64,1), box-shadow .2s ease !important;
+}
+.sc:hover {
+  transform: translateY(-4px) scale(1.01) !important;
+  box-shadow: 0 16px 40px var(--sh) !important;
+}
+[data-theme=dark] .sc:hover { box-shadow: 0 16px 40px rgba(0,0,0,.5), 0 0 0 1px var(--bd) !important; }
+
+/* ─── GLASS SHIMMER ─────────────────────────────────────── */
+.sc::before { transition: opacity .3s; }
+.sc:hover::before { opacity: .12 !important; }
+
+/* ─── BOX HOVER ─────────────────────────────────────────── */
+.box, .cc-box, .bg-card, .goals-widget, .budget-widget {
+  transition: box-shadow .2s ease, transform .2s ease;
+}
+.bg-card:hover { transform: translateY(-3px) !important; box-shadow: 0 10px 28px var(--sh) !important; }
+
+/* ─── BOTÕES — melhor feedback ──────────────────────────── */
+.btn { position: relative; overflow: hidden; }
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,.12);
+  opacity: 0;
+  transition: opacity .15s;
+}
+.btn:hover::after { opacity: 1; }
+.btn:active::after { opacity: 0; background: rgba(0,0,0,.08); }
+.btn-p::after { background: rgba(255,255,255,.15); }
+
+/* ─── TRANSIÇÃO DE PÁGINA ───────────────────────────────── */
+.page { animation: pageIn .25s cubic-bezier(.4,0,.2,1); }
+@keyframes pageIn {
+  from { opacity:0; transform: translateY(10px); }
+  to   { opacity:1; transform: none; }
+}
+
+/* ─── CHART CARDS ───────────────────────────────────────── */
+.cc-box {
+  position: relative; overflow: hidden;
+}
+.cc-box::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--ac), var(--ac2));
+  opacity: 0;
+  transition: opacity .3s;
+}
+.cc-box:hover::before { opacity: .6; }
+
+/* ─── PROGRESSBARS ANIMADAS ─────────────────────────────── */
+.pf, .gw-fill, .bw-fill, .sl-prog-fill {
+  position: relative; overflow: hidden;
+}
+.pf::after, .gw-fill::after, .bw-fill::after, .sl-prog-fill::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%; width: 60%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent);
+  animation: shimmerBar 2.5s infinite;
+}
+@keyframes shimmerBar { to { left: 160%; } }
+
+/* ─── FNAV HOVER ────────────────────────────────────────── */
+.fn-item:hover .fni { transform: scale(1.08) translateY(-1px); }
+[data-theme=light] .fnav { box-shadow: 0 -2px 20px rgba(20,30,80,.1); }
+
+/* ─── INPUTS FOCUS ──────────────────────────────────────── */
+.fi:focus, .sb:focus {
+  box-shadow: 0 0 0 3px rgba(200,245,90,.15) !important;
+  border-color: var(--ac) !important;
+}
+[data-theme=light] .fi:focus, [data-theme=light] .sb:focus {
+  box-shadow: 0 0 0 3px rgba(160,215,30,.2) !important;
+}
+
+/* ─── WIDGET CHIP HOVER ─────────────────────────────────── */
+.widget-chip { transition: all .18s cubic-bezier(.34,1.1,.64,1); }
+.widget-chip:hover { transform: scale(1.02); }
+.widget-chip.on { box-shadow: 0 4px 14px rgba(200,245,90,.15); }
+
+/* ─── SL ITEM HOVER ─────────────────────────────────────── */
+.sl-item { transition: background .12s, transform .12s; }
+.sl-item:hover { transform: translateX(3px); }
+.sl-item.bought { transition: opacity .3s, transform .12s; }
+
+
+/* ─── WIDGET REMOVÍVEL ──────────────────────────────────── */
+.dash-section-wrap { position: relative; }
+.dash-section-wrap:hover .widget-remove-btn { opacity: 1; }
+.widget-remove-btn {
+  position: absolute;
+  top: 10px; right: 10px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--sf2);
+  border: 1px solid var(--bd);
+  color: var(--mt);
+  font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s, background .12s, color .12s;
+  z-index: 10;
+}
+.widget-remove-btn:hover { background: rgba(245,112,90,.15); color: var(--dan); border-color: rgba(245,112,90,.3); opacity: 1; }
+/* Sempre visível no mobile */
+@media(max-width:960px) { .widget-remove-btn { opacity: .5; } }
 
 </style>
 </head>
@@ -1242,7 +1377,6 @@ select.sel {
       </div>
       <div class="acct-pop" id="acctPop">
         <div class="pop-item" onclick="showPage('settings');closePop()">⚙️ Configurações</div>
-        <div class="pop-item" onclick="exportBackupFull();closePop()">💾 Backup completo</div>
         <div class="pop-item" onclick="exportCSV();closePop()">📊 Exportar CSV</div>
         <div class="pop-item" id="popJsonExp" style="display:none" onclick="exportJson();closePop()">💾 Backup JSON</div>
         <div class="pop-item" id="popMig" style="display:none" onclick="migrateToOnline();closePop()">☁️ Migrar para online</div>
@@ -1386,9 +1520,8 @@ select.sel {
     </div>
   </div>
   <div class="ss"><div class="ss-t">Dados</div>
-    <div class="ss-r"><div><div class="ss-l">Backup completo</div><div class="ss-s">Exporta JSON + CSV ao mesmo tempo</div></div><button class="btn btn-p btn-sm" onclick="exportBackupFull()">💾 Exportar tudo</button></div>
-    <div class="ss-r"><div><div class="ss-l">Só CSV</div><div class="ss-s">Planilha — abre no Excel e Google Sheets</div></div><button class="btn btn-g btn-sm" onclick="exportCSV()">📊 CSV</button></div>
-    <div class="ss-r"><div><div class="ss-l">Só JSON</div><div class="ss-s">Backup para reimportar no Finanza</div></div><button class="btn btn-g btn-sm" onclick="exportJson()">📦 JSON</button></div>
+    <div class="ss-r"><div><div class="ss-l">Exportar CSV</div><div class="ss-s">Planilha — abre no Excel e Google Sheets</div></div><button class="btn btn-g btn-sm" onclick="exportCSV()">📊 CSV</button></div>
+    <div class="ss-r"><div><div class="ss-l">Exportar JSON</div><div class="ss-s">Backup completo para reimportar no Finanza</div></div><button class="btn btn-g btn-sm" onclick="exportJson()">📦 JSON</button></div>
     <div class="ss-r"><div><div class="ss-l">Último backup</div><div class="ss-s backup-status"><span class="backup-dot" id="backupDot"></span><span id="backupStatusTxt">—</span></div></div><button class="btn btn-g btn-sm" onclick="autoBackupNow()">💾 Agora</button></div>
     <div class="ss-r" id="setJsonRow" style="display:none"><div><div class="ss-l">Backup local</div></div><button class="btn btn-g btn-sm" onclick="exportJson()">💾 Exportar</button></div>
     <div class="ss-r" id="setMigRow" style="display:none"><div><div class="ss-l">Migrar para online</div><div class="ss-s">Envia dados para o servidor</div></div><button class="btn btn-g btn-sm" onclick="migrateToOnline()">☁️ Migrar</button></div>
@@ -2360,7 +2493,6 @@ async function initApp(){
   const sv=localStorage.getItem(VK)||'n';setView(sv);
   loadSyncQ();
   updSyncBadge();
-  checkAutoBackup();
   initDeepLink();
   setTimeout(initNotifications, 3000);
   setTimeout(registerNotifActions, 1000);
@@ -2761,6 +2893,10 @@ const WIDGET_DEFS = [
   { id:'recent',    ico:'💸', name:'Últimas transações',    desc:'Lançamentos recentes',               default:true },
   { id:'ministats', ico:'📈', name:'Mini estatísticas',     desc:'Média diária, maior gasto, dias',   default:false },
   { id:'accounts',  ico:'🏦', name:'Saldos das contas',     desc:'Saldo de cada conta bancária',      default:false },
+  { id:'shopping',  ico:'🛒', name:'Lista de compras',      desc:'Itens pendentes da lista ativa',    default:true },
+  { id:'barcats',   ico:'📉', name:'Ranking de gastos',     desc:'Top categorias em barras',          default:false },
+  { id:'heatmap',   ico:'🗓️', name:'Calendário de gastos', desc:'Calor de gastos por dia do mês',   default:false },
+  { id:'saverate',  ico:'💹', name:'Taxa de economia',      desc:'% do salário que você economiza',   default:false },
 ];
 
 let widgetPrefs = {};
@@ -2785,6 +2921,12 @@ function isWidgetOn(id) {
 }
 
 function toggleWidget(id) {
+  const currentOn = Object.values(widgetPrefs).filter(v => v === true).length;
+  // Se quer desligar e já está no mínimo, impede
+  if (widgetPrefs[id] && currentOn <= 3) {
+    toast('Mínimo de 3 widgets no dashboard', 'error');
+    return;
+  }
   widgetPrefs[id] = !widgetPrefs[id];
   saveWidgetPrefs();
   renderWidgetToggles();
@@ -2943,19 +3085,24 @@ function renderDash() {
   const isDark = document.documentElement.dataset.theme === 'dark';
 
   const sections = [];
+  const wrap = (id, html) => `<div class="dash-section-wrap"><button class="widget-remove-btn" onclick="toggleWidget('${id}')" title="Remover widget">✕</button>${html}</div>`;
 
-  if (isWidgetOn('cards'))      sections.push(widgetCards());
-  if (isWidgetOn('ministats'))  sections.push(widgetMiniStats());
-  if (isWidgetOn('accounts'))   sections.push(widgetAccounts());
-  if (isWidgetOn('compare'))    sections.push('<div class="dash-section" id="monthCompare"></div>');
-  if (isWidgetOn('projection')) sections.push('<div class="dash-section" id="projCard"></div>');
-  if (isWidgetOn('weekly'))     sections.push('<div class="dash-section" id="wsum"></div>');
-  if (isWidgetOn('anomaly'))    sections.push('<div class="dash-section" id="anom"></div>');
-  if (isWidgetOn('budalerts'))  sections.push('<div class="dash-section" id="budAlerts"></div>');
-  if (isWidgetOn('goals'))      sections.push(widgetGoals());
-  if (isWidgetOn('budgets'))    sections.push(widgetBudgets());
-  if (isWidgetOn('charts'))     sections.push(widgetCharts());
-  if (isWidgetOn('recent'))     sections.push(widgetRecent());
+  if (isWidgetOn('cards'))      sections.push(wrap('cards',      widgetCards()));
+  if (isWidgetOn('ministats'))  sections.push(wrap('ministats',  widgetMiniStats()));
+  if (isWidgetOn('accounts'))   sections.push(wrap('accounts',   widgetAccounts()));
+  if (isWidgetOn('shopping'))   sections.push(wrap('shopping',   widgetShoppingDash()));
+  if (isWidgetOn('compare'))    sections.push(wrap('compare',    '<div class="dash-section" id="monthCompare"></div>'));
+  if (isWidgetOn('projection')) sections.push(wrap('projection', '<div class="dash-section" id="projCard"></div>'));
+  if (isWidgetOn('weekly'))     sections.push(wrap('weekly',     '<div class="dash-section" id="wsum"></div>'));
+  if (isWidgetOn('anomaly'))    sections.push(wrap('anomaly',    '<div class="dash-section" id="anom"></div>'));
+  if (isWidgetOn('budalerts'))  sections.push(wrap('budalerts',  '<div class="dash-section" id="budAlerts"></div>'));
+  if (isWidgetOn('saverate'))   sections.push(wrap('saverate',   widgetSaveRate()));
+  if (isWidgetOn('goals'))      sections.push(wrap('goals',      widgetGoals()));
+  if (isWidgetOn('budgets'))    sections.push(wrap('budgets',    widgetBudgets()));
+  if (isWidgetOn('barcats'))    sections.push(wrap('barcats',    widgetBarCats()));
+  if (isWidgetOn('heatmap'))    sections.push(wrap('heatmap',    widgetHeatmap()));
+  if (isWidgetOn('charts'))     sections.push(wrap('charts',     widgetCharts()));
+  if (isWidgetOn('recent'))     sections.push(wrap('recent',     widgetRecent()));
 
   const container = document.getElementById('dashWidgets');
   if (container) container.innerHTML = sections.join('');
@@ -3321,6 +3468,148 @@ async function registerNotifActions() {
   } catch (e) {
     console.warn('Notif actions:', e.message);
   }
+}
+
+
+// ─── WIDGET: LISTA DE COMPRAS ────────────────────────────────
+function widgetShoppingDash() {
+  let slData = { lists:[], items:[] };
+  try { slData = JSON.parse(localStorage.getItem('fz_shopping') || '{}'); } catch {}
+  const lists = slData.lists || [];
+  const items = slData.items || [];
+  const pending = items.filter(i => !i.bought);
+  if (!lists.length || !items.length) {
+    return `<div class="box dash-section" style="cursor:pointer" onclick="showPage('shopping')">
+      <div class="bh"><div class="ct">🛒 Lista de Compras</div><button class="btn btn-g btn-sm" onclick="event.stopPropagation();showPage('shopping')">Abrir →</button></div>
+      <div class="empty" style="padding:20px 16px"><span class="ei" style="font-size:24px;margin-bottom:4px">🛒</span><p style="font-size:12px">Nenhum item na lista</p></div>
+    </div>`;
+  }
+  // Mostrar itens pendentes da lista ativa
+  const activeList = lists[0];
+  const listPending = pending.filter(i => i.listId === activeList?.id).slice(0, 5);
+  const total = items.filter(i => i.listId === activeList?.id).length;
+  const bought = items.filter(i => i.listId === activeList?.id && i.bought).length;
+  const pct = total ? Math.round(bought/total*100) : 0;
+  return `<div class="box dash-section">
+    <div class="bh">
+      <div><div class="ct">🛒 ${activeList?.ico || '🛒'} ${activeList?.name || 'Lista'}</div>
+      <div class="cs">${bought}/${total} comprados · ${pending.length} itens pendentes no total</div></div>
+      <button class="btn btn-g btn-sm" onclick="showPage('shopping')">Ver lista →</button>
+    </div>
+    <div class="sl-prog-bar" style="margin-bottom:12px"><div class="sl-prog-fill" style="width:${pct}%"></div></div>
+    ${listPending.length ? listPending.map(i =>
+      `<div style="display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid var(--bd2)">
+        <div style="width:16px;height:16px;border-radius:5px;border:2px solid var(--bd);flex-shrink:0;"></div>
+        <span style="font-size:13px;flex:1;min-width:0">${i.name}</span>
+        ${i.qty ? `<span style="font-size:11px;color:var(--mt)">${i.qty}</span>` : ''}
+        <span style="font-size:10px;color:var(--mt)">${(i.cat||'').split(' ')[0]}</span>
+      </div>`
+    ).join('') + (pending.length > 5 ? `<div style="font-size:11px;color:var(--mt);margin-top:8px;text-align:center">+${pending.length - 5} mais itens</div>` : '')
+    : '<div style="font-size:13px;color:var(--mt);text-align:center;padding:12px">Tudo comprado! ✓</div>'}
+  </div>`;
+}
+
+// ─── WIDGET: TAXA DE ECONOMIA ────────────────────────────────
+function widgetSaveRate() {
+  const months = [];
+  for (let i = 2; i >= 0; i--) {
+    const d = new Date(curDt.getFullYear(), curDt.getMonth()-i, 1);
+    const txs = getMonthTx(d).filter(t=>!isFut(t.date)&&!t.paid);
+    const inc = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const exp = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    if (inc > 0) months.push({ label: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][d.getMonth()], rate: Math.round((1 - exp/inc)*100), inc, exp });
+  }
+  if (!months.length) return '';
+  const cur = months[months.length-1];
+  const col = cur.rate >= 20 ? 'var(--grn)' : cur.rate >= 0 ? 'var(--warn)' : 'var(--dan)';
+  return `<div class="box dash-section">
+    <div class="bh"><div class="ct">💹 Taxa de Economia</div></div>
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="text-align:center">
+        <div style="font-family:'Syne',sans-serif;font-size:42px;font-weight:800;color:${col};letter-spacing:-2px">${cur.rate}%</div>
+        <div style="font-size:11px;color:var(--mt)">este mês</div>
+      </div>
+      <div style="flex:1;min-width:120px">
+        ${months.map(m => {
+          const w = Math.max(Math.abs(m.rate), 3);
+          const c = m.rate >= 20 ? 'var(--grn)' : m.rate >= 0 ? 'var(--warn)' : 'var(--dan)';
+          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="font-size:11px;color:var(--mt);width:28px">${m.label}</span>
+            <div style="flex:1;height:8px;background:var(--sf2);border-radius:99px;overflow:hidden">
+              <div style="width:${Math.min(Math.abs(m.rate),100)}%;height:100%;background:${c};border-radius:99px"></div>
+            </div>
+            <span style="font-size:11px;font-weight:700;color:${c};width:32px;text-align:right">${m.rate}%</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ─── WIDGET: RANKING DE CATEGORIAS (barras horizontais) ──────
+function widgetBarCats() {
+  const txM = getMonthTx(curDt).filter(t=>t.type==='expense'&&!isFut(t.date)&&!t.paid);
+  const cats = {};
+  txM.forEach(t => { cats[t.category] = (cats[t.category]||0) + t.amount; });
+  const sorted = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  if (!sorted.length) return '';
+  const max = sorted[0][1];
+  return `<div class="box dash-section">
+    <div class="bh"><div class="ct">📉 Top Categorias</div><div class="cs">Maiores gastos do mês</div></div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${sorted.map(([cat, val], i) => {
+        const c = getCat(cat); const pct = (val/max*100).toFixed(0);
+        const cols = ['var(--dan)','var(--warn)','var(--ac)','var(--ac2)','var(--fut)','var(--grn)'];
+        const col = cols[i] || 'var(--mt)';
+        return `<div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-size:13px">${c.ico} ${cat}</span>
+            <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:${col}">${fmt(val)}</span>
+          </div>
+          <div style="height:6px;background:var(--sf2);border-radius:99px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:${col};border-radius:99px;transition:width .8s ease"></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+// ─── WIDGET: HEATMAP DE GASTOS DO MÊS ────────────────────────
+function widgetHeatmap() {
+  const d = new Date(curDt.getFullYear(), curDt.getMonth(), 1);
+  const dim = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+  const txM = getMonthTx(curDt).filter(t=>t.type==='expense'&&!isFut(t.date)&&!t.paid);
+  const dayTotals = {};
+  txM.forEach(t => { dayTotals[t.date] = (dayTotals[t.date]||0) + t.amount; });
+  const vals = Object.values(dayTotals);
+  const maxVal = vals.length ? Math.max(...vals) : 1;
+  const td = today();
+  const days = ['D','S','T','Q','Q','S','S'];
+  const firstDay = d.getDay();
+  return `<div class="box dash-section">
+    <div class="bh"><div class="ct">🗓️ Gastos do mês</div><div class="cs">Intensidade de gastos por dia</div></div>
+    <div style="display:flex;gap:3px;margin-bottom:6px">${days.map(d=>`<div style="flex:1;text-align:center;font-size:9px;color:var(--mt);font-weight:700">${d}</div>`).join('')}</div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">
+      ${Array(firstDay).fill('<div></div>').join('')}
+      ${Array.from({length:dim},(_,i)=>{
+        const day = i+1;
+        const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        const val = dayTotals[ds] || 0;
+        const intensity = val ? Math.max(0.12, val/maxVal) : 0;
+        const isToday = ds === td;
+        const bg = val ? `rgba(245,112,90,${intensity})` : 'var(--sf2)';
+        return `<div style="aspect-ratio:1;border-radius:5px;background:${bg};border:${isToday?'2px solid var(--ac)':'1px solid var(--bd)'};display:flex;align-items:center;justify-content:center;cursor:default;position:relative" title="${val?fmt(val):''}">
+          <span style="font-size:9px;font-weight:600;color:${val?'#fff':'var(--mt)'}">${day}</span>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;margin-top:10px;justify-content:flex-end">
+      <span style="font-size:10px;color:var(--mt)">Menos</span>
+      ${[.12,.3,.5,.7,1].map(o=>`<div style="width:12px;height:12px;border-radius:3px;background:rgba(245,112,90,${o})"></div>`).join('')}
+      <span style="font-size:10px;color:var(--mt)">Mais</span>
+    </div>
+  </div>`;
 }
 
 initTheme();
