@@ -43,11 +43,80 @@ function cleanText(v, fallback = '') {
   return typeof v === 'string' ? v : fallback;
 }
 
+function normalizeUsername(v) {
+  return cleanText(v).trim().toLowerCase();
+}
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
+  return `scrypt$${salt}$${hash}`;
+}
+
+function verifyPassword(password, stored) {
+  if (!stored) return false;
+  const [algo, salt, hash] = String(stored).split('$');
+  if (algo !== 'scrypt' || !salt || !hash) return false;
+  const calc = crypto.scryptSync(String(password), salt, 64);
+  return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), calc);
+}
+
 async function replaceRows(client, table, userId, rows, insertSql, mapper) {
   await client.query(`DELETE FROM ${table} WHERE user_id=$1`, [userId]);
   for (const row of rows || []) {
     await client.query(insertSql, mapper(row, userId));
   }
+}
+
+async function replaceAppState(client, userId, state = {}) {
+  const { accounts=[], categories=[], shopping={}, settings={} } = state || {};
+
+  await replaceRows(client, 'accounts', userId, accounts,
+    `INSERT INTO accounts
+     (user_id,id,name,icon,type,balance,yield_rate,yield_type,yield_val,calc_base,start_date,note)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+    (a, uid) => [uid, String(a.id), cleanText(a.name, 'Conta'), cleanText(a.icon),
+      cleanText(a.type, 'checking'), Number(a.balance)||0, Number(a.yieldRate ?? a.yield_rate)||0,
+      cleanText(a.yieldType ?? a.yield_type, 'manual'), Number(a.yieldVal ?? a.yield_val)||0,
+      cleanText(a.calcBase ?? a.calc_base, 'du'), a.startDate || a.start_date || null, cleanText(a.note)]
+  );
+
+  await replaceRows(client, 'categories', userId, categories,
+    `INSERT INTO categories (user_id,id,icon,name,color) VALUES ($1,$2,$3,$4,$5)`,
+    (c, uid) => [uid, String(c.id), cleanText(c.ico || c.icon), cleanText(c.name, 'Categoria'), cleanText(c.col || c.color, '#888')]
+  );
+
+  await replaceRows(client, 'shopping_items', userId, [], 'SELECT $1', uid => [uid]);
+  await replaceRows(client, 'shopping_lists', userId, shopping.lists || [],
+    `INSERT INTO shopping_lists (user_id,id,name,icon,position) VALUES ($1,$2,$3,$4,$5)`,
+    (l, uid) => [uid, String(l.id), cleanText(l.name, 'Lista'), cleanText(l.ico || l.icon), Number(l.position)||0]
+  );
+  for (const item of shopping.items || []) {
+    await client.query(
+      `INSERT INTO shopping_items (user_id,id,list_id,name,qty,category,bought,created_ms)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [userId, String(item.id), String(item.listId || item.list_id), cleanText(item.name, 'Item'),
+       cleanText(item.qty), cleanText(item.cat || item.category), !!item.bought, Number(item.createdAt || item.created_ms)||Date.now()]
+    );
+  }
+
+  await client.query(
+    `INSERT INTO user_settings (user_id,theme,rates,widget_prefs,widget_order,tx_view,active_list)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)
+     ON CONFLICT (user_id) DO UPDATE SET
+       theme=EXCLUDED.theme,
+       rates=EXCLUDED.rates,
+       widget_prefs=EXCLUDED.widget_prefs,
+       widget_order=EXCLUDED.widget_order,
+       tx_view=EXCLUDED.tx_view,
+       active_list=EXCLUDED.active_list,
+       updated_at=NOW()`,
+    [userId, cleanText(settings.theme, 'dark'), settings.rates || {},
+     settings.widgetPrefs || settings.widget_prefs || {},
+     settings.widgetOrder || settings.widget_order || [],
+     cleanText(settings.txView || settings.tx_view, 'n'),
+     settings.activeList || settings.active_list || null]
+  );
 }
 
 // ── ADMIN KEY ───────────────────────────────
@@ -114,14 +183,54 @@ app.get('/api/me', userAuth, (req, res) => {
   res.json({ id: req.user.id, name: req.user.name, is_admin: req.user.is_admin });
 });
 
+app.post('/api/login', async (req, res) => {
+  try {
+    const username = normalizeUsername(req.body?.username);
+    const password = req.body?.password || '';
+    if (!username || !password) return res.status(400).json({ error: 'Usuario e senha sao obrigatorios' });
+    const { rows } = await pool.query('SELECT * FROM users WHERE username=$1', [username]);
+    if (!rows.length || !verifyPassword(password, rows[0].password_hash)) {
+      return res.status(401).json({ error: 'Usuario ou senha invalidos' });
+    }
+    res.json({ id: rows[0].id, name: rows[0].name, is_admin: rows[0].is_admin, api_key: rows[0].api_key });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Criar usuario sem admin key apenas no primeiro acesso ou quando ALLOW_SIGNUP=true
+app.post('/api/register', async (req, res) => {
+  try {
+    const { rows: totalRows } = await pool.query('SELECT COUNT(*)::int AS total FROM users');
+    const isFirstUser = totalRows[0].total === 0;
+    if (!isFirstUser && process.env.ALLOW_SIGNUP !== 'true') {
+      return res.status(403).json({ error: 'Cadastro direto desativado. Use a chave admin do servidor.' });
+    }
+
+    const { name = 'Usuario', password = '' } = req.body || {};
+    const username = normalizeUsername(req.body?.username || name);
+    if (!username || !password) return res.status(400).json({ error: 'Usuario e senha sao obrigatorios' });
+    const api_key = crypto.randomBytes(32).toString('hex');
+    const { rows } = await pool.query(
+      'INSERT INTO users (name, username, password_hash, api_key, is_admin) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, username, api_key, is_admin, created_at',
+      [name, username, hashPassword(password), api_key, isFirstUser]
+    );
+    res.status(201).json(rows[0]);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Criar usuario (requer admin key)
 app.post('/api/users', adminAuth, async (req, res) => {
   try {
-    const { name = 'Usuario' } = req.body;
+    const { name = 'Usuario', password = '' } = req.body;
+    const username = normalizeUsername(req.body?.username || name);
+    if (!username || !password) return res.status(400).json({ error: 'Usuario e senha sao obrigatorios' });
     const api_key = crypto.randomBytes(32).toString('hex');
     const { rows } = await pool.query(
-      'INSERT INTO users (name, api_key) VALUES ($1, $2) RETURNING id, name, api_key, created_at',
-      [name, api_key]
+      'INSERT INTO users (name, username, password_hash, api_key) VALUES ($1, $2, $3, $4) RETURNING id, name, username, api_key, created_at',
+      [name, username, hashPassword(password), api_key]
     );
     res.status(201).json(rows[0]);
   } catch (e) {
@@ -135,11 +244,13 @@ app.post('/api/setup', adminAuth, async (req, res) => {
     const { rows: existing } = await pool.query('SELECT id FROM users WHERE is_admin = TRUE');
     if (existing.length) return res.status(409).json({ error: 'Admin ja existe', id: existing[0].id });
 
-    const { name = 'Admin' } = req.body;
+    const { name = 'Admin', password = '' } = req.body;
+    const username = normalizeUsername(req.body?.username || name);
+    if (!username || !password) return res.status(400).json({ error: 'Usuario e senha sao obrigatorios' });
     const api_key = crypto.randomBytes(32).toString('hex');
     const { rows } = await pool.query(
-      'INSERT INTO users (name, api_key, is_admin) VALUES ($1, $2, TRUE) RETURNING id, name, api_key',
-      [name, api_key]
+      'INSERT INTO users (name, username, password_hash, api_key, is_admin) VALUES ($1, $2, $3, $4, TRUE) RETURNING id, name, username, api_key',
+      [name, username, hashPassword(password), api_key]
     );
     res.status(201).json({ message: 'Admin criado', ...rows[0] });
   } catch (e) {
@@ -289,58 +400,68 @@ app.put('/api/state', userAuth, async (req, res) => {
   const client = await pool.connect();
   try {
     const uid = req.user.id;
-    const { accounts=[], categories=[], shopping={}, settings={} } = req.body || {};
     await client.query('BEGIN');
-
-    await replaceRows(client, 'accounts', uid, accounts,
-      `INSERT INTO accounts
-       (user_id,id,name,icon,type,balance,yield_rate,yield_type,yield_val,calc_base,start_date,note)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-      (a, userId) => [userId, String(a.id), cleanText(a.name, 'Conta'), cleanText(a.icon),
-        cleanText(a.type, 'checking'), Number(a.balance)||0, Number(a.yieldRate ?? a.yield_rate)||0,
-        cleanText(a.yieldType ?? a.yield_type, 'manual'), Number(a.yieldVal ?? a.yield_val)||0,
-        cleanText(a.calcBase ?? a.calc_base, 'du'), a.startDate || a.start_date || null, cleanText(a.note)]
-    );
-
-    await replaceRows(client, 'categories', uid, categories,
-      `INSERT INTO categories (user_id,id,icon,name,color) VALUES ($1,$2,$3,$4,$5)`,
-      (c, userId) => [userId, String(c.id), cleanText(c.ico || c.icon), cleanText(c.name, 'Categoria'), cleanText(c.col || c.color, '#888')]
-    );
-
-    await replaceRows(client, 'shopping_items', uid, [], 'SELECT $1', () => [uid]);
-    await replaceRows(client, 'shopping_lists', uid, shopping.lists || [],
-      `INSERT INTO shopping_lists (user_id,id,name,icon,position) VALUES ($1,$2,$3,$4,$5)`,
-      (l, userId) => [userId, String(l.id), cleanText(l.name, 'Lista'), cleanText(l.ico || l.icon), Number(l.position)||0]
-    );
-    for (const item of shopping.items || []) {
-      await client.query(
-        `INSERT INTO shopping_items (user_id,id,list_id,name,qty,category,bought,created_ms)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-        [uid, String(item.id), String(item.listId || item.list_id), cleanText(item.name, 'Item'),
-         cleanText(item.qty), cleanText(item.cat || item.category), !!item.bought, Number(item.createdAt || item.created_ms)||Date.now()]
-      );
-    }
-
-    await client.query(
-      `INSERT INTO user_settings (user_id,theme,rates,widget_prefs,widget_order,tx_view,active_list)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
-       ON CONFLICT (user_id) DO UPDATE SET
-         theme=EXCLUDED.theme,
-         rates=EXCLUDED.rates,
-         widget_prefs=EXCLUDED.widget_prefs,
-         widget_order=EXCLUDED.widget_order,
-         tx_view=EXCLUDED.tx_view,
-         active_list=EXCLUDED.active_list,
-         updated_at=NOW()`,
-      [uid, cleanText(settings.theme, 'dark'), settings.rates || {},
-       settings.widgetPrefs || settings.widget_prefs || {},
-       settings.widgetOrder || settings.widget_order || [],
-       cleanText(settings.txView || settings.tx_view, 'n'),
-       settings.activeList || settings.active_list || null]
-    );
-
+    await replaceAppState(client, uid, req.body || {});
     await client.query('COMMIT');
     res.json({ success: true });
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
+  }
+});
+
+app.put('/api/import', userAuth, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const uid = req.user.id;
+    const data = req.body || {};
+    await client.query('BEGIN');
+
+    await replaceRows(client, 'transactions', uid, data.transactions || [],
+      `INSERT INTO transactions
+        (user_id,type,description,amount,category,date,note,account_id,paid,pending,
+         installment_group,installment_num,installment_total,recur_group)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+      (t, userId) => [userId, cleanText(t.type, 'expense'), cleanText(t.desc || t.description, 'Lancamento'),
+        Number(t.amount)||0, cleanText(t.category, 'A classificar'), t.date, cleanText(t.note),
+        t.accountId || t.account_id || null, !!t.paid, !!t.pending,
+        t.installmentGroup || t.installment_group || null, t.installmentNum || t.installment_num || null,
+        t.installmentTotal || t.installment_total || null, t.recurGroup || t.recur_group || null]
+    );
+
+    await replaceRows(client, 'budgets', uid, data.budgets || [],
+      `INSERT INTO budgets (user_id,category,"limit") VALUES ($1,$2,$3)
+       ON CONFLICT (user_id, category) DO UPDATE SET "limit"=EXCLUDED."limit", updated_at=NOW()`,
+      (b, userId) => [userId, cleanText(b.category, 'Categoria'), Number(b.limit)||1]
+    );
+
+    await replaceRows(client, 'goals', uid, data.goals || [],
+      `INSERT INTO goals (user_id,name,icon,target,current,deadline,description,monthly)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      (g, userId) => [userId, cleanText(g.name, 'Meta'), cleanText(g.icon, 'goal'),
+        Number(g.target)||1, Number(g.current)||0, g.deadline || null,
+        cleanText(g.desc || g.description), Number(g.monthly)||0]
+    );
+
+    await replaceAppState(client, uid, {
+      accounts: data.accounts || [],
+      categories: data.categories || data.customCategories || [],
+      shopping: data.shopping || { lists: data.shoppingLists || [], items: data.shoppingItems || [] },
+      settings: data.settings || {}
+    });
+
+    await client.query('COMMIT');
+    res.json({
+      success: true,
+      imported: {
+        transactions: (data.transactions || []).length,
+        budgets: (data.budgets || []).length,
+        goals: (data.goals || []).length,
+        accounts: (data.accounts || []).length
+      }
+    });
   } catch (e) {
     await client.query('ROLLBACK').catch(() => {});
     res.status(500).json({ error: e.message });

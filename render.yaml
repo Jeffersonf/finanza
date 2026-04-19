@@ -14,5 +14,7 @@ services:
         sync: false        # Chave admin preenchida manualmente no painel do Render
       - key: NODE_ENV
         value: production
+      - key: ALLOW_SIGNUP
+        value: "true"
       - key: PORT
         value: 10000

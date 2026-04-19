@@ -80,74 +80,116 @@ function hideSetup(){document.getElementById('setup').classList.remove('visible'
 function showS(s){['Main','Online','NewUser','Local'].forEach(n=>{const e=document.getElementById('s'+n);if(e)e.style.display=n.toLowerCase()===s?'block':'none';});}
 async function doSetup(){
   const url=document.getElementById('sUrl').value.trim().replace(/\/$/,'');
-  const key=document.getElementById('sKey').value.trim();
+  const username=document.getElementById('sUser').value.trim();
+  const password=document.getElementById('sPass').value;
   const err=document.getElementById('sErr');err.classList.remove('show');
-  if(!url||!key){err.textContent='Preencha URL e chave.';err.classList.add('show');return;}
+  if(!url||!username||!password){err.textContent='Preencha URL, usuario e senha.';err.classList.add('show');return;}
   const btn=document.getElementById('sBtn'),txt=document.getElementById('sBtnTxt');
   btn.disabled=true;txt.textContent='Conectando...';
   try{
     await fetch(url+'/health');
-    const me=await fetch(url+'/api/me',{headers:{'x-api-key':key}});
-    if(!me.ok)throw new Error('Chave invlida');
-    const u=await me.json();
-    cfg={url,key,mode:'api',userName:u.name,userId:u.id};
+    const login=await fetch(url+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
+    if(!login.ok){const er=await login.json().catch(()=>({}));throw new Error(er.error||'Login invalido');}
+    const u=await login.json();
+    cfg={url,key:u.api_key,mode:'api',userName:u.name,userId:u.id,loginName:username};
     localStorage.setItem(CK,JSON.stringify(cfg));
-    hideSetup();await initApp();toast(`Bem-vindo, ${u.name}! ✓`,'success');
-  }catch(e){err.textContent='Falha: '+e.message;err.classList.add('show');btn.disabled=false;txt.textContent='Entrar →';}
+    hideSetup();await initApp();toast(`Bem-vindo, ${u.name}! OK`,'success');
+  }catch(e){err.textContent='Falha: '+e.message;err.classList.add('show');btn.disabled=false;txt.textContent='Entrar ->';}
 }
-let _nuKey='';
 async function createUser(){
   const url=document.getElementById('nuUrl').value.trim().replace(/\/$/,'');
   const admin=document.getElementById('nuAdmin').value.trim();
-  const name=document.getElementById('nuName').value.trim()||'Usurio';
+  const name=document.getElementById('nuName').value.trim()||'Usuario';
+  const username=document.getElementById('nuUser').value.trim();
+  const password=document.getElementById('nuPass').value;
   const err=document.getElementById('nuErr');err.classList.remove('show');
-  if(!url||!admin){err.textContent='Preencha URL e Admin Key.';err.classList.add('show');return;}
+  if(!url){err.textContent='Preencha a URL do servidor.';err.classList.add('show');return;}
+  if(!username||!password){err.textContent='Preencha usuario e senha.';err.classList.add('show');return;}
   try{
-    const r=await fetch(url+'/api/users',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':admin},body:JSON.stringify({name})});
-    if(!r.ok){const e=await r.json();throw new Error(e.error||'Erro');}
-    const d=await r.json();_nuKey=d.api_key;
-    document.getElementById('nuKey').textContent=d.api_key;document.getElementById('nuRes').style.display='block';
+    const endpoint=admin?'/api/users':'/api/register';
+    const headers={'Content-Type':'application/json'};
+    if(admin)headers['x-api-key']=admin;
+    const r=await fetch(url+endpoint,{method:'POST',headers,body:JSON.stringify({name,username,password})});
+    if(!r.ok){const er=await r.json().catch(()=>({}));throw new Error(er.error||'Erro');}
+    await r.json();
+    document.getElementById('nuRes').style.display='block';
   }catch(e){err.textContent='Erro: '+e.message;err.classList.add('show');}
 }
-function copyKey(){navigator.clipboard.writeText(_nuKey).then(()=>toast('Copiado! ✓','success'));}
+function useNewUserKey(){
+  document.getElementById('sUrl').value=document.getElementById('nuUrl').value.trim();
+  document.getElementById('sUser').value=document.getElementById('nuUser').value.trim();
+  document.getElementById('sPass').value=document.getElementById('nuPass').value;
+  showS('online');
+  doSetup();
+}
 function startLocal(){cfg={url:'',key:'',mode:'local',userName:'Eu',userId:''};localStorage.setItem(CK,JSON.stringify(cfg));hideSetup();initApp();}
+function normalizeBackupData(d){
+  const data=d?.app==='Finanza'||d?.version?d:{...d};
+  if(!Array.isArray(data.transactions))throw new Error('Arquivo invalido: nao parece um backup do Finanza');
+  data.transactions=(data.transactions||[]).map(t=>nTx({
+    ...t,
+    description:t.description||t.desc||'Lancamento',
+    account_id:t.account_id||t.accountId||null,
+    installment_group:t.installment_group||t.installmentGroup||null,
+    installment_num:t.installment_num||t.installmentNum||null,
+    installment_total:t.installment_total||t.installmentTotal||null,
+    recur_group:t.recur_group||t.recurGroup||null
+  })).filter(t=>t.amount>0&&t.date);
+  data.budgets=(data.budgets||[]).map(nBud).filter(b=>b.category&&b.limit>0);
+  data.goals=(data.goals||[]).map(nGoal).filter(g=>g.name&&g.target>0&&g.deadline);
+  data.accounts=(data.accounts||[]).map(normalizeAccount);
+  data.categories=(data.categories||data.customCategories||[]).map(nCat);
+  const shopping=data.shopping||{lists:data.shoppingLists||[],items:data.shoppingItems||[]};
+  data.shopping={lists:(shopping.lists||[]).map(nShopList),items:(shopping.items||[]).map(nShopItem)};
+  data.settings=data.settings||{};
+  return data;
+}
+function applyBackupData(data){
+  S={transactions:data.transactions,budgets:data.budgets,goals:data.goals,accounts:data.accounts.length?data.accounts:defAccs()};
+  custCats=data.categories||[];
+  sl=data.shopping?.lists?.length?data.shopping:{lists:[{id:uid(),name:'Mercado',ico:'\u{1F6D2}'}],items:[]};
+  slActiveList=data.settings?.activeList||data.settings?.active_list||sl.lists[0]?.id||null;
+  localStorage.setItem(LK,JSON.stringify(S));
+  localStorage.setItem(CCK,JSON.stringify(custCats));
+  localStorage.setItem(SL_KEY,JSON.stringify(sl));
+}
 function importLocal(inp){
   const f=inp.files[0];if(!f)return;
   const r=new FileReader();
   r.onload=e=>{
     try{
-      const raw=e.target.result;
-      const d=JSON.parse(raw);
-      // Suporta tanto o formato antigo quanto o novo (com metadados)
-      const data=d.version&&d.transactions?d:{...d};
-      if(!data.transactions)throw new Error('Arquivo invlido  no parece um backup do Finanza');
-      // Normaliza campos para garantir compatibilidade
-      data.transactions=(data.transactions||[]).map(t=>({
-        ...t,
-        desc:t.desc||t.description||'',
-        note:t.note||'',
-        paid:t.paid||false,
-        pending:t.pending||false,
-        installmentGroup:t.installmentGroup||t.installment_group||null,
-        installmentNum:t.installmentNum||t.installment_num||null,
-        installmentTotal:t.installmentTotal||t.installment_total||null,
-        recurGroup:t.recurGroup||t.recur_group||null,
-      }));
-      const state={
-        transactions:data.transactions,
-        budgets:data.budgets||[],
-        goals:data.goals||[],
-        accounts:(data.accounts||[]).map(normalizeAccount)
-      };
-      localStorage.setItem(LK,JSON.stringify(state));
+      const data=normalizeBackupData(JSON.parse(e.target.result));
+      applyBackupData(data);
       cfg={url:'',key:'',mode:'local',userName:data.user||'Eu',userId:''};
       localStorage.setItem(CK,JSON.stringify(cfg));
       hideSetup();
       initApp();
-      toast('Importado: '+data.transactions.length+' transaes ✓','success');
+      toast('Importado: '+data.transactions.length+' transacoes OK','success');
     }catch(err){
-      alert('Erro ao importar: '+err.message+'\n\nVerifique se o arquivo  um backup vlido do Finanza.');
+      alert('Erro ao importar: '+err.message+'\n\nVerifique se o arquivo e um backup valido do Finanza.');
     }
+  };
+  r.readAsText(f,'UTF-8');
+}
+function importBackupFile(inp){
+  const f=inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=async e=>{
+    try{
+      const data=normalizeBackupData(JSON.parse(e.target.result));
+      const msg=`Importar ${data.transactions.length} transacoes, ${data.accounts.length} contas, ${data.budgets.length} orcamentos e ${data.goals.length} metas? Isso substitui os dados atuais desta conta.`;
+      if(!confirm(msg)){inp.value='';return;}
+      if(cfg.mode==='api'){
+        await api('PUT','/api/import',data);
+        toast('Backup importado para o Supabase OK','success');
+        await loadAll();
+      }else{
+        applyBackupData(data);
+        toast('Backup importado localmente OK','success');
+      }
+      refreshAll();
+    }catch(err){toast('Erro ao importar: '+err.message,'error');}
+    finally{inp.value='';}
   };
   r.readAsText(f,'UTF-8');
 }
@@ -158,13 +200,19 @@ function setConn(s){
   document.getElementById('connLbl').textContent=L[s]||s;
   document.getElementById('uRole').textContent=cfg.mode==='api'?(cfg.userName||'Online'):'Local 💾';
 }
-function openConnModal(){document.getElementById('connUrl').value=cfg.url;document.getElementById('connKey').value=cfg.key;document.getElementById('connModal').classList.add('open');}
+function openConnModal(){document.getElementById('connUrl').value=cfg.url;document.getElementById('connUser').value=cfg.loginName||'';document.getElementById('connPass').value='';document.getElementById('connModal').classList.add('open');}
 async function saveConn(){
   const url=document.getElementById('connUrl').value.trim().replace(/\/$/,'');
-  const key=document.getElementById('connKey').value.trim();
-  if(!url||!key){toast('Preencha URL e chave','error');return;}
-  cfg={...cfg,url,key,mode:'api'};localStorage.setItem(CK,JSON.stringify(cfg));
-  closeM('connModal');await initApp();toast('Salvo!','success');
+  const username=document.getElementById('connUser').value.trim();
+  const password=document.getElementById('connPass').value;
+  if(!url||!username||!password){toast('Preencha URL, usuario e senha','error');return;}
+  try{
+    const r=await fetch(url+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
+    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||'Login invalido');}
+    const u=await r.json();
+    cfg={...cfg,url,key:u.api_key,mode:'api',userName:u.name,userId:u.id,loginName:username};localStorage.setItem(CK,JSON.stringify(cfg));
+    closeM('connModal');await initApp();toast('Salvo!','success');
+  }catch(e){toast('Erro: '+e.message,'error');}
 }
 function nTx(t){return{id:t.id,type:t.type,desc:t.description||t.desc||'',amount:parseFloat(t.amount),category:t.category||'A classificar',date:(t.date||'').substring(0,10),note:t.note||'',accountId:t.accountId||t.account_id||null,installmentGroup:t.installmentGroup||t.installment_group||null,installmentNum:t.installmentNum||t.installment_num||null,installmentTotal:t.installmentTotal||t.installment_total||null,recurGroup:t.recurGroup||t.recur_group||null,paid:t.paid||false,pending:t.pending||false};}
 function nBud(b){return{id:b.id,category:b.category,limit:parseFloat(b.limit)};}
@@ -627,9 +675,8 @@ function exportCSV(){
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   toast('CSV exportado: '+(rows.length-1)+' lanamentos ✓','success');
 }
-function exportJson(){
-  // Backup JSON completo com metadados  emojis e unicode preservados
-  const backup={
+function buildBackupData(){
+  return {
     version:APP_VERSION,
     exported_at:new Date().toISOString(),
     app:'Finanza',
@@ -643,10 +690,14 @@ function exportJson(){
     transactions:S.transactions,
     budgets:S.budgets,
     goals:S.goals,
-    accounts:S.accounts
+    accounts:S.accounts,
+    categories:custCats,
+    shopping:sl?.lists?.length?sl:(()=>{try{return JSON.parse(localStorage.getItem(SL_KEY)||'{}');}catch{return{lists:[],items:[]};}})(),
+    settings:getAppSettings()
   };
-  // JSON.stringify preserva emojis nativamente (RFC 8259)
-  // Mas garantimos UTF-8 via TextEncoder
+}
+function exportJson(){
+  const backup=buildBackupData();
   const json=JSON.stringify(backup,null,2);
   const enc=new TextEncoder();
   const bytes=enc.encode(json);
@@ -658,11 +709,10 @@ function exportJson(){
   a.click();
   document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
-  toast('Backup exportado: '+S.transactions.length+' transaes ✓','success');
+  toast('Backup exportado: '+S.transactions.length+' transacoes OK','success');
 }
 
 function exportBackupFull(){
-  // Exporta JSON + CSV juntos
   exportJson();
   setTimeout(()=>exportCSV(),800);
 }
@@ -671,13 +721,14 @@ async function migrateToOnline(){
   const url=prompt('URL do servidor:');if(!url)return;
   const key=prompt('Chave de acesso:');if(!key)return;
   try{
-    const me=await fetch(url.replace(/\/$/,'')+'/api/me',{headers:{'x-api-key':key}});
-    if(!me.ok)throw new Error('Chave invlida');const u=await me.json();
-    toast('Migrando...','info');let ok=0;
-    for(const t of S.transactions){await fetch(url.replace(/\/$/,'')+'/api/transactions',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key},body:JSON.stringify({type:t.type,description:t.desc,amount:t.amount,category:t.category,date:t.date,note:t.note||''})});ok++;}
-    for(const b of S.budgets)await fetch(url.replace(/\/$/,'')+'/api/budgets',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key},body:JSON.stringify({category:b.category,limit:b.limit})});
-    cfg={url:url.replace(/\/$/,''),key,mode:'api',userName:u.name,userId:u.id};localStorage.setItem(CK,JSON.stringify(cfg));
-    toast(`${ok} transaes migradas! ✓`,'success');await initApp();
+    const base=url.replace(/\/$/,'');
+    const me=await fetch(base+'/api/me',{headers:{'x-api-key':key}});
+    if(!me.ok)throw new Error('Chave invalida');const u=await me.json();
+    toast('Migrando tudo...','info');
+    const r=await fetch(base+'/api/import',{method:'PUT',headers:{'Content-Type':'application/json','x-api-key':key},body:JSON.stringify(buildBackupData())});
+    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||'Erro ao importar');}
+    cfg={url:base,key,mode:'api',userName:u.name,userId:u.id};localStorage.setItem(CK,JSON.stringify(cfg));
+    toast('Dados migrados para online OK','success');await initApp();
   }catch(e){toast('Erro: '+e.message,'error');}
 }
 function getRange(p){

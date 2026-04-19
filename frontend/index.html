@@ -64,27 +64,30 @@
     </div>
     <div id="sOnline" style="display:none">
       <button class="back-btn" onclick="showS('main')">← Voltar</button>
-      <div style="font-size:13px;font-weight:700;margin-bottom:12px">Entrar com chave</div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:12px">Entrar</div>
       <div id="sErr" class="serr"></div>
       <label class="slbl">URL do Servidor</label><input type="text" class="sinp" id="sUrl" placeholder="https://finanza-api.onrender.com">
-      <label class="slbl">Chave de Acesso</label><input type="password" class="sinp" id="sKey" placeholder="Sua chave de 64 caracteres">
-      <div class="shint">🔑 Cada usuário tem sua própria chave. Seus dados são privados.</div>
+      <label class="slbl">Usuario</label><input type="text" class="sinp" id="sUser" placeholder="jefferson" autocomplete="username">
+      <label class="slbl">Senha</label><input type="password" class="sinp" id="sPass" placeholder="Sua senha" autocomplete="current-password">
+      <div class="shint">Seus dados ficam salvos no Supabase e sincronizam entre dispositivos.</div>
       <button class="sbtn" id="sBtn" onclick="doSetup()"><span id="sBtnTxt">Entrar →</span></button>
-      <div class="ssep"><a onclick="showS('newuser')">Admin: criar novo usuário</a></div>
+      <div class="ssep"><a onclick="showS('newuser')">Criar usuario e senha</a></div>
     </div>
     <div id="sNewUser" style="display:none">
       <button class="back-btn" onclick="showS('online')">← Voltar</button>
-      <div style="font-size:13px;font-weight:700;margin-bottom:12px">Criar novo usuário</div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px">Criar usuario</div>
+      <div style="font-size:11px;color:var(--mt);margin-bottom:12px;line-height:1.6">Crie um usuario e senha para entrar no Finanza. A chave admin so e necessaria se o cadastro direto estiver desligado no servidor.</div>
       <div id="nuErr" class="serr"></div>
-      <label class="slbl">URL</label><input type="text" class="sinp" id="nuUrl">
-      <label class="slbl">Admin Key</label><input type="password" class="sinp" id="nuAdmin">
-      <label class="slbl">Nome</label><input type="text" class="sinp" id="nuName" placeholder="João, Maria...">
-      <button class="sbtn" onclick="createUser()">Criar →</button>
+      <label class="slbl">URL do Servidor</label><input type="text" class="sinp" id="nuUrl" placeholder="https://finanza-api.onrender.com">
+      <label class="slbl">Nome</label><input type="text" class="sinp" id="nuName" placeholder="Jefferson">
+      <label class="slbl">Usuario</label><input type="text" class="sinp" id="nuUser" placeholder="jefferson" autocomplete="username">
+      <label class="slbl">Senha</label><input type="password" class="sinp" id="nuPass" placeholder="Crie uma senha" autocomplete="new-password">
+      <label class="slbl">Chave admin do servidor (opcional)</label><input type="password" class="sinp" id="nuAdmin" placeholder="API_SECRET do Render, se precisar">
+      <button class="sbtn" onclick="createUser()">Criar usuario →</button>
       <div id="nuRes" style="display:none;margin-top:12px;background:rgba(200,245,90,.07);border:1px solid rgba(200,245,90,.2);border-radius:10px;padding:12px;">
-        <div style="font-size:10px;font-weight:700;color:var(--ac);margin-bottom:6px">✅ Chave gerada:</div>
-        <div class="key-box" id="nuKey"></div>
-        <div style="font-size:10px;color:var(--mt);margin-top:6px">Copie e envie ao usuário.</div>
-        <button class="sbtn" style="margin-top:9px" onclick="copyKey()">📋 Copiar</button>
+        <div style="font-size:11px;font-weight:700;color:var(--ac);margin-bottom:6px">Usuario criado.</div>
+        <div style="font-size:10px;color:var(--mt);margin-top:6px">Agora voce pode entrar com o usuario e a senha.</div>
+        <button class="sbtn" style="margin-top:9px;background:var(--sf);color:var(--tx);border:1px solid var(--bd)" onclick="useNewUserKey()">Entrar agora</button>
       </div>
     </div>
     <div id="sLocal" style="display:none">
@@ -281,6 +284,7 @@
     <div class="ss-r"><div><div class="ss-l">Backup completo</div><div class="ss-s">Exporta JSON + CSV ao mesmo tempo</div></div><button class="btn btn-p btn-sm" onclick="exportBackupFull()">💾 Exportar tudo</button></div>
     <div class="ss-r"><div><div class="ss-l">Só CSV</div><div class="ss-s">Planilha — abre no Excel e Google Sheets</div></div><button class="btn btn-g btn-sm" onclick="exportCSV()">📊 CSV</button></div>
     <div class="ss-r"><div><div class="ss-l">Só JSON</div><div class="ss-s">Backup para reimportar no Finanza</div></div><button class="btn btn-g btn-sm" onclick="exportJson()">📦 JSON</button></div>
+    <div class="ss-r"><div><div class="ss-l">Importar JSON</div><div class="ss-s">Restaura um backup no modo atual. No online, envia tudo para o Supabase.</div></div><label class="btn btn-g btn-sm" for="impBackupFile">Importar</label><input type="file" id="impBackupFile" accept=".json,application/json" style="display:none" onchange="importBackupFile(this)"></div>
     <div class="ss-r"><div><div class="ss-l">Último backup</div><div class="ss-s backup-status"><span class="backup-dot" id="backupDot"></span><span id="backupStatusTxt">—</span></div></div><button class="btn btn-g btn-sm" onclick="autoBackupNow()">💾 Agora</button></div>
     <div class="ss-r" id="setJsonRow" style="display:none"><div><div class="ss-l">Backup local</div></div><button class="btn btn-g btn-sm" onclick="exportJson()">💾 Exportar</button></div>
     <div class="ss-r" id="setMigRow" style="display:none"><div><div class="ss-l">Migrar para online</div><div class="ss-s">Envia dados para o servidor</div></div><button class="btn btn-g btn-sm" onclick="migrateToOnline()">☁️ Migrar</button></div>
@@ -418,7 +422,7 @@
   <button class="mc" onclick="closeM('connModal')">✕</button>
   <div class="mt">Conexão</div>
   <div class="fg"><label class="fl">URL do Servidor</label><input type="text" class="fi" id="connUrl"></div>
-  <div class="fg"><label class="fl">Chave de Acesso</label><input type="password" class="fi" id="connKey"></div>
+  <div class="fg"><label class="fl">Usuario</label><input type="text" class="fi" id="connUser" autocomplete="username"></div><div class="fg"><label class="fl">Senha</label><input type="password" class="fi" id="connPass" autocomplete="current-password"></div>
   <div class="ma"><button class="btn btn-p" style="flex:1" onclick="saveConn()">Salvar</button><button class="btn btn-g" onclick="closeM('connModal')">Cancelar</button></div>
 </div></div>
 <div class="twrap" id="twrap"></div>

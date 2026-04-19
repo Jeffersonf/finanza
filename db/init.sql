@@ -8,10 +8,15 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE TABLE IF NOT EXISTS users (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name        VARCHAR(100) NOT NULL DEFAULT 'Usuario',
+    username    VARCHAR(100) UNIQUE,
+    password_hash TEXT,
     api_key     VARCHAR(128) NOT NULL UNIQUE,
     is_admin    BOOLEAN DEFAULT FALSE,
     created_at  TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(100) UNIQUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
 
 -- TRANSACOES por usuario
 CREATE TABLE IF NOT EXISTS transactions (
@@ -26,10 +31,10 @@ CREATE TABLE IF NOT EXISTS transactions (
     account_id        TEXT,
     paid              BOOLEAN DEFAULT FALSE,
     pending           BOOLEAN DEFAULT FALSE,
-    installment_group UUID,
+    installment_group TEXT,
     installment_num   INT,
     installment_total INT,
-    recur_group       UUID,
+    recur_group       TEXT,
     created_at        TIMESTAMPTZ DEFAULT NOW(),
     updated_at        TIMESTAMPTZ DEFAULT NOW()
 );
@@ -37,6 +42,8 @@ CREATE TABLE IF NOT EXISTS transactions (
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS account_id TEXT;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS paid BOOLEAN DEFAULT FALSE;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS pending BOOLEAN DEFAULT FALSE;
+ALTER TABLE transactions ALTER COLUMN installment_group TYPE TEXT USING installment_group::TEXT;
+ALTER TABLE transactions ALTER COLUMN recur_group TYPE TEXT USING recur_group::TEXT;
 
 -- ORCAMENTOS por usuario
 CREATE TABLE IF NOT EXISTS budgets (
