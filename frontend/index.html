@@ -143,51 +143,59 @@ body::before {
 /* ═══ FLOATING NAV (pill) ════════════════════════════════════════ */
 .fnav {
   position: fixed;
-  bottom: calc(18px + env(safe-area-inset-bottom));
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 0;
+  left: 0; right: 0;
   z-index: 300;
   display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 6px;
-  border-radius: var(--r-pill);
+  align-items: stretch;
+  padding: 0 4px calc(6px + env(safe-area-inset-bottom)) 4px;
   background: var(--sf-solid);
   background: var(--sf);
-  backdrop-filter: blur(32px) saturate(200%);
-  -webkit-backdrop-filter: blur(32px) saturate(200%);
-  border: 1px solid var(--bd);
-  box-shadow: 0 8px 32px var(--sh), 0 0 0 1px var(--bd2);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid var(--bd);
+  box-shadow: 0 -4px 24px rgba(0,0,0,.25);
 }
 .fn-item {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
-  padding: 8px 14px;
-  border-radius: 18px;
+  padding: 10px 2px 6px;
   cursor: pointer;
-  font-size: 9px;
-  font-weight: 600;
   color: var(--mt);
-  transition: all .2s cubic-bezier(.34,1.2,.64,1);
+  transition: color .15s;
   user-select: none;
-  min-width: 58px;
-  letter-spacing: .3px;
-  text-transform: uppercase;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
 }
-.fn-item .fni { font-size: 22px; line-height: 1.1; transition: transform .2s cubic-bezier(.34,1.2,.64,1); }
-.fn-item:hover { color: var(--tx2); }
-.fn-item:hover .fni { transform: scale(1.1); }
-.fn-item.active {
+.fn-item .fni {
+  font-size: 24px;
+  line-height: 1;
+  transition: transform .18s cubic-bezier(.34,1.3,.64,1);
+  display: block;
+}
+.fn-item::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%) scale(0);
+  width: 4px; height: 4px;
+  border-radius: 50%;
   background: var(--ac);
-  color: #0d0f14;
-  box-shadow: 0 2px 12px rgba(200,245,90,.35);
+  transition: transform .18s cubic-bezier(.34,1.4,.64,1);
 }
-.fn-item.active .fni { transform: scale(1.05); }
-.fn-item.fut-n.active { background: var(--fut); color: #fff; box-shadow: 0 2px 12px rgba(167,139,250,.35); }
-.fn-item.acc-n.active { background: var(--ac2); color: #0d0f14; box-shadow: 0 2px 12px rgba(90,245,200,.35); }
+.fn-item.active { color: var(--ac); }
+.fn-item.active .fni { transform: scale(1.15) translateY(-2px); }
+.fn-item.active::after { transform: translateX(-50%) scale(1); }
+.fn-item.fut-n.active { color: var(--fut); }
+.fn-item.fut-n.active::after { background: var(--fut); }
+.fn-item.acc-n.active { color: var(--ac2); }
+.fn-item.acc-n.active::after { background: var(--ac2); }
+.fn-item.sl-n.active { color: var(--ac); }
+.fn-item:active .fni { transform: scale(.9); }
 
 /* Desktop sidebar */
 .sidebar {
@@ -556,7 +564,7 @@ select.sel {
   position: fixed;
   bottom: 28px;
   right: 28px; z-index: 299;
-  display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
+  display: none; flex-direction: column; align-items: flex-end; gap: 10px;
 }
 .qa-panel {
   background: var(--sf);
@@ -761,7 +769,7 @@ select.sel {
 .ptr.loading .ptr-ar { display: none; }
 .ptr-ar { transition: transform .2s; }
 .ptr-ar.ready { transform: rotate(180deg); }
-.btst { position: fixed; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(18px); background: rgba(8,9,13,.92); backdrop-filter: blur(16px); color: var(--tx); padding: 9px 20px; border-radius: var(--r-pill); font-size: 13px; font-weight: 500; z-index: 1000; opacity: 0; transition: all .22s; pointer-events: none; white-space: nowrap; border: 1px solid var(--bd); box-shadow: 0 4px 16px var(--sh); }
+.btst { position: fixed; bottom: calc(80px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(18px); background: rgba(8,9,13,.92); backdrop-filter: blur(16px); color: var(--tx); padding: 9px 20px; border-radius: var(--r-pill); font-size: 13px; font-weight: 500; z-index: 1000; opacity: 0; transition: all .22s; pointer-events: none; white-space: nowrap; border: 1px solid var(--bd); box-shadow: 0 4px 16px var(--sh); }
 .btst.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* ═══ SCROLLBAR ══════════════════════════════════════════════════ */
@@ -772,11 +780,10 @@ select.sel {
 @media(min-width:961px){
   .main { margin-left: 220px; width: calc(100% - 220px); padding: calc(28px + env(safe-area-inset-top)) 36px 40px; }
   .fnav { display: none; }
-  .qa-wrap { display: flex; }
 }
 @media(max-width:960px){
   .sidebar { display: none !important; }
-  .main { margin-left: 0; padding: calc(16px + env(safe-area-inset-top)) 14px calc(100px + env(safe-area-inset-bottom)); }
+  .main { margin-left: 0; padding: calc(16px + env(safe-area-inset-top)) 14px calc(80px + env(safe-area-inset-bottom)); }
   .pt { font-size: 24px; }
   .ph .btn-p { display: none; }
   .g4 { grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 14px; }
@@ -799,7 +806,7 @@ select.sel {
   .toast { min-width: unset; font-size: 12px; }
   .sc { padding: 14px 16px; }
   .cv { font-size: 19px; }
-  .qa-wrap { bottom: calc(92px + env(safe-area-inset-bottom)); right: 16px; }
+  .qa-wrap { display: flex; bottom: calc(76px + env(safe-area-inset-bottom)); right: 16px; }
 }
 @media(max-width:440px){
   .g4, .fgrid { grid-template-columns: 1fr 1fr; }
@@ -828,7 +835,7 @@ select.sel {
 [data-theme=dark] .no-blur .cc-box,
 [data-theme=dark] .no-blur .box,
 [data-theme=dark] .no-blur .bg-card { background: rgba(22,25,38,.98) !important; }
-[data-theme=dark] .no-blur .fnav { background: rgba(10,12,18,.97) !important; }
+[data-theme=dark] .no-blur .fnav { background: rgba(8,9,13,.99) !important; }
 [data-theme=dark] .no-blur .modal,
 [data-theme=dark] .no-blur .setup-box,
 [data-theme=dark] .no-blur .qa-panel { background: rgba(16,19,28,.98) !important; }
@@ -3248,16 +3255,20 @@ async function setupPersistentNotification() {
       } catch { return 0; }
     })();
 
-    // Notificação persistente que fica na bandeja
+    // Notificação persistente — ongoing + sem autoCancel + priority max
     await LocalNotifications.schedule({
       notifications: [{
         id: 99,
         title: `💰 Finanza — ${fmt(saldo)}`,
         body: `${pendentes > 0 ? pendentes + ' conta(s) a pagar' : 'Sem contas pendentes'}${slPending > 0 ? ' · 🛒 ' + slPending + ' itens na lista' : ''}`,
         schedule: { at: new Date(Date.now() + 500), repeats: false },
-        ongoing: true,          // Android: notificação persistente
+        ongoing: true,
+        sticky: true,
         autoCancel: false,
+        silent: true,
+        foreground: true,
         sound: null,
+        channelId: 'finanza_persistent',
         smallIcon: 'ic_stat_icon_config_sample',
         actionTypeId: 'FINANZA_ACTIONS',
         extra: { action: 'open' }
@@ -3274,6 +3285,18 @@ async function registerNotifActions() {
   const { LocalNotifications } = Capacitor.Plugins || {};
   if (!LocalNotifications) return;
   try {
+    // Criar canal Android com importância mínima (sem som, sem pop-up, não pode fechar)
+    await LocalNotifications.createChannel({
+      id: 'finanza_persistent',
+      name: 'Finanza Status',
+      description: 'Saldo e atalhos do Finanza',
+      importance: 2,       // IMPORTANCE_LOW — aparece mas não interrompe
+      visibility: 1,       // VISIBILITY_PUBLIC
+      sound: null,
+      vibration: false,
+      lights: false,
+    }).catch(() => {});    // ignora se já existe
+
     await LocalNotifications.registerActionTypes({
       types: [{
         id: 'FINANZA_ACTIONS',
