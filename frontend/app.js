@@ -1,5 +1,6 @@
 'use strict';
 const APP_VERSION='3.9.0';
+const DEFAULT_API_URL='https://finanza-api.onrender.com';
 const CK='fz_cfg',LK='fz_local',CCK='fz_cats',VK='fz_view';
 const RATES_KEY='fz_rates', WIDGET_ORDER_KEY='fz_widget_order';
 let cfg={url:'',key:'',mode:'',userName:'',userId:''};
@@ -77,9 +78,9 @@ function renderQACats(){
 }
 function showSetup(){document.getElementById('setup').classList.add('visible');showS('main');}
 function hideSetup(){document.getElementById('setup').classList.remove('visible');}
-function showS(s){['Main','Online','NewUser','Local'].forEach(n=>{const e=document.getElementById('s'+n);if(e)e.style.display=n.toLowerCase()===s?'block':'none';});}
+function showS(s){['Main','Online','NewUser','Reset','Local'].forEach(n=>{const e=document.getElementById('s'+n);if(e)e.style.display=n.toLowerCase()===s?'block':'none';});}
 async function doSetup(){
-  const url=document.getElementById('sUrl').value.trim().replace(/\/$/,'');
+  const url=(document.getElementById('sUrl')?.value.trim()||cfg.url||DEFAULT_API_URL).replace(/\/$/,'');
   const username=document.getElementById('sUser').value.trim();
   const password=document.getElementById('sPass').value;
   const err=document.getElementById('sErr');err.classList.remove('show');
@@ -97,13 +98,12 @@ async function doSetup(){
   }catch(e){err.textContent='Falha: '+e.message;err.classList.add('show');btn.disabled=false;txt.textContent='Entrar ->';}
 }
 async function createUser(){
-  const url=document.getElementById('nuUrl').value.trim().replace(/\/$/,'');
+  const url=(document.getElementById('nuUrl')?.value.trim()||cfg.url||DEFAULT_API_URL).replace(/\/$/,'');
   const admin=document.getElementById('nuAdmin').value.trim();
   const name=document.getElementById('nuName').value.trim()||'Usuario';
   const username=document.getElementById('nuUser').value.trim();
   const password=document.getElementById('nuPass').value;
   const err=document.getElementById('nuErr');err.classList.remove('show');
-  if(!url){err.textContent='Preencha a URL do servidor.';err.classList.add('show');return;}
   if(!username||!password){err.textContent='Preencha usuario e senha.';err.classList.add('show');return;}
   try{
     const endpoint=admin?'/api/users':'/api/register';
@@ -116,11 +116,28 @@ async function createUser(){
   }catch(e){err.textContent='Erro: '+e.message;err.classList.add('show');}
 }
 function useNewUserKey(){
-  document.getElementById('sUrl').value=document.getElementById('nuUrl').value.trim();
+  const sUrl=document.getElementById('sUrl');if(sUrl)sUrl.value=(document.getElementById('nuUrl')?.value.trim()||DEFAULT_API_URL);
   document.getElementById('sUser').value=document.getElementById('nuUser').value.trim();
   document.getElementById('sPass').value=document.getElementById('nuPass').value;
   showS('online');
   doSetup();
+}
+async function resetPassword(){
+  const url=(document.getElementById('rpUrl')?.value.trim()||cfg.url||DEFAULT_API_URL).replace(/\/$/,'');
+  const username=document.getElementById('rpUser').value.trim();
+  const password=document.getElementById('rpPass').value;
+  const admin=document.getElementById('rpAdmin').value.trim();
+  const err=document.getElementById('rpErr');err.classList.remove('show');
+  if(!username||!password||!admin){err.textContent='Preencha usuario, nova senha e chave admin.';err.classList.add('show');return;}
+  try{
+    const r=await fetch(url+'/api/password-reset',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':admin},body:JSON.stringify({username,password})});
+    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||'Erro');}
+    document.getElementById('sUser').value=username;
+    document.getElementById('sPass').value=password;
+    showS('online');
+    toast('Senha redefinida. Entrando...','success');
+    doSetup();
+  }catch(e){err.textContent='Erro: '+e.message;err.classList.add('show');}
 }
 function startLocal(){cfg={url:'',key:'',mode:'local',userName:'Eu',userId:''};localStorage.setItem(CK,JSON.stringify(cfg));hideSetup();initApp();}
 function normalizeBackupData(d){
@@ -180,9 +197,9 @@ function importBackupFile(inp){
       const msg=`Importar ${data.transactions.length} transacoes, ${data.accounts.length} contas, ${data.budgets.length} orcamentos e ${data.goals.length} metas? Isso substitui os dados atuais desta conta.`;
       if(!confirm(msg)){inp.value='';return;}
       if(cfg.mode==='api'){
-        await api('PUT','/api/import',data);
-        toast('Backup importado para o Supabase OK','success');
+        const result=await api('PUT','/api/import',data);
         await loadAll();
+        toast(`Importado: ${result.imported?.transactions||S.transactions.length} transacoes, ${S.accounts.length} contas, ${S.budgets.length} orcamentos, ${S.goals.length} metas`,'success');
       }else{
         applyBackupData(data);
         toast('Backup importado localmente OK','success');
@@ -195,10 +212,10 @@ function importBackupFile(inp){
 }
 function logout(){if(!confirm('Sair da conta?'))return;localStorage.removeItem(CK);localStorage.removeItem(LK);location.reload();}
 function setConn(s){
-  document.getElementById('connDot').className='conn-dot '+s;
-  const L={online:'Online ✓',offline:'Local 💾',error:'Sem conexo ⚠️'};
-  document.getElementById('connLbl').textContent=L[s]||s;
-  document.getElementById('uRole').textContent=cfg.mode==='api'?(cfg.userName||'Online'):'Local 💾';
+  const dot=document.getElementById('connDot');if(dot)dot.className='conn-dot '+s;
+  const L={online:'Dados sincronizados',offline:'Dados locais',error:'Sem conexao'};
+  const lbl=document.getElementById('connLbl');if(lbl)lbl.textContent=L[s]||s;
+  document.getElementById('uRole').textContent=cfg.mode==='api'?'Conta online':'Modo local';
 }
 function openConnModal(){document.getElementById('connUrl').value=cfg.url;document.getElementById('connUser').value=cfg.loginName||'';document.getElementById('connPass').value='';document.getElementById('connModal').classList.add('open');}
 async function saveConn(){
@@ -222,6 +239,8 @@ function nCat(c){return{id:c.id,ico:c.icon||c.ico||'\u{1F3F7}\uFE0F',name:c.name
 function nShopList(l){return{id:l.id,name:l.name,ico:l.icon||l.ico||'\u{1F6D2}',position:l.position||0};}
 function nShopItem(i){return{id:i.id,listId:i.list_id||i.listId,name:i.name,qty:i.qty||'',cat:i.category||i.cat||'\u{1F6D2} Geral',bought:!!i.bought,createdAt:Number(i.created_ms||i.createdAt||Date.now())};}
 function defAccs(){return[{id:uid(),name:'Principal',icon:'\u{1F3E6}',type:'checking',balance:0,yieldRate:0,note:''}];}
+function asObj(v){return v&&typeof v==='object'&&!Array.isArray(v)?v:{};}
+function asArr(v){return Array.isArray(v)?v:[];}
 function getAppSettings(){
   return {theme:document.documentElement.dataset.theme||localStorage.getItem('fz_t')||'dark',rates:{cdi:RATES.cdi,selic:RATES.selic},widgetPrefs,widgetOrder,txView:curView,activeList:slActiveList};
 }
@@ -230,8 +249,8 @@ function applyRemoteSettings(settings={}){
   const rates=settings.rates||{};
   if(rates.cdi)RATES.cdi=parseFloat(rates.cdi);
   if(rates.selic)RATES.selic=parseFloat(rates.selic);
-  widgetPrefs=settings.widget_prefs||settings.widgetPrefs||widgetPrefs;
-  widgetOrder=settings.widget_order||settings.widgetOrder||widgetOrder;
+  widgetPrefs=asObj(settings.widget_prefs||settings.widgetPrefs||widgetPrefs);
+  widgetOrder=asArr(settings.widget_order||settings.widgetOrder||widgetOrder);
   if(settings.tx_view||settings.txView)localStorage.setItem(VK,settings.tx_view||settings.txView);
   if(settings.active_list||settings.activeList)slActiveList=settings.active_list||settings.activeList;
 }
@@ -825,6 +844,7 @@ function renderTx(){
   const range=getRange(curTxP);
   const catSel=document.getElementById('fCat');
   if(catSel){const prev=catSel.value;catSel.innerHTML='<option value="all">Categoria</option>'+[...new Set(S.transactions.map(t=>t.category))].sort().map(c=>`<option value="${c}"${c===prev?' selected':''}>${getCat(c).ico} ${c}</option>`).join('');}
+  renderCatFilterChips(fCat);
   let txs=[...S.transactions].filter(t=>t.date>=range.from&&t.date<=range.to);
   if(fTyp!=='all')txs=txs.filter(t=>t.type===fTyp);
   if(fCat!=='all')txs=txs.filter(t=>t.category===fCat);
@@ -847,6 +867,18 @@ function renderTx(){
     const more=txs.length>visible.length?`<div class="empty" style="padding:18px"><p>Mostrando ${visible.length} de ${txs.length}. Use busca ou filtros para refinar.</p></div>`:'';
     el.innerHTML=`<div class="tl${curView==='c'?' compact':''}">${visible.length?visible.map(txHTML).join('')+more:`<div class="empty"><span class="ei">🔍</span><p>Nenhuma transao no perodo.</p></div>`}</div>`;
   }
+}
+function setCatFilter(cat){
+  const sel=document.getElementById('fCat');if(!sel)return;
+  sel.value=cat||'all';
+  renderTx();
+}
+function renderCatFilterChips(active='all'){
+  const el=document.getElementById('catFilterChips');if(!el)return;
+  const cats=[...new Set(S.transactions.map(t=>t.category).filter(Boolean))].sort();
+  if(!cats.length){el.innerHTML='';return;}
+  el.innerHTML=`<button class="cat-filter-chip ${active==='all'?'active':''}" onclick="setCatFilter('all')">Todas</button>`+
+    cats.map(name=>{const c=getCat(name);return`<button class="cat-filter-chip ${active===name?'active':''}" style="--cat:${c.col}" onclick="setCatFilter('${name.replace(/'/g,"\\'")}')"><span>${c.ico}</span>${name}</button>`;}).join('');
 }
 function renderTxInsights(txs){
   const el=document.getElementById('txInsightCards');
@@ -1125,7 +1157,8 @@ async function initApp(){
   loadRates();
   await loadAll();if(cfg.mode==='local')loadCC();popCatSels();popAccSels();updM();renderDash();
   const name=cfg.userName||'Eu';
-  document.getElementById('uName').textContent=name;document.getElementById('uAvatar').textContent=name.slice(0,2).toUpperCase();
+  document.getElementById('uName').textContent=name;
+  const av=document.getElementById('uAvatar');if(av)av.textContent=name.slice(0,2).toUpperCase();
   const sv=localStorage.getItem(VK)||'n';setView(sv);
   loadSyncQ();
   updSyncBadge();
@@ -1542,13 +1575,13 @@ let widgetOrder = [];
 function loadWidgetPrefs() {
   try {
     const s = localStorage.getItem(WIDGETS_KEY);
-    widgetPrefs = s ? JSON.parse(s) : {};
+    widgetPrefs = asObj(s ? JSON.parse(s) : {});
   } catch { widgetPrefs = {}; }
   // Aplica defaults para widgets sem preferncia salva
   WIDGET_DEFS.forEach(w => {
     if (widgetPrefs[w.id] === undefined) widgetPrefs[w.id] = w.default;
   });
-  try{widgetOrder=JSON.parse(localStorage.getItem(WIDGET_ORDER_KEY)||'[]');}catch{widgetOrder=[];}
+  try{widgetOrder=asArr(JSON.parse(localStorage.getItem(WIDGET_ORDER_KEY)||'[]'));}catch{widgetOrder=[];}
   const ids=WIDGET_DEFS.map(w=>w.id);
   widgetOrder=[...widgetOrder.filter(id=>ids.includes(id)),...ids.filter(id=>!widgetOrder.includes(id))];
 }
@@ -1589,6 +1622,10 @@ function renderWidgetToggles() {
 
 function renderDash() {
   const isDark = document.documentElement.dataset.theme === 'dark';
+  const ids=WIDGET_DEFS.map(w=>w.id);
+  widgetPrefs=asObj(widgetPrefs);
+  widgetOrder=asArr(widgetOrder);
+  widgetOrder=[...widgetOrder.filter(id=>ids.includes(id)),...ids.filter(id=>!widgetOrder.includes(id))];
 
   const renderers={
     cards:widgetCards,ministats:widgetMiniStats,accounts:widgetAccounts,shopping:widgetShoppingDash,

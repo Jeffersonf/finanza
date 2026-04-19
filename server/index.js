@@ -198,6 +198,22 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+app.post('/api/password-reset', adminAuth, async (req, res) => {
+  try {
+    const username = normalizeUsername(req.body?.username);
+    const password = req.body?.password || '';
+    if (!username || !password) return res.status(400).json({ error: 'Usuario e nova senha sao obrigatorios' });
+    const { rows } = await pool.query(
+      'UPDATE users SET password_hash=$1 WHERE username=$2 RETURNING id, name, username',
+      [hashPassword(password), username]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
+    res.json({ success: true, user: rows[0] });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Criar usuario sem admin key apenas no primeiro acesso ou quando ALLOW_SIGNUP=true
 app.post('/api/register', async (req, res) => {
   try {
