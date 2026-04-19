@@ -27,8 +27,11 @@ jobs:
 
       - name: Preparar pasta de deploy
         run: |
+          rm -rf _site
           mkdir -p _site
-          cp frontend/financas.html _site/index.html
+          cp -R frontend/. _site/
+          cp frontend/index.html _site/index.html
+          touch _site/.nojekyll
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
