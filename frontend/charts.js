@@ -1,6 +1,11 @@
 // Graficos
 // Extraido de index.html para organizar o frontend sem mudar a arquitetura global.
 
+if(window.Chart){
+  Chart.defaults.animation=false;
+  Chart.defaults.responsiveAnimationDuration=0;
+}
+
 function renderTxCharts(){
   const isDark=document.documentElement.dataset.theme==='dark';
   const tick=isDark?'rgba(240,243,255,.4)':'rgba(13,16,32,.35)';
@@ -13,7 +18,7 @@ function renderTxCharts(){
   const ctx1=document.getElementById('txCatChart')?.getContext('2d');
   if(ctx1){
     if(window._txCatChart)window._txCatChart.destroy();
-    window._txCatChart=new Chart(ctx1,{type:'doughnut',data:{labels:cats,datasets:[{data:cats.map(c=>catTot[c]),backgroundColor:cats.map(c=>getCat(c).col+'cc'),borderColor:cats.map(c=>getCat(c).col),borderWidth:1.5,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:true,cutout:'62%',plugins:{legend:{display:true,position:'right',labels:{color:tick,font:{family:'DM Sans',size:10},boxWidth:8,padding:6}},tooltip:{callbacks:{label:c=>` ${fmt(c.raw)}`}}}}});
+    window._txCatChart=new Chart(ctx1,{type:'doughnut',data:{labels:cats,datasets:[{data:cats.map(c=>catTot[c]),backgroundColor:cats.map(c=>getCat(c).col+'cc'),borderColor:cats.map(c=>getCat(c).col),borderWidth:1.5,hoverOffset:3}]},options:{responsive:true,maintainAspectRatio:true,animation:false,animations:false,resizeDelay:120,cutout:'62%',plugins:{legend:{display:true,position:'right',labels:{color:tick,font:{family:'DM Sans',size:10},boxWidth:8,padding:6}},tooltip:{callbacks:{label:c=>` ${fmt(c.raw)}`}}}}});
   }
   // Daily line chart
   const allTxs=[...S.transactions].filter(t=>t.date>=range.from&&t.date<=range.to&&!t.paid);
@@ -27,7 +32,7 @@ function renderTxCharts(){
   const ctx2=document.getElementById('txLineChart')?.getContext('2d');
   if(ctx2){
     if(window._txLineChart)window._txLineChart.destroy();
-    window._txLineChart=new Chart(ctx2,{type:'bar',data:{labels:days.map(d=>{const[,m,day]=d.split('-');return`${day}/${m}`;}),datasets:[{label:'Receitas',data:days.map(d=>dayMap[d].inc),backgroundColor:'rgba(200,245,90,.7)',borderRadius:3,borderSkipped:false},{label:'Despesas',data:days.map(d=>dayMap[d].exp),backgroundColor:'rgba(245,112,90,.6)',borderRadius:3,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:tick,font:{family:'DM Sans',size:10},boxWidth:8,boxHeight:8}}},scales:{x:{grid:{color:grid},ticks:{color:tick,font:{family:'DM Sans',size:9},maxTicksLimit:8}},y:{grid:{color:grid},ticks:{color:tick,font:{family:'DM Sans',size:9},callback:v=>'R$'+(v>=1000?(v/1000).toFixed(0)+'k':v)}}}}});
+    window._txLineChart=new Chart(ctx2,{type:'bar',data:{labels:days.map(d=>{const[,m,day]=d.split('-');return`${day}/${m}`;}),datasets:[{label:'Receitas',data:days.map(d=>dayMap[d].inc),backgroundColor:'rgba(200,245,90,.7)',borderRadius:3,borderSkipped:false},{label:'Despesas',data:days.map(d=>dayMap[d].exp),backgroundColor:'rgba(245,112,90,.6)',borderRadius:3,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:true,animation:false,animations:false,resizeDelay:120,plugins:{legend:{labels:{color:tick,font:{family:'DM Sans',size:10},boxWidth:8,boxHeight:8}}},scales:{x:{grid:{color:grid},ticks:{color:tick,font:{family:'DM Sans',size:9},maxTicksLimit:8}},y:{grid:{color:grid},ticks:{color:tick,font:{family:'DM Sans',size:9},callback:v=>'R$'+(v>=1000?(v/1000).toFixed(0)+'k':v)}}}}});
   }
 }
 
@@ -56,11 +61,11 @@ function renderCharts(isDark) {
       window._flowChart = new Chart(ctx1,{type:'bar',data:{labels:months,datasets:[
         {label:'Receitas',data:incomes,backgroundColor:'rgba(200,245,90,.8)',borderRadius:4,borderSkipped:false},
         {label:'Despesas',data:expenses,backgroundColor:'rgba(245,112,90,.7)',borderRadius:4,borderSkipped:false}
-      ]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:legOpts.labels}},scales:scaleOpts}});
+      ]},options:{responsive:true,maintainAspectRatio:true,animation:false,animations:false,resizeDelay:120,plugins:{legend:{labels:legOpts.labels}},scales:scaleOpts}});
     } else {
       window._flowChart = new Chart(ctx1,{type:'line',data:{labels:months,datasets:[
         {label:'Saldo acumulado',data:balances,borderColor:'#c8f55a',backgroundColor:'rgba(200,245,90,.1)',fill:true,tension:.4,pointBackgroundColor:'#c8f55a',pointRadius:4}
-      ]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:legOpts.labels}},scales:scaleOpts}});
+      ]},options:{responsive:true,maintainAspectRatio:true,animation:false,animations:false,resizeDelay:120,plugins:{legend:{labels:legOpts.labels}},scales:scaleOpts}});
     }
   }
   // Donut de categorias
@@ -75,9 +80,9 @@ function renderCharts(isDark) {
   if (ctx2) {
     window._catChart = new Chart(ctx2,{type:'doughnut',
       data: cats.length
-        ? {labels:cats,datasets:[{data:cats.map(c=>catTot[c]),backgroundColor:cats.map(c=>getCat(c).col+'cc'),borderColor:cats.map(c=>getCat(c).col),borderWidth:1.5,hoverOffset:5}]}
+        ? {labels:cats,datasets:[{data:cats.map(c=>catTot[c]),backgroundColor:cats.map(c=>getCat(c).col+'cc'),borderColor:cats.map(c=>getCat(c).col),borderWidth:1.5,hoverOffset:3}]}
         : {labels:['Sem dados'],datasets:[{data:[1],backgroundColor:[isDark?'#1e2330':'#dde1ef'],borderWidth:0}]},
-      options:{responsive:true,maintainAspectRatio:true,cutout:'65%',
+      options:{responsive:true,maintainAspectRatio:true,animation:false,animations:false,resizeDelay:120,cutout:'65%',
         onClick:(_,els)=>{ if(els.length){const lbl=cats[els[0].index];catFilter=catFilter===lbl?null:lbl;renderDash();} },
         plugins:{legend:{display:cats.length>0,position:'right',labels:{color:tick,font:{family:'DM Sans',size:10},boxWidth:8,padding:6}},
           tooltip:{callbacks:{label:c=>` ${fmt(c.raw)}`}}}

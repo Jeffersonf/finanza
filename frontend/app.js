@@ -25,7 +25,7 @@ const BCATS=[
   {id:'sal',ico:'\u{1F4BC}',name:'Salario',col:'#c8f55a'},
   {id:'frl',ico:'\u{1F5A5}\uFE0F',name:'Freelance',col:'#f5f55a'},
   {id:'inv',ico:'\u{1F4C8}',name:'Investimentos',col:'#5af55a'},
-  {id:'oth',ico:'\u{1F516}',name:'Outros',col:'#888'},
+  {id:'oth',ico:'\u{1F516}',name:'Outros',col:'#a78bfa'},
   {id:'mor',ico:'\u{1F3E0}',name:'Moradia',col:'#5af5c8'},
   {id:'ali',ico:'\u{1F37D}\uFE0F',name:'Alimentacao',col:'#f5c85a'},
   {id:'tra',ico:'\u{1F697}',name:'Transporte',col:'#5a9ef5'},
@@ -37,8 +37,22 @@ const BCATS=[
   {id:'ass',ico:'\u{1F4E6}',name:'Assinaturas',col:'#f5a05a'},
   {id:'cls',ico:'\u2753',name:'A classificar',col:'#6b7494'},
 ];
+const CAT_COLORS=['#5af5c8','#f5705a','#a78bfa','#5a9ef5','#f5c85a','#f55a9e','#4ade80','#f5a05a','#5acff5','#c8f55a','#9e8cff','#ff8c6b'];
+function hashStr(s){let h=0;for(let i=0;i<(s||'').length;i++)h=((h<<5)-h+s.charCodeAt(i))|0;return Math.abs(h);}
+function cleanColor(c){
+  if(!c)return'';
+  c=String(c).trim().toLowerCase();
+  if(/^#[0-9a-f]{3}$/.test(c))c='#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];
+  return /^#[0-9a-f]{6}$/.test(c)?c:'';
+}
+function catColor(name,col){
+  const c=cleanColor(col);
+  if(!c||['#000000','#111111','#222222','#333333','#666666','#777777','#888888','#999999'].includes(c))return CAT_COLORS[hashStr(name)%CAT_COLORS.length];
+  return c;
+}
+function normalizeCat(c){return {...c,col:catColor(c?.name,c?.col||c?.color)};}
 const allCats=()=>[...BCATS,...custCats];
-const getCat=n=>allCats().find(c=>c.name===n)||{ico:'\u{1F516}',name:n,col:'#888'};
+const getCat=n=>normalizeCat(allCats().find(c=>c.name===n)||{ico:'\u{1F516}',name:n,col:catColor(n),custom:true});
 function getInitials(name){
   return (name||'Eu').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'EU';
 }
@@ -78,8 +92,7 @@ function addCustCat(){
   const name=document.getElementById('nCatNm').value.trim();
   if(!name){toast('Informe o nome','error');return;}
   if(allCats().find(c=>c.name===name)){toast('Categoria ja existe','error');return;}
-  const cols=['#f55a9e','#9e5af5','#5a9ef5','#f5a05a','#5af5a0','#f5d65a'];
-  custCats.push({id:uid(),ico,name,col:cols[custCats.length%cols.length],custom:true});
+  custCats.push({id:uid(),ico,name,col:CAT_COLORS[custCats.length%CAT_COLORS.length],custom:true});
   saveCC();renderCatChips();popCatSels();toast(`"${name}" criada! OK`,'success');
 }
 function delCustCat(id){custCats=custCats.filter(c=>c.id!==id);saveCC();renderCatChips();popCatSels();}
@@ -256,7 +269,7 @@ function nTx(t){return{id:t.id,type:t.type,desc:t.description||t.desc||'',amount
 function nBud(b){return{id:b.id,category:b.category,limit:parseFloat(b.limit)};}
 function nGoal(g){return{id:g.id,name:g.name,icon:g.icon||'\u{1F3AF}',target:parseFloat(g.target),current:parseFloat(g.current||0),deadline:(g.deadline||'').substring(0,10),desc:g.description||g.desc||'',monthly:parseFloat(g.monthly||0)};}
 function nAcc(a){return normalizeAccount({id:a.id,name:a.name,icon:a.icon,type:a.type,balance:a.balance,yieldRate:a.yield_rate,yieldType:a.yield_type,yieldVal:a.yield_val,calcBase:a.calc_base,startDate:(a.start_date||'').substring(0,10),note:a.note});}
-function nCat(c){return{id:c.id,ico:c.icon||c.ico||'\u{1F3F7}\uFE0F',name:c.name,col:c.color||c.col||'#888',custom:true};}
+function nCat(c){return{id:c.id,ico:c.icon||c.ico||'\u{1F3F7}\uFE0F',name:c.name,col:catColor(c.name,c.color||c.col),custom:true};}
 function nShopList(l){return{id:l.id,name:l.name,ico:l.icon||l.ico||'\u{1F6D2}',position:l.position||0};}
 function nShopItem(i){return{id:i.id,listId:i.list_id||i.listId,name:i.name,qty:i.qty||'',cat:i.category||i.cat||'\u{1F6D2} Geral',bought:!!i.bought,createdAt:Number(i.created_ms||i.createdAt||Date.now())};}
 function defAccs(){return[{id:uid(),name:'Principal',icon:'\u{1F3E6}',type:'checking',balance:0,yieldRate:0,note:''}];}
