@@ -1,7 +1,7 @@
 'use strict';
 const APP_VERSION='3.9.0';
 const DEFAULT_API_URL='https://finanza-api.onrender.com';
-const CK='fz_cfg',LK='fz_local',CCK='fz_cats',VK='fz_view';
+const CK='fz_cfg',LK='fz_local',CCK='fz_cats',VK='fz_view',AVK='fz_avatar';
 const RATES_KEY='fz_rates', WIDGET_ORDER_KEY='fz_widget_order';
 let cfg={url:'',key:'',mode:'',userName:'',userId:''};
 let S={transactions:[],budgets:[],goals:[],accounts:[]};
@@ -39,6 +39,27 @@ const BCATS=[
 ];
 const allCats=()=>[...BCATS,...custCats];
 const getCat=n=>allCats().find(c=>c.name===n)||{ico:'\u{1F516}',name:n,col:'#888'};
+function getInitials(name){
+  return (name||'Eu').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'EU';
+}
+function applyAvatar(){
+  const av=document.getElementById('uAvatar');if(!av)return;
+  const img=localStorage.getItem(AVK);
+  av.classList.toggle('has-photo',!!img);
+  av.style.backgroundImage=img?`url("${img}")`:'';
+  av.textContent=img?'':getInitials(cfg.userName||'Eu');
+  if(img)av.setAttribute('aria-label','Foto do perfil');else av.removeAttribute('aria-label');
+}
+function changeAvatar(inp){
+  const file=inp?.files?.[0];if(!file)return;
+  if(!file.type.startsWith('image/')){toast('Escolha uma imagem','error');inp.value='';return;}
+  if(file.size>2*1024*1024){toast('Use uma imagem ate 2 MB','error');inp.value='';return;}
+  const reader=new FileReader();
+  reader.onload=e=>{localStorage.setItem(AVK,e.target.result);applyAvatar();toast('Foto atualizada','success');inp.value='';};
+  reader.onerror=()=>toast('Nao foi possivel carregar a foto','error');
+  reader.readAsDataURL(file);
+}
+function removeAvatar(){localStorage.removeItem(AVK);applyAvatar();toast('Foto removida','info');}
 function applyTheme(t){
   document.documentElement.dataset.theme=t;
   document.getElementById('thmBtn').textContent=t==='dark'?'\u{1F319}':'\u2600\uFE0F';
@@ -1158,7 +1179,7 @@ async function initApp(){
   await loadAll();if(cfg.mode==='local')loadCC();popCatSels();popAccSels();updM();renderDash();
   const name=cfg.userName||'Eu';
   document.getElementById('uName').textContent=name;
-  const av=document.getElementById('uAvatar');if(av)av.textContent=name.slice(0,2).toUpperCase();
+  applyAvatar();
   const sv=localStorage.getItem(VK)||'n';setView(sv);
   loadSyncQ();
   updSyncBadge();

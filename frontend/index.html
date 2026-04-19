@@ -127,6 +127,7 @@
     </div>
     <div class="acct-area">
       <div class="acct-btn" id="acctBtn" onclick="togglePop()">
+        <div class="uavatar" id="uAvatar">EU</div>
         <div style="flex:1;min-width:0;"><div class="uname" id="uName">Minha Conta</div><div class="urole" id="uRole">—</div></div>
         <span style="color:var(--mt);font-size:11px" id="popChev">▲</span>
       </div>
@@ -254,6 +255,13 @@
   </div>
   <div class="ss"><div class="ss-t">Conta</div>
     <div class="ss-r"><div><div class="ss-l">Usuário</div><div class="ss-s" id="setUsr">—</div></div></div>
+    <div class="ss-r"><div><div class="ss-l">Foto do perfil</div><div class="ss-s">Imagem salva neste dispositivo</div></div>
+      <div class="avatar-actions">
+        <label class="btn btn-g btn-sm" for="avatarFile">Escolher</label>
+        <button class="btn btn-d btn-sm" onclick="removeAvatar()">Remover</button>
+        <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="changeAvatar(this)">
+      </div>
+    </div>
     <div class="ss-r"><div><div class="ss-l">Modo</div><div class="ss-s" id="setMod">—</div></div></div>
     <div class="ss-r"><div><div class="ss-l">Servidor</div><div class="ss-s" id="setUrl">—</div></div><button class="btn btn-g btn-sm" onclick="openConnModal()">Editar</button></div>
     <div class="ss-r"><div><div class="ss-l" style="color:var(--dan)">Sair / Trocar conta</div></div><button class="btn btn-d btn-sm" onclick="logout()">Sair</button></div>
