@@ -57,6 +57,61 @@ function normalizeUsername(v) {
   return cleanText(v).trim().toLowerCase();
 }
 
+function moneyToNumber(raw) {
+  const v = cleanText(raw).trim();
+  if (!v) return 0;
+  const normalized = v.includes(',') ? v.replace(/\./g, '').replace(',', '.') : v;
+  return Number(normalized) || 0;
+}
+
+function inferCategoryFromText(text, type) {
+  if (type === 'income') {
+    if (/(sal[aá]rio|pagamento)/.test(text)) return 'SalÃ¡rio';
+    if (/(freela|freelance)/.test(text)) return 'Freelance';
+    if (/(invest|rendimento)/.test(text)) return 'Investimentos';
+    return 'Outros';
+  }
+  if (/(mercado|ifood|restaurante|lanche|padaria|comida|delivery)/.test(text)) return 'AlimentaÃ§Ã£o';
+  if (/(uber|99|taxi|gasolina|combust[ií]vel|[oô]nibus)/.test(text)) return 'Transporte';
+  if (/(aluguel|luz|[aá]gua|internet|condom[ií]nio|casa)/.test(text)) return 'Casa';
+  if (/(farm[aá]cia|rem[eé]dio|m[eé]dico|sa[uú]de)/.test(text)) return 'SaÃºde';
+  if (/(curso|livro|faculdade|educa[cç][aã]o)/.test(text)) return 'EducaÃ§Ã£o';
+  if (/(cinema|bar|jogo|show|lazer)/.test(text)) return 'Lazer';
+  return 'Outros';
+}
+
+function parseTransactionText(text) {
+  const raw = cleanText(text).trim();
+  if (!raw) return null;
+  const amountMatch = raw.match(/\d+(?:[.,]\d{1,2})?/);
+  if (!amountMatch) return null;
+  const amount = moneyToNumber(amountMatch[0]);
+  if (!amount) return null;
+  const lower = raw.toLowerCase();
+  const type = /(recebi|receita|sal[aá]rio|freela|ganhei|entrada)/.test(lower) ? 'income' : 'expense';
+  const now = new Date();
+  const date = new Date(now);
+  if (lower.includes('ontem')) date.setDate(date.getDate() - 1);
+  if (lower.includes('amanha') || lower.includes('amanhÃ£')) date.setDate(date.getDate() + 1);
+  const isoDate = date.toISOString().slice(0, 10);
+  const pending = type === 'expense' && /(vence|venc|pagar|a pagar|amanha|amanhÃ£)/.test(lower);
+  const category = inferCategoryFromText(lower, type);
+  const description = raw
+    .replace(amountMatch[0], '')
+    .replace(/\b(gastei|paguei|comprei|recebi|hoje|ontem|amanh[aã]|no|na|em|de|r\$)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim() || category;
+  return {
+    type,
+    amount,
+    amountCents: Math.round(amount * 100),
+    description: description.charAt(0).toUpperCase() + description.slice(1),
+    category,
+    date: isoDate,
+    pending
+  };
+}
+
 function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
   const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
@@ -80,6 +135,8 @@ async function replaceRows(client, table, userId, rows, insertSql, mapper) {
 
 async function replaceAppState(client, userId, state = {}) {
   const { accounts=[], categories=[], shopping={}, settings={} } = state || {};
+  const rates = { ...(settings.rates || {}) };
+  if (Array.isArray(state.dueItems) && !Array.isArray(rates.dueItems)) rates.dueItems = state.dueItems;
 
   await replaceRows(client, 'accounts', userId, accounts,
     `INSERT INTO accounts
@@ -121,7 +178,7 @@ async function replaceAppState(client, userId, state = {}) {
        tx_view=EXCLUDED.tx_view,
        active_list=EXCLUDED.active_list,
        updated_at=NOW()`,
-    [userId, cleanText(settings.theme, 'dark'), settings.rates || {},
+    [userId, cleanText(settings.theme, 'dark'), rates,
      settings.widgetPrefs || settings.widget_prefs || {},
      settings.widgetOrder || settings.widget_order || [],
      cleanText(settings.txView || settings.tx_view, 'n'),
@@ -320,6 +377,12 @@ app.post('/api/me/regenerate-key', userAuth, async (req, res) => {
 // ════════════════════════════════════════════
 // TRANSACOES
 // ════════════════════════════════════════════
+
+app.post('/api/transactions/parse', userAuth, async (req, res) => {
+  const parsed = parseTransactionText(req.body?.text);
+  if (!parsed) return res.status(400).json({ error: 'Texto nÃ£o reconhecido' });
+  res.json(parsed);
+});
 
 app.get('/api/transactions', userAuth, async (req, res) => {
   try {

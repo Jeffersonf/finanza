@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="finanza_bg">#08090D</color>
+    <color name="finanza_surface">#12151E</color>
+    <color name="finanza_accent">#C8F55A</color>
+</resources>

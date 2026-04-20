@@ -1,4 +1,4 @@
-@charset "UTF-8";
+﻿@charset "UTF-8";
 
 /* ═══ DESIGN TOKENS ══════════════════════════════════════════════ */
 :root {
@@ -118,7 +118,6 @@ strong, b { font-weight: 700; }
 .tam,
 .qa-amt,
 .mc-val,
-.cal-amt,
 .insight-v,
 .mini-stat .ms-val,
 .gw-pct,
@@ -667,16 +666,6 @@ select.sel {
 .mname { font-weight: 600; font-size: 12px; min-width: 90px; text-align: center; color: var(--tx); }
 
 /* ═══ CALENDAR ═══════════════════════════════════════════════════ */
-.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; margin-bottom: 16px; }
-.cal-hdr { font-size: 9px; font-weight: 700; color: var(--mt); text-align: center; padding: 5px 0; text-transform: uppercase; }
-.cal-day { min-height: 52px; border-radius: 10px; background: var(--sf2); border: 1px solid var(--bd); padding: 4px; cursor: pointer; transition: border-color .12s; }
-.cal-day:hover { border-color: rgba(200,245,90,.4); }
-.cal-day.empty { background: transparent; border-color: transparent; cursor: default; }
-.cal-day.today { border-color: rgba(200,245,90,.5); background: rgba(200,245,90,.05); }
-.cal-num { font-size: 10px; font-weight: 600; color: var(--mt); }
-.cal-day.today .cal-num { color: var(--ac); }
-.cal-dot { width: 5px; height: 5px; border-radius: 50%; margin: 2px auto; }
-.cal-amt { font-size: 8px; font-weight: 700; font-family: var(--font-money); text-align: center; white-space: nowrap; overflow: hidden; }
 
 /* ═══ QUICK ADD ══════════════════════════════════════════════════ */
 .qa-wrap {
@@ -1252,6 +1241,27 @@ select.sel {
 .dash-section-wrap > .dash-section {
   margin-bottom: 0 !important;
 }
+.dash-section-wrap.fixed-widget {
+  cursor: default;
+}
+.dash-section-wrap.fixed-widget .proj-card,
+.dash-section-wrap.fixed-widget .wcard,
+.dash-section-wrap.fixed-widget .anom {
+  margin-bottom: 0;
+  min-height: 82px;
+}
+.dash-section-wrap.fixed-widget[data-widget-id="cards"] {
+  order: -10;
+}
+.dash-section-wrap.fixed-widget[data-widget-id="projection"] {
+  order: -9;
+}
+.dash-section-wrap.fixed-widget[data-widget-id="weekly"] {
+  order: -8;
+}
+.dash-section-wrap.fixed-widget[data-widget-id="anomaly"] {
+  order: -7;
+}
 .dash-widgets.is-reordering .dash-section-wrap:not(.dragging) {
   transition: opacity .12s ease;
 }
@@ -1336,8 +1346,6 @@ select.sel {
 .insight-card { background: var(--sf); border: 1px solid var(--bd); border-radius: 18px; padding: 14px 16px; }
 .insight-k { font-size: 10px; color: var(--mt); text-transform: uppercase; letter-spacing: .5px; font-weight: 700; }
 .insight-v { font-family: var(--font-money); font-size: 18px; font-weight: 800; margin-top: 4px; }
-.heat-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
-.heat-cell { aspect-ratio: 1; border-radius: 6px; border: 1px solid var(--bd); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; }
 
 /* Widget toggle chips na settings */
 .widget-grid {
@@ -1360,6 +1368,15 @@ select.sel {
 .widget-chip:hover { border-color: var(--ac); background: rgba(200,245,90,.05); }
 .widget-chip.on { border-color: var(--ac); background: rgba(200,245,90,.08); }
 .widget-chip.on .wc-dot { background: var(--ac); }
+.widget-chip.locked {
+  cursor: default;
+  border-color: rgba(167,139,250,.28);
+  background: linear-gradient(135deg, rgba(167,139,250,.10), rgba(90,245,200,.04));
+}
+.widget-chip.locked:hover {
+  border-color: rgba(167,139,250,.38);
+  background: linear-gradient(135deg, rgba(167,139,250,.12), rgba(90,245,200,.05));
+}
 .wc-dot {
   width: 8px; height: 8px;
   border-radius: 50%;
@@ -1544,4 +1561,5 @@ select.sel {
   .sl-add-row{flex-wrap:wrap;}
   .sl-add-row .fi{min-width:0;}
 }
+
 

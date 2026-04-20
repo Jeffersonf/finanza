@@ -2,23 +2,28 @@
 // Extraido de index.html para organizar o frontend sem mudar a arquitetura global.
 
 function widgetCards() {
-  const totBal = S.accounts.reduce((s,a) => s + getAccBal(a.id), 0);
-  const yld = getYieldSummary();
   const txM = getMonthTx(curDt);
   const inc = txM.filter(t => t.type==='income'&&!isFut(t.date)&&!t.paid).reduce((s,t)=>s+t.amount,0);
   const exp = txM.filter(t => t.type==='expense'&&!isFut(t.date)&&!t.paid).reduce((s,t)=>s+t.amount,0);
   const fut = S.transactions.filter(t=>t.type==='expense'&&isFut(t.date)&&!t.paid).reduce((s,t)=>s+t.amount,0);
-  // Store for other widgets
+  const income = monthlyIncomeCents / 100;
+  const base = income || inc;
+  const remaining = base - exp;
+  const now = new Date();
+  const sameMonth = curDt.getMonth()===now.getMonth() && curDt.getFullYear()===now.getFullYear();
+  const daysInMonth = new Date(curDt.getFullYear(), curDt.getMonth()+1, 0).getDate();
+  const daysLeft = sameMonth ? Math.max(daysInMonth - now.getDate() + 1, 1) : daysInMonth;
+  const safeDay = base ? Math.max(remaining / daysLeft, 0) : 0;
+  const burnPct = base ? Math.min(Math.round(exp / base * 100), 999) : 0;
   window._dashInc = inc; window._dashExp = exp;
   return `<div class="g4 summary-grid dash-section">
-    <div class="sc sc-glow-ac2"><span class="ci">💰</span><div class="cl">Saldo Total</div><div class="cv ${totBal>=0?'neu':'neg'}">${fmt(totBal)}</div><div class="cc">todas as contas</div></div>
-    <div class="sc sc-glow-ac"><span class="ci">🌱</span><div class="cl">Rendendo</div><div class="cv pos">${fmt(yld.month)}</div><div class="cc up">estimado este mês</div><div class="yield-detail"><span>${fmt(yld.day)}/dia</span><span>•</span><span>${fmt(yld.year)}/ano</span></div></div>
-    <div class="sc sc-glow-ac"><span class="ci">⬆️</span><div class="cl">Receitas</div><div class="cv pos">${fmt(inc)}</div><div class="cc up">este mês</div></div>
-    <div class="sc sc-glow-dan"><span class="ci">⬇️</span><div class="cl">Despesas</div><div class="cv neg">${fmt(exp)}</div><div class="cc dn">este mês</div></div>
-    <div class="sc sc-glow-fut" style="cursor:pointer" onclick="showPage('future')"><span class="ci">🔮</span><div class="cl">A Pagar</div><div class="cv fut">${fmt(fut)}</div><div class="cc" style="color:var(--fut)">ver →</div></div>
+    <div class="sc sc-glow-ac2" style="cursor:pointer" onclick="showPage('settings')"><span class="ci">💼</span><div class="cl">Salário base</div><div class="cv ${base?'pos':'neu'}">${base?fmt(base):'Definir'}</div><div class="cc">${income?'renda mensal configurada':'toque para configurar'}</div></div>
+    <div class="sc sc-glow-dan" style="cursor:pointer" onclick="showPage('transactions')"><span class="ci">⬇️</span><div class="cl">Gasto no mês</div><div class="cv neg">${fmt(exp)}</div><div class="cc dn">${base?burnPct+'% do salário':'sem salário definido'}</div></div>
+    <div class="sc sc-glow-ac" style="cursor:pointer" onclick="showPage('transactions')"><span class="ci">🧭</span><div class="cl">Seguro por dia</div><div class="cv ${safeDay>0?'pos':'neg'}">${fmt(safeDay)}</div><div class="cc">${daysLeft} dia${daysLeft===1?'':'s'} até fechar</div></div>
+    <div class="sc sc-glow-ac" style="cursor:pointer" onclick="showPage('transactions')"><span class="ci">🌱</span><div class="cl">Sobra projetada</div><div class="cv ${remaining>=0?'pos':'neg'}">${fmt(remaining)}</div><div class="cc">${fmt(inc)} recebido no mês</div></div>
+    <div class="sc sc-glow-fut" style="cursor:pointer" onclick="showPage('future')"><span class="ci">🔮</span><div class="cl">A Pagar</div><div class="cv fut">${fmt(fut)}</div><div class="cc" style="color:var(--fut)">ver contas futuras</div></div>
   </div>`;
 }
-
 function widgetMiniStats() {
   const txM = getMonthTx(curDt).filter(t=>!isFut(t.date)&&!t.paid&&t.type==='expense');
   if (!txM.length) return '';
@@ -188,13 +193,5 @@ function widgetBarCats() {
   return `<div class="box dash-section"><div class="bh"><div><div class="ct">📉 Top Categorias</div><div class="cs">Maiores gastos do mês</div></div></div><div style="display:flex;flex-direction:column;gap:10px">${sorted.map(([cat,val],i)=>{const c=getCat(cat),pct=(val/max*100).toFixed(0),cols=['var(--dan)','var(--warn)','var(--ac)','var(--ac2)','var(--fut)','var(--grn)'],col=cols[i]||'var(--mt)';return `<div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:13px">${c.ico} ${cat}</span><span style="font-family:var(--font-money);font-size:13px;font-weight:700;color:${col}">${fmt(val)}</span></div><div style="height:6px;background:var(--sf2);border-radius:99px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${col};border-radius:99px"></div></div></div>`;}).join('')}</div></div>`;
 }
 
-function widgetHeatmap() {
-  const d=new Date(curDt.getFullYear(),curDt.getMonth(),1);
-  const dim=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
-  const txM=getMonthTx(curDt).filter(t=>t.type==='expense'&&!isFut(t.date)&&!t.paid);
-  const dayTotals={};txM.forEach(t=>dayTotals[t.date]=(dayTotals[t.date]||0)+t.amount);
-  const vals=Object.values(dayTotals),max=vals.length?Math.max(...vals):1,first=d.getDay();
-  return `<div class="box dash-section"><div class="bh"><div><div class="ct">🗓️ Gastos do mês</div><div class="cs">Intensidade por dia</div></div></div><div class="heat-grid">${Array(first).fill('<div></div>').join('')}${Array.from({length:dim},(_,i)=>{const day=i+1,ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`,val=dayTotals[ds]||0,alpha=val?Math.max(.12,val/max):0;return `<div class="heat-cell" style="background:${val?`rgba(245,112,90,${alpha})`:'var(--sf2)'};color:${val?'#fff':'var(--mt)'}" title="${val?fmt(val):''}">${day}</div>`;}).join('')}</div></div>`;
-}
-
 // ─── RENDER DASH PRINCIPAL ───────────────────────────────────
+

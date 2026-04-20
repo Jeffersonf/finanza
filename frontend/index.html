@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR" data-theme="dark">
 <head>
 <meta charset="UTF-8">
@@ -9,14 +9,14 @@
 <meta name="apple-mobile-web-app-title" content="Finanza">
 <meta name="application-name" content="Finanza">
 <meta name="theme-color" id="themeColorMeta" content="#08090d">
-<meta name="app-version" content="3.9.1">
+<meta name="app-version" content="3.9.2">
 <title>Finanza</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='10' fill='%2308090d'/%3E%3Ctext x='5' y='23' font-family='Arial Black' font-weight='900' font-size='17' fill='%23c8f55a'%3Efz%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<link rel="stylesheet" href="styles.css?v=3.9.1">
+<link rel="stylesheet" href="styles.css?v=3.9.2">
 </head>
 <body>
 
@@ -26,11 +26,11 @@
 <div class="btst" id="btst">Pressione voltar novamente para sair</div>
 <nav class="fnav" id="fnav">
   <div class="fn-item active" data-page="dashboard"><span class="fni">📊</span>Início</div>
-  <div class="fn-item acc-n" data-page="accounts"><span class="fni">🏦</span>Contas</div>
   <div class="fn-item" data-page="transactions"><span class="fni">💸</span>Gastos</div>
-  <div class="fn-item fut-n" data-page="future"><span class="fni">🔮</span>Futuro</div>
-  <div class="fn-item" data-page="goals"><span class="fni">🏆</span>Metas</div>
+  <div class="fn-item fut-n" data-page="future"><span class="fni">📌</span>Venc.</div>
+  <div class="fn-item" data-page="budget"><span class="fni">🎯</span>Limites</div>
   <div class="fn-item sl-n" data-page="shopping"><span class="fni">🛒</span>Lista</div>
+  <div class="fn-item" data-page="goals"><span class="fni">🏆</span>Metas</div>
   <div class="fn-item" data-page="settings"><span class="fni">⚙️</span>Config</div>
 </nav>
 <div class="qa-wrap" id="qaWrap">
@@ -113,12 +113,12 @@
   <div class="nav-lbl">Menu</div>
   <nav>
     <div class="nav-item active" data-page="dashboard"><span class="ico">📊</span>Dashboard</div>
-    <div class="nav-item an" data-page="accounts"><span class="ico">🏦</span>Contas</div>
-    <div class="nav-item" data-page="transactions"><span class="ico">💸</span>Transações</div>
-    <div class="nav-item fn" data-page="future"><span class="ico">🔮</span>Futuro</div>
-    <div class="nav-item" data-page="budget"><span class="ico">🎯</span>Orçamentos</div>
+    <div class="nav-item" data-page="transactions"><span class="ico">💸</span>Gastos do dia a dia</div>
+    <div class="nav-item fn" data-page="future"><span class="ico">📌</span>Vencimentos</div>
+    <div class="nav-item" data-page="budget"><span class="ico">🎯</span>Limites e orçamentos</div>
+    <div class="nav-item sl-n" data-page="shopping"><span class="ico">🛒</span>Lista de compras</div>
     <div class="nav-item" data-page="goals"><span class="ico">🏆</span>Metas</div>
-    <div class="nav-item sl-n" data-page="shopping"><span class="ico">🛒</span>Lista de Compras</div>
+    <div class="nav-item an" data-page="accounts"><span class="ico">🏦</span>Contas e rendimento</div>
     <div class="nav-item" data-page="settings"><span class="ico">⚙️</span>Configurações</div>
   </nav>
   <div class="sb-bottom">
@@ -184,7 +184,7 @@
       <select class="sel" id="fCat"><option value="all">Categoria</option></select>
       <select class="sel" id="fAcc"><option value="all">Conta</option></select>
       <select class="sel" id="fSort"><option value="dd">Data ↓</option><option value="da">Data ↑</option><option value="ad">Valor ↓</option><option value="aa">Valor ↑</option></select>
-      <div class="vtog"><button class="vbtn active" id="vN" onclick="setView('n')" title="Normal">☰</button><button class="vbtn" id="vC" onclick="setView('c')" title="Compacto">≡</button><button class="vbtn" id="vCal" onclick="setView('cal')" title="Calendário">📅</button><button class="vbtn" id="vChart" onclick="setView('chart')" title="Gráficos">📊</button></div>
+      <div class="vtog"><button class="vbtn active" id="vN" onclick="setView('n')" title="Normal">☰</button><button class="vbtn" id="vC" onclick="setView('c')" title="Compacto">≡</button><button class="vbtn" id="vChart" onclick="setView('chart')" title="Gráficos">📊</button></div>
     </div>
     <div class="cat-filter-row" id="catFilterChips"></div>
     <div style="display:flex;gap:7px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">
@@ -195,7 +195,6 @@
     </div>
     <div id="txSum" style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;font-size:11px;"></div>
     <div class="insight-grid" id="txInsightCards"></div>
-    <div class="box" id="txHeatmapWrap" style="display:none;margin-bottom:16px;padding:14px 16px;"></div>
     <div id="txChartWrap" style="display:none;margin-bottom:16px;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div class="cc-box" style="padding:14px 16px;">
@@ -214,7 +213,7 @@
   </div>
 </div>
 <div class="page" id="page-future">
-  <div class="ph"><div><div class="pt" style="color:var(--fut)">🔮 Futuro Financeiro</div><div class="ps">A pagar e a receber</div></div><button class="btn btn-p" onclick="openModal(null,true)">+ Lançar Futuro</button></div>
+  <div class="ph"><div><div class="pt" style="color:var(--fut)">📌 Vencimentos</div><div class="ps">Contas fixas, boletos, Pix, cartões próprios e crediários</div></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-g btn-sm" onclick="openModal(null,true)">+ Lançar futuro</button><button class="btn btn-p" onclick="openDueModal()">+ Vencimento</button></div></div>
   <div class="pbar" id="futPbar">
     <span class="pl">Próximos</span>
     <button class="pb active" data-fp="7d">7 dias</button><button class="pb" data-fp="15d">15 dias</button>
@@ -222,12 +221,16 @@
     <button class="pb" data-fp="6m">6 meses</button><button class="pb" data-fp="all">Tudo</button>
   </div>
   <div class="fgrid">
+    <div class="sc sc-glow-fut"><span class="ci">📌</span><div class="cl">Compromissos</div><div class="cv fut" id="dueTotal">—</div><div class="cc" id="dueCount">0</div></div>
+    <div class="sc sc-glow-fut"><span class="ci">⏰</span><div class="cl">Próximo vencimento</div><div class="cv" id="dueNext" style="font-size:15px">—</div><div class="cc" id="dueNextName">—</div></div>
     <div class="sc sc-glow-fut"><span class="ci">💸</span><div class="cl">A Pagar</div><div class="cv fut" id="futDbt">—</div><div class="cc">despesas futuras</div></div>
     <div class="sc sc-glow-ac"><span class="ci">💰</span><div class="cl">A Receber</div><div class="cv pos" id="futInc">—</div><div class="cc up">receitas futuras</div></div>
     <div class="sc sc-glow-ac2"><span class="ci">⚖️</span><div class="cl">Saldo Futuro</div><div class="cv" id="futBal">—</div><div class="cc" id="futBalLbl">projeção</div></div>
     <div class="sc sc-glow-dan"><span class="ci">⚠️</span><div class="cl">Vencidos</div><div class="cv neg" id="futOvd">—</div><div class="cc dn">atrasados</div></div>
     <div class="sc sc-glow-fut"><span class="ci">📅</span><div class="cl">Próximo</div><div class="cv" id="futNxt" style="font-size:15px">—</div><div class="cc" id="futNxtN">—</div></div>
   </div>
+  <div class="sdiv"><div class="sdiv-line"></div><span class="sdiv-lbl" style="color:var(--fut)">📌 Vencimentos e lembretes</span><div class="sdiv-line"></div></div>
+  <div class="box"><div class="tl" id="dueList"></div></div>
   <div id="ovdSec" style="display:none"><div class="sdiv"><div class="sdiv-line"></div><span class="sdiv-lbl" style="color:var(--dan)">⚠️ Vencidos</span><div class="sdiv-line"></div></div><div class="box" style="border-color:rgba(245,112,90,.2)"><div class="tl" id="ovdList"></div></div></div>
   <div id="futIncSec" style="display:none"><div class="sdiv"><div class="sdiv-line"></div><span class="sdiv-lbl" style="color:var(--ac)">💰 A Receber</span><div class="sdiv-line"></div></div><div class="box" style="border-color:rgba(200,245,90,.18)"><div class="tl" id="futIncList"></div></div></div>
   <div class="sdiv"><div class="sdiv-line"></div><span class="sdiv-lbl" style="color:var(--fut)">🔮 A Pagar</span><div class="sdiv-line"></div></div>
@@ -272,6 +275,7 @@
     </div>
   </div>
   <div class="ss"><div class="ss-t">Taxas de referência</div>
+    <div class="ss-r"><div><div class="ss-l">Salário / renda mensal base</div><div class="ss-s">Base principal para comparar seus gastos do dia a dia</div></div><input type="text" class="fi" id="setIncome" style="width:120px;padding:6px 10px;font-size:12px" placeholder="0,00" onchange="updateRates()"></div>
     <div class="ss-r"><div><div class="ss-l">CDI atual (% a.a.)</div><div class="ss-s">Usado nos cálculos de investimento</div></div><input type="number" class="fi" id="setCDI" style="width:90px;padding:6px 10px;font-size:12px" step="0.01" onchange="updateRates()"></div>
     <div class="ss-r"><div><div class="ss-l">Selic atual (% a.a.)</div></div><input type="number" class="fi" id="setSelic" style="width:90px;padding:6px 10px;font-size:12px" step="0.01" onchange="updateRates()"></div>
   </div>
@@ -386,6 +390,7 @@
   <button class="mc" onclick="closeM('txModal')">✕</button>
   <div class="mt" id="mTit">Nova Transação</div><div class="ms" id="mSub">Registre uma receita ou despesa</div>
   <div class="typetog"><button class="ttb active expense" id="tExp" onclick="setTyp('expense')">⬇ Despesa</button><button class="ttb income" id="tInc" onclick="setTyp('income')">⬆ Receita</button></div>
+  <div class="frow"><div class="fg" style="flex:1.8"><label class="fl">Lançamento rápido</label><input type="text" class="fi" id="txQuickText" placeholder="Ex: mercado 82,40 hoje"></div><div class="fg" style="flex:.7;justify-content:flex-end"><button class="btn btn-g" type="button" onclick="fillTxFromText()">Preencher</button></div></div>
   <div class="frow"><div class="fg"><label class="fl">Descrição</label><input type="text" class="fi" id="txDesc" placeholder="Ex: Aluguel..."></div><div class="fg"><label class="fl">Valor (R$)</label><input type="number" class="fi" id="txAmt" placeholder="0,00" min="0" step="0.01" oninput="updIPrev()"></div></div>
   <div class="frow"><div class="fg"><label class="fl">Categoria</label><select class="fi" id="txCat"></select></div><div class="fg"><label class="fl">Conta</label><select class="fi" id="txAcc"></select></div></div>
   <div class="frow"><div class="fg"><label class="fl">Data</label><input type="date" class="fi" id="txDt"></div><div class="fg"><label class="fl">Observação</label><input type="text" class="fi" id="txNote" placeholder="Opcional..."></div></div>
@@ -417,6 +422,17 @@
   <div class="frow"><div class="fg"><label class="fl">Rendimento mensal manual (%)</label><input type="number" class="fi" id="accYield" placeholder="Opcional" min="0" step="0.01" oninput="updAccYieldPreview()"></div><div class="fg"><label class="fl">Observação</label><input type="text" class="fi" id="accNote" placeholder="CDB, caixinha, poupança..."></div></div>
   <div class="ma"><button class="btn btn-p" style="flex:1" onclick="saveAcc()">Salvar</button><button class="btn btn-g" onclick="closeM('accModal')">Cancelar</button></div>
 </div></div>
+<div class="ov" id="dueModal"><div class="modal">
+  <button class="mc" onclick="closeM('dueModal')">✕</button>
+  <div class="mt">Vencimento</div><div class="ms">Lembre o que pagar, quando vence e onde resolver</div>
+  <input type="hidden" id="dueId">
+  <div class="frow"><div class="fg"><label class="fl">Nome</label><input type="text" class="fi" id="dueName" placeholder="Ex: Internet, Luz, Crediário..."></div><div class="fg"><label class="fl">Valor previsto (R$)</label><input type="number" class="fi" id="dueAmount" min="0" step="0.01" placeholder="0,00"></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Próximo vencimento</label><input type="date" class="fi" id="dueDate"></div><div class="fg"><label class="fl">Recorrência</label><select class="fi" id="dueRec"><option value="monthly">Mensal</option><option value="once">Uma vez</option></select></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Forma</label><select class="fi" id="dueMethod"><option value="pix">Pix</option><option value="boleto">Boleto</option><option value="credit">Cartão principal</option><option value="store_card">Cartão próprio/loja</option><option value="debit">Débito automático</option><option value="financing">Crediário</option><option value="cash">Dinheiro</option></select></div><div class="fg"><label class="fl">Onde pagar</label><input type="text" class="fi" id="duePlace" placeholder="App, site, loja, banco..."></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Conta/cartão</label><select class="fi" id="dueAcc"></select></div><div class="fg"><label class="fl">Categoria</label><select class="fi" id="dueCat"></select></div></div>
+  <div class="fg"><label class="fl">Observação</label><input type="text" class="fi" id="dueNotes" placeholder="Contrato, código, login, detalhe importante..."></div>
+  <div class="ma"><button class="btn btn-p" style="flex:1" onclick="saveDue()">Salvar</button><button class="btn btn-g" onclick="closeM('dueModal')">Cancelar</button></div>
+</div></div>
 <div class="ov" id="budModal"><div class="modal">
   <button class="mc" onclick="closeM('budModal')">✕</button>
   <div class="mt">Novo Orçamento</div><div class="ms">Limite mensal por categoria</div>
@@ -441,11 +457,15 @@
   <div class="ma"><button class="btn btn-p" style="flex:1" onclick="saveConn()">Salvar</button><button class="btn btn-g" onclick="closeM('connModal')">Cancelar</button></div>
 </div></div>
 <div class="twrap" id="twrap"></div>
-<script src="app.js?v=3.9.1"></script>
-<script src="api.js?v=3.9.1"></script>
-<script src="storage.js?v=3.9.1"></script>
-<script src="charts.js?v=3.9.1"></script>
-<script src="components.js?v=3.9.1"></script>
-<script src="boot.js?v=3.9.1"></script>
+<script src="app.js?v=3.9.2"></script>
+<script src="api.js?v=3.9.2"></script>
+<script src="storage.js?v=3.9.2"></script>
+<script src="charts.js?v=3.9.2"></script>
+<script src="components.js?v=3.9.2"></script>
+<script src="boot.js?v=3.9.2"></script>
 </body>
 </html>
+
+
+
+
