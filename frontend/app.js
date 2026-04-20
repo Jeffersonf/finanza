@@ -1,7 +1,7 @@
 ﻿'use strict';
 const APP_VERSION='3.9.2';
 const DEFAULT_API_URL='https://finanza-api.onrender.com';
-const CK='fz_cfg',LK='fz_local',CCK='fz_cats',VK='fz_view',AVK='fz_avatar';
+const CK='fz_cfg',LK='fz_local',CCK='fz_cats',VK='fz_view',AVK='fz_avatar',PRIVK='fz_privacy';
 const RATES_KEY='fz_rates', WIDGET_ORDER_KEY='fz_widget_order', DUE_KEY='fz_due_items';
 let monthlyIncomeCents=0;
 let dueItems=[];
@@ -11,8 +11,10 @@ let custCats=[];
 let curTxP='1m-p',curFP='7d',curDt=new Date();
 let chartMode='bars',curView='n',catFilter=null;
 let editId=null,accEditId=null,qaTyp='expense',qaVal='',qaSelCat='';
+let privacyMode=false;
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2);
-const fmt=n=>'R$ '+Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const rawFmt=n=>'R$ '+Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmt=n=>privacyMode?'R$ •••':rawFmt(n);
 const fmtD=d=>{if(!d)return'';const[y,m,day]=d.substring(0,10).split('-');return`${day}/${m}/${y}`;};
 const today=()=>new Date().toISOString().split('T')[0];
 const isFut=d=>d>today();
@@ -95,6 +97,24 @@ function applyTheme(t){
 function toggleTheme(){applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');renderDash();}
 function thmFromSet(v){applyTheme(v?'dark':'light');renderDash();}
 function initTheme(){applyTheme(localStorage.getItem('fz_t')||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark'));}
+function applyPrivacy(v){
+  privacyMode=!!v;
+  document.documentElement.dataset.privacy=privacyMode?'hidden':'visible';
+  const icon=privacyMode?'\u{1F648}':'\u{1F441}\uFE0F';
+  const btn=document.getElementById('privBtn');
+  if(btn){btn.textContent=icon;btn.title=privacyMode?'Mostrar valores':'Ocultar valores';btn.setAttribute('aria-label',btn.title);}
+  const dashBtn=document.getElementById('privBtnDash');
+  if(dashBtn){dashBtn.textContent=privacyMode?'🙈 Mostrar valores':'👁️ Ocultar valores';dashBtn.title=privacyMode?'Mostrar valores':'Ocultar valores';}
+  const tog=document.getElementById('privTog');if(tog)tog.checked=privacyMode;
+  localStorage.setItem(PRIVK,privacyMode?'1':'0');
+}
+function togglePrivacy(){
+  applyPrivacy(!privacyMode);
+  refreshAll();
+  toast(privacyMode?'Valores ocultos':'Valores visíveis','info');
+}
+function privacyFromSet(v){applyPrivacy(v);refreshAll();}
+function initPrivacy(){applyPrivacy(localStorage.getItem(PRIVK)==='1');}
 function loadCC(){try{custCats=JSON.parse(localStorage.getItem(CCK)||'[]');}catch{custCats=[];}}
 function saveCC(){localStorage.setItem(CCK,JSON.stringify(custCats));if(cfg.mode==='api')saveRemoteState().catch(()=>{});}
 function addCustCat(){

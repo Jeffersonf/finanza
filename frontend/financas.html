@@ -108,7 +108,7 @@
   </div>
 </div>
 <aside class="sidebar">
-  <div class="logo"><span class="brand-word"><span style="color:var(--ac)">fin</span><span style="color:var(--tx)">anza</span></span><button class="theme-btn" id="thmBtn" onclick="toggleTheme()">🌙</button></div>
+  <div class="logo"><span class="brand-word"><span style="color:var(--ac)">fin</span><span style="color:var(--tx)">anza</span></span><div class="logo-actions"><button class="theme-btn" id="privBtn" onclick="togglePrivacy()" title="Ocultar valores" aria-label="Ocultar valores">👁️</button><button class="theme-btn" id="thmBtn" onclick="toggleTheme()">🌙</button></div></div>
   <div class="sb-search" onclick="document.getElementById('sbSrch').focus()"><span style="color:var(--mt);font-size:12px">🔍</span><input id="sbSrch" placeholder="Buscar... (Ctrl+K)" oninput="if(this.value.length>1)openSrch(this.value)"></div>
   <div class="nav-lbl">Menu</div>
   <nav>
@@ -148,6 +148,7 @@
   <div class="ph"><div><div class="pt">Dashboard</div><div class="ps">Visão geral das suas finanças</div></div>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
       <div class="mnav"><button id="prevM">‹</button><span class="mname" id="curM"></span><button id="nextM">›</button></div>
+      <button class="btn btn-g btn-sm privacy-action" id="privBtnDash" onclick="togglePrivacy()">👁️ Ocultar valores</button>
       <button class="btn btn-p" onclick="openModal()">+ Nova</button>
     </div>
   </div>
@@ -272,6 +273,9 @@
   <div class="ss"><div class="ss-t">Aparência</div>
     <div class="ss-r"><div><div class="ss-l">Tema escuro</div></div>
       <label class="tog"><input type="checkbox" id="thmTog" onchange="thmFromSet(this.checked)"><div class="tog-t"></div><div class="tog-th"></div></label>
+    </div>
+    <div class="ss-r"><div><div class="ss-l">Ocultar valores</div><div class="ss-s">Mascara saldos, salários, gastos e totais para prints e gravações</div></div>
+      <label class="tog"><input type="checkbox" id="privTog" onchange="privacyFromSet(this.checked)"><div class="tog-t"></div><div class="tog-th"></div></label>
     </div>
   </div>
   <div class="ss"><div class="ss-t">Taxas de referência</div>

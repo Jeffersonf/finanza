@@ -8,6 +8,7 @@ if(window.Chart){
 
 function renderTxCharts(){
   const isDark=document.documentElement.dataset.theme==='dark';
+  const moneyTick=()=>privacyMode?'R$•••':null;
   const tick=isDark?'rgba(240,243,255,.4)':'rgba(13,16,32,.35)';
   const grid=isDark?'rgba(255,255,255,.04)':'rgba(0,0,0,.04)';
   const range=getRange(curTxP);
@@ -32,11 +33,12 @@ function renderTxCharts(){
   const ctx2=document.getElementById('txLineChart')?.getContext('2d');
   if(ctx2){
     if(window._txLineChart)window._txLineChart.destroy();
-    window._txLineChart=new Chart(ctx2,{type:'bar',data:{labels:days.map(d=>{const[,m,day]=d.split('-');return`${day}/${m}`;}),datasets:[{label:'Receitas',data:days.map(d=>dayMap[d].inc),backgroundColor:'rgba(200,245,90,.7)',borderRadius:3,borderSkipped:false},{label:'Despesas',data:days.map(d=>dayMap[d].exp),backgroundColor:'rgba(245,112,90,.6)',borderRadius:3,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:true,animation:false,animations:false,resizeDelay:120,plugins:{legend:{labels:{color:tick,font:{family:'DM Sans',size:10},boxWidth:8,boxHeight:8}}},scales:{x:{grid:{color:grid},ticks:{color:tick,font:{family:'DM Sans',size:9},maxTicksLimit:8}},y:{grid:{color:grid},ticks:{color:tick,font:{family:'DM Sans',size:9},callback:v=>'R$'+(v>=1000?(v/1000).toFixed(0)+'k':v)}}}}});
+    window._txLineChart=new Chart(ctx2,{type:'bar',data:{labels:days.map(d=>{const[,m,day]=d.split('-');return`${day}/${m}`;}),datasets:[{label:'Receitas',data:days.map(d=>dayMap[d].inc),backgroundColor:'rgba(200,245,90,.7)',borderRadius:3,borderSkipped:false},{label:'Despesas',data:days.map(d=>dayMap[d].exp),backgroundColor:'rgba(245,112,90,.6)',borderRadius:3,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:true,animation:false,animations:false,resizeDelay:120,plugins:{legend:{labels:{color:tick,font:{family:'DM Sans',size:10},boxWidth:8,boxHeight:8}}},scales:{x:{grid:{color:grid},ticks:{color:tick,font:{family:'DM Sans',size:9},maxTicksLimit:8}},y:{grid:{color:grid},ticks:{color:tick,font:{family:'DM Sans',size:9},callback:v=>moneyTick()||'R$'+(v>=1000?(v/1000).toFixed(0)+'k':v)}}}}});
   }
 }
 
 function renderCharts(isDark) {
+  const moneyTick=()=>privacyMode?'R$•••':null;
   const tick = isDark ? 'rgba(240,243,255,.4)' : 'rgba(13,16,32,.35)';
   const grid = isDark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.04)';
   const months=[], incomes=[], expenses=[], balances=[];
@@ -51,7 +53,7 @@ function renderCharts(isDark) {
   }
   const scaleOpts = {
     x:{grid:{color:grid},ticks:{color:tick,font:{family:'DM Sans',size:10}}},
-    y:{grid:{color:grid},ticks:{color:tick,font:{family:'DM Sans',size:10},callback:v=>'R$'+(v/1000).toFixed(0)+'k'}}
+    y:{grid:{color:grid},ticks:{color:tick,font:{family:'DM Sans',size:10},callback:v=>moneyTick()||'R$'+(v/1000).toFixed(0)+'k'}}
   };
   const legOpts = { labels:{color:tick,font:{family:'DM Sans',size:10},boxWidth:8,boxHeight:8} };
   if (window._flowChart) window._flowChart.destroy();
