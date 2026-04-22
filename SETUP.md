@@ -1,4 +1,4 @@
-# Finanza v3.9 - Setup com Supabase
+# Finanza v3.9 final - Setup com Supabase
 
 Este projeto usa:
 

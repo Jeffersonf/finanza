@@ -1,5 +1,5 @@
 ﻿'use strict';
-const APP_VERSION='3.9.2';
+const APP_VERSION='3.9-final';
 const DEFAULT_API_URL='https://finanza-api.onrender.com';
 const CK='fz_cfg',LK='fz_local',CCK='fz_cats',VK='fz_view',AVK='fz_avatar',PRIVK='fz_privacy',CAR_KEY='fz_car';
 const RATES_KEY='fz_rates', WIDGET_ORDER_KEY='fz_widget_order', DUE_KEY='fz_due_items';
