@@ -8,7 +8,8 @@ let dueItems=[];
 let cfg={url:'',key:'',mode:'',userName:'',userId:''};
 let S={transactions:[],budgets:[],goals:[],accounts:[]};
 let custCats=[];
-let carState={vehicles:[],events:[]};
+let carState={vehicles:[],events:[],activeVehicleId:''};
+let carFilters={vehicle:'active',period:'month',type:'all',kind:'all',query:'',sort:'date_desc',from:'',to:''};
 let curTxP='1m-p',curFP='7d',curDt=new Date();
 let chartMode='bars',curView='n',catFilter=null;
 let editId=null,accEditId=null,qaTyp='expense',qaVal='',qaSelCat='';
@@ -351,7 +352,9 @@ function normalizeCarState(data={}){
   const fallback=vehicles[0]?.id||uid();
   if(!vehicles.length)vehicles.push({id:fallback,name:'Meu carro',plate:'',model:'',odometer:0});
   const events=asArr(data.events).map(e=>nCarEvent({...e,vehicleId:e.vehicleId||e.vehicle_id||fallback})).filter(e=>e.amount>0||e.liters>0);
-  return {vehicles,events};
+  let activeVehicleId=String(data.activeVehicleId||data.active_vehicle_id||'');
+  if(!vehicles.some(v=>v.id===activeVehicleId))activeVehicleId=vehicles[0]?.id||fallback;
+  return {vehicles,events,activeVehicleId};
 }
 function loadCar(){
   if(carState?.vehicles?.length)return;
@@ -1345,38 +1348,120 @@ function renderGoals(){
   }).join('');
 }
 // CARRO
-function carVehicle(){
+function carVehicles(){loadCar();return carState.vehicles;}
+function carVehicle(id){
   loadCar();
-  return carState.vehicles[0]||nCarVehicle();
+  return carState.vehicles.find(v=>v.id===id)||carState.vehicles.find(v=>v.id===carState.activeVehicleId)||carState.vehicles[0]||nCarVehicle();
 }
-function carEvents(){
-  const v=carVehicle();
-  return [...carState.events].filter(e=>e.vehicleId===v.id).sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt);
+function activeCarVehicle(){return carVehicle(carState.activeVehicleId);}
+function vehicleName(id){return carVehicle(id)?.name||'Veículo';}
+function currentCarVehicleFilter(){
+  loadCar();
+  if(carFilters.vehicle==='active'||!carFilters.vehicle)return carState.activeVehicleId||carState.vehicles[0]?.id||'all';
+  return carFilters.vehicle;
 }
-function carMonthEvents(){
-  const now=new Date();
-  return carEvents().filter(e=>{
-    const d=new Date(e.date+'T12:00:00');
-    return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+function carPeriodRange(){
+  const now=new Date(today()+'T12:00:00');
+  const y=now.getFullYear(),m=now.getMonth();
+  if(carFilters.period==='all')return {};
+  if(carFilters.period==='custom')return {from:carFilters.from,to:carFilters.to};
+  if(carFilters.period==='year')return {from:`${y}-01-01`,to:`${y}-12-31`};
+  if(carFilters.period==='90d')return {from:offD(now,-89),to:today()};
+  if(carFilters.period==='30d')return {from:offD(now,-29),to:today()};
+  return {from:`${y}-${String(m+1).padStart(2,'0')}-01`,to:today()};
+}
+function carKindValue(e){return e.type==='fuel'?`fuel:${keyCsvHeader(e.fuelType)}`:`cat:${e.category}`;}
+function carSortEvents(events){
+  const arr=[...events],sort=carFilters.sort||'date_desc',dir=sort.endsWith('_asc')?1:-1;
+  if(sort.startsWith('odo'))return arr.sort((a,b)=>((a.odometer||0)-(b.odometer||0))*dir||b.date.localeCompare(a.date));
+  if(sort.startsWith('amount'))return arr.sort((a,b)=>((a.amount||0)-(b.amount||0))*dir||b.date.localeCompare(a.date));
+  return arr.sort((a,b)=>a.date.localeCompare(b.date)*dir+(a.date===b.date?(a.createdAt-b.createdAt)*dir:0));
+}
+function carFilteredEvents(){
+  loadCar();
+  const vehicle=currentCarVehicleFilter(),range=carPeriodRange(),q=normalizeTxText(carFilters.query||'');
+  let events=[...carState.events];
+  if(vehicle!=='all')events=events.filter(e=>e.vehicleId===vehicle);
+  if(range.from)events=events.filter(e=>e.date>=range.from);
+  if(range.to)events=events.filter(e=>e.date<=range.to);
+  if(carFilters.type&&carFilters.type!=='all')events=events.filter(e=>e.type===carFilters.type);
+  if(carFilters.kind&&carFilters.kind!=='all')events=events.filter(e=>carKindValue(e)===carFilters.kind);
+  if(q)events=events.filter(e=>normalizeTxText([vehicleName(e.vehicleId),e.fuelType,e.title,carExpenseLabel(e.category),e.note,e.odometer].join(' ')).includes(q));
+  return carSortEvents(events);
+}
+function carStats(events=carFilteredEvents()){
+  const byVehicle=new Map();
+  events.forEach(e=>{if(!byVehicle.has(e.vehicleId))byVehicle.set(e.vehicleId,[]);byVehicle.get(e.vehicleId).push(e);});
+  let distance=0,liters=0;
+  byVehicle.forEach(items=>{
+    const fuels=items.filter(e=>e.type==='fuel'&&e.liters>0&&e.odometer>0).sort((a,b)=>a.odometer-b.odometer||a.date.localeCompare(b.date));
+    if(fuels.length>=2){distance+=Math.max(0,fuels[fuels.length-1].odometer-fuels[0].odometer);liters+=fuels.slice(1).reduce((s,e)=>s+e.liters,0);}
   });
-}
-function carStats(){
-  const events=carEvents();
-  const month=carMonthEvents();
-  const fuels=events.filter(e=>e.type==='fuel'&&e.liters>0).sort((a,b)=>a.odometer-b.odometer||a.date.localeCompare(b.date));
-  const distance=fuels.length>=2?Math.max(0,fuels[fuels.length-1].odometer-fuels[0].odometer):0;
-  const liters=fuels.slice(1).reduce((s,e)=>s+e.liters,0);
-  const kmPerLiter=distance&&liters?distance/liters:0;
   const total=events.reduce((s,e)=>s+e.amount,0);
-  const maxOdo=Math.max(carVehicle().odometer||0,...events.map(e=>e.odometer||0));
-  const monthSpent=month.reduce((s,e)=>s+e.amount,0);
-  const monthFuel=month.filter(e=>e.type==='fuel').reduce((s,e)=>s+e.amount,0);
+  const fuelTotal=events.filter(e=>e.type==='fuel').reduce((s,e)=>s+e.amount,0);
+  const expenseTotal=events.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  const kmPerLiter=distance&&liters?distance/liters:0;
   const costPerKm=distance?total/distance:0;
-  return {events,fuels,distance,liters,kmPerLiter,total,maxOdo,monthSpent,monthFuel,costPerKm};
+  const vehicle=currentCarVehicleFilter();
+  const maxOdo=vehicle==='all'?0:Math.max(carVehicle(vehicle).odometer||0,...events.map(e=>e.odometer||0));
+  return {events,distance,liters,kmPerLiter,total,fuelTotal,expenseTotal,costPerKm,maxOdo,vehicle};
 }
 function popCarAccSel(){
   const el=document.getElementById('carAcc');if(!el)return;
   el.innerHTML=S.accounts.map(a=>`<option value="${a.id}">${esc(a.icon)} ${esc(a.name)}</option>`).join('');
+}
+function popCarVehicleSels(){
+  loadCar();
+  const opts=carState.vehicles.map(v=>`<option value="${v.id}">${esc(v.name)}${v.plate?` - ${esc(v.plate)}`:''}</option>`).join('');
+  const entry=document.getElementById('carEntryVehicle');
+  if(entry){entry.innerHTML=opts;entry.value=carState.activeVehicleId||carState.vehicles[0]?.id||'';}
+  const filter=document.getElementById('carVehicleFilter');
+  if(filter){
+    const selected=currentCarVehicleFilter();
+    filter.innerHTML=`<option value="all">Todos os veículos</option>${opts}`;
+    filter.value=carFilters.vehicle==='all'?'all':selected;
+  }
+}
+function renderCarKindFilter(events=carState.events){
+  const el=document.getElementById('carKindFilter');if(!el)return;
+  const fuel=new Map(),cats=new Map();
+  events.forEach(e=>{
+    if(e.type==='fuel')fuel.set(`fuel:${keyCsvHeader(e.fuelType)}`,e.fuelType||'Combustível');
+    else cats.set(`cat:${e.category}`,carExpenseLabel(e.category));
+  });
+  let html='<option value="all">Combustíveis/categorias</option>';
+  if(fuel.size)html+='<optgroup label="Combustíveis">'+[...fuel].sort((a,b)=>a[1].localeCompare(b[1])).map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join('')+'</optgroup>';
+  if(cats.size)html+='<optgroup label="Despesas">'+[...cats].sort((a,b)=>a[1].localeCompare(b[1])).map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join('')+'</optgroup>';
+  el.innerHTML=html;
+  if([...fuel.keys(),...cats.keys(),'all'].includes(carFilters.kind))el.value=carFilters.kind;
+  else{carFilters.kind='all';el.value='all';}
+}
+function syncCarFilterControls(){
+  popCarVehicleSels();
+  const period=document.getElementById('carPeriodFilter');if(period)period.value=carFilters.period;
+  const type=document.getElementById('carTypeFilter');if(type)type.value=carFilters.type;
+  const sort=document.getElementById('carSortFilter');if(sort)sort.value=carFilters.sort;
+  const q=document.getElementById('carSearchFilter');if(q&&q.value!==carFilters.query)q.value=carFilters.query;
+  const range=document.getElementById('carCustomRange');if(range)range.style.display=carFilters.period==='custom'?'grid':'none';
+  const from=document.getElementById('carFromFilter');if(from&&from.value!==carFilters.from)from.value=carFilters.from;
+  const to=document.getElementById('carToFilter');if(to&&to.value!==carFilters.to)to.value=carFilters.to;
+  renderCarKindFilter(carState.events);
+}
+function setCarVehicleFilter(value){
+  loadCar();
+  carFilters.vehicle=value||'all';
+  if(value&&value!=='all')carState.activeVehicleId=value;
+  saveCar();
+  renderCar();
+}
+function setCarPeriodFilter(value){
+  carFilters.period=value||'month';
+  if(carFilters.period==='custom'&&!carFilters.from&&!carFilters.to){carFilters.from=offD(new Date(today()+'T12:00:00'),-29);carFilters.to=today();}
+  renderCar();
+}
+function setCarFilter(key,value){
+  carFilters[key]=value||'';
+  renderCar();
 }
 function updateCarAmount(){
   const liters=Number(document.getElementById('carLiters')?.value)||0;
@@ -1394,11 +1479,10 @@ function setCarEntryType(type){
   if(expenseFields)expenseFields.style.display=isFuel?'none':'block';
 }
 function openCarEntry(type='fuel'){
-  const v=carVehicle();
+  const v=activeCarVehicle();
   document.getElementById('carEntryId').value='';
-  document.getElementById('carVehicleName').value=v.name||'';
-  document.getElementById('carPlate').value=v.plate||'';
-  document.getElementById('carModel').value=v.model||'';
+  popCarVehicleSels();
+  document.getElementById('carEntryVehicle').value=v.id;
   document.getElementById('carDate').value=today();
   document.getElementById('carOdo').value=v.odometer||'';
   document.getElementById('carFuelType').value='Gasolina';
@@ -1418,7 +1502,7 @@ async function createCarTransaction(event){
   const desc=event.type==='fuel'
     ? `Abastecimento - ${event.fuelType}`
     : (event.title||carExpenseLabel(event.category));
-  const note=[carVehicle().name,event.odometer?`${event.odometer} km`:'',event.note].filter(Boolean).join(' • ');
+  const note=[vehicleName(event.vehicleId),event.odometer?`${event.odometer} km`:'',event.note].filter(Boolean).join(' • ');
   const payload={type:'expense',description:desc,amount:event.amount,category:'Carro',date:event.date,note,account_id:accountId,paid:false,pending:false};
   if(cfg.mode==='api'){
     const saved=await api('POST','/api/transactions',payload);
@@ -1433,10 +1517,10 @@ async function createCarTransaction(event){
 }
 async function saveCarEntry(){
   loadCar();
-  const v=carVehicle();
-  v.name=document.getElementById('carVehicleName').value.trim()||'Meu carro';
-  v.plate=document.getElementById('carPlate').value.trim().toUpperCase();
-  v.model=document.getElementById('carModel').value.trim();
+  const vehicleId=document.getElementById('carEntryVehicle').value||carState.activeVehicleId;
+  const v=carVehicle(vehicleId);
+  if(!v?.id){toast('Cadastre um veículo primeiro','error');return;}
+  carState.activeVehicleId=v.id;
   const isFuel=document.getElementById('carTypeFuel').classList.contains('active');
   const date=document.getElementById('carDate').value||today();
   const odometer=Number(document.getElementById('carOdo').value)||0;
@@ -1471,6 +1555,61 @@ async function saveCarEntry(){
     renderDash();
     toast('Registro do carro salvo e lançado nas transações','success');
   }catch(e){toast('Erro: '+e.message,'error');}
+}
+function openCarVehicleModal(id=''){
+  loadCar();
+  const v=id?carVehicle(id):null;
+  document.getElementById('carVehicleModalTitle').textContent=v?.id?'Editar veículo':'Novo veículo';
+  document.getElementById('carVehicleId').value=v?.id||'';
+  document.getElementById('carVehicleName').value=v?.name||'';
+  document.getElementById('carPlate').value=v?.plate||'';
+  document.getElementById('carModel').value=v?.model||'';
+  document.getElementById('carVehicleOdo').value=v?.odometer||'';
+  const del=document.getElementById('carVehicleDeleteBtn');if(del)del.style.display=v?.id?'':'none';
+  document.getElementById('carVehicleModal').classList.add('open');
+}
+function openSelectedCarVehicleModal(){
+  loadCar();
+  const id=currentCarVehicleFilter()==='all'?carState.activeVehicleId:currentCarVehicleFilter();
+  openCarVehicleModal(id||carState.vehicles[0]?.id||'');
+}
+function saveCarVehicle(){
+  loadCar();
+  const id=document.getElementById('carVehicleId').value;
+  const name=document.getElementById('carVehicleName').value.trim();
+  if(!name){toast('Informe o nome do veículo','error');return;}
+  const data={
+    id:id||uid(),
+    name,
+    plate:document.getElementById('carPlate').value.trim().toUpperCase(),
+    model:document.getElementById('carModel').value.trim(),
+    odometer:Number(document.getElementById('carVehicleOdo').value)||0
+  };
+  const idx=carState.vehicles.findIndex(v=>v.id===id);
+  if(idx>=0)carState.vehicles[idx]={...carState.vehicles[idx],...data};
+  else carState.vehicles.push(data);
+  carState.activeVehicleId=data.id;
+  carFilters.vehicle=data.id;
+  saveCar();
+  closeM('carVehicleModal');
+  renderCar();
+  toast('Veículo salvo','success');
+}
+function deleteCarVehicle(){
+  loadCar();
+  const id=document.getElementById('carVehicleId').value;
+  if(!id)return;
+  if(carState.vehicles.length<=1){toast('Mantenha pelo menos um veículo','error');return;}
+  const count=carState.events.filter(e=>e.vehicleId===id).length;
+  if(count){toast('Esse veículo tem registros. Exclua ou mova os registros antes.','error');return;}
+  if(!confirm('Excluir este veículo?'))return;
+  carState.vehicles=carState.vehicles.filter(v=>v.id!==id);
+  if(carState.activeVehicleId===id)carState.activeVehicleId=carState.vehicles[0]?.id||'';
+  if(carFilters.vehicle===id)carFilters.vehicle=carState.activeVehicleId||'all';
+  saveCar();
+  closeM('carVehicleModal');
+  renderCar();
+  toast('Veículo excluído','info');
 }
 function carExpenseLabel(cat){
   return ({Maintenance:'Manutenção',Insurance:'Seguro',Tax:'Imposto',Parking:'Estacionamento',Wash:'Lavagem',Fine:'Multa',Other:'Outro'})[cat]||cat||'Despesa do carro';
@@ -1609,7 +1748,7 @@ async function importCarCsv(inp){
     const rows=parseCsvRows(text);
     if(rows.length<2)throw new Error('CSV sem linhas suficientes.');
     loadCar();
-    const v=carVehicle();
+    const v=activeCarVehicle();
     const createTransactions=!!document.getElementById('carImportTxChk')?.checked;
     let imported=0,fuels=0,expenses=0,section='',headers=null,vehicleName=false;
     for(let idx=0;idx<rows.length;idx++){
@@ -1668,29 +1807,37 @@ async function deleteCarEvent(id){
 }
 function renderCar(){
   loadCar();
-  const v=carVehicle();
-  const st=carStats();
-  const title=document.getElementById('carTitleView');if(title)title.textContent=v.name||'Meu carro';
-  const sub=document.getElementById('carSubView');if(sub)sub.textContent=[v.model,v.plate,st.maxOdo?`${Math.round(st.maxOdo).toLocaleString('pt-BR')} km`:'' ].filter(Boolean).join(' • ')||'Consumo, abastecimentos e despesas';
+  syncCarFilterControls();
+  const events=carFilteredEvents();
+  const st=carStats(events);
+  const single=st.vehicle!=='all';
+  const v=single?carVehicle(st.vehicle):null;
+  const title=document.getElementById('carTitleView');if(title)title.textContent=single?(v.name||'Meu veículo'):'Todos os veículos';
+  const sub=document.getElementById('carSubView');if(sub)sub.textContent=single?[v.model,v.plate,st.maxOdo?`${Math.round(st.maxOdo).toLocaleString('pt-BR')} km`:'' ].filter(Boolean).join(' • ')||'Consumo, abastecimentos e despesas':`${carState.vehicles.length} veículo${carState.vehicles.length!==1?'s':''} cadastrados`;
   const stats=document.getElementById('carStats');
   if(stats)stats.innerHTML=`
-    <div class="insight-card"><div class="insight-k">Gasto no mês</div><div class="insight-v" style="color:var(--dan)">${fmt(st.monthSpent)}</div><div class="cc">${fmt(st.monthFuel)} em combustível</div></div>
-    <div class="insight-card"><div class="insight-k">Consumo médio</div><div class="insight-v" style="color:var(--ac)">${st.kmPerLiter?st.kmPerLiter.toFixed(1).replace('.',','):'—'} km/l</div><div class="cc">${st.distance?Math.round(st.distance)+' km medidos':'precisa de 2 abastecimentos'}</div></div>
+    <div class="insight-card"><div class="insight-k">Gastos totais</div><div class="insight-v" style="color:var(--dan)">${fmt(st.total)}</div><div class="cc">${st.events.length} registro${st.events.length!==1?'s':''} no filtro</div></div>
+    <div class="insight-card"><div class="insight-k">Km rodados</div><div class="insight-v" style="color:var(--ac2)">${st.distance?Math.round(st.distance).toLocaleString('pt-BR'):'—'}</div><div class="cc">${st.distance?'calculado por veículo':'precisa de 2 abastecimentos'}</div></div>
+    <div class="insight-card"><div class="insight-k">Consumo médio</div><div class="insight-v" style="color:var(--ac)">${st.kmPerLiter?st.kmPerLiter.toFixed(1).replace('.',','):'—'} km/l</div><div class="cc">${st.liters?st.liters.toLocaleString('pt-BR',{maximumFractionDigits:1})+' L medidos':'sem litros suficientes'}</div></div>
     <div class="insight-card"><div class="insight-k">Custo por km</div><div class="insight-v" style="color:var(--warn)">${st.costPerKm?fmt(st.costPerKm):'—'}</div><div class="cc">combustível + despesas</div></div>
-    <div class="insight-card"><div class="insight-k">Hodômetro</div><div class="insight-v">${st.maxOdo?Math.round(st.maxOdo).toLocaleString('pt-BR'):'—'}</div><div class="cc">${st.events.length} registro${st.events.length!==1?'s':''}</div></div>`;
+    <div class="insight-card"><div class="insight-k">Combustível</div><div class="insight-v" style="color:var(--warn)">${fmt(st.fuelTotal)}</div><div class="cc">abastecimentos filtrados</div></div>
+    <div class="insight-card"><div class="insight-k">Despesas</div><div class="insight-v" style="color:var(--dan)">${fmt(st.expenseTotal)}</div><div class="cc">manutenção, impostos e outros</div></div>
+    <div class="insight-card"><div class="insight-k">Hodômetro</div><div class="insight-v">${single&&st.maxOdo?Math.round(st.maxOdo).toLocaleString('pt-BR'):'—'}</div><div class="cc">${single?'veículo selecionado':'selecione um veículo'}</div></div>
+    <div class="insight-card"><div class="insight-k">Veículos</div><div class="insight-v">${single?'1':new Set(st.events.map(e=>e.vehicleId)).size}</div><div class="cc">${single?esc(v.name):'com registros no filtro'}</div></div>`;
   const list=document.getElementById('carList');
   if(list)list.innerHTML=st.events.length?st.events.map(e=>{
     const isFuel=e.type==='fuel';
     const icon=isFuel?'⛽':'🔧';
     const title=isFuel?`${e.fuelType} • ${e.liters.toLocaleString('pt-BR')} L`:(e.title||carExpenseLabel(e.category));
-    const meta=[fmtD(e.date),e.odometer?`${Math.round(e.odometer).toLocaleString('pt-BR')} km`:'',isFuel&&e.pricePerLiter?`${fmt(e.pricePerLiter)}/L`:'',e.note].filter(Boolean).join(' • ');
+    const meta=[!single?vehicleName(e.vehicleId):'',fmtD(e.date),e.odometer?`${Math.round(e.odometer).toLocaleString('pt-BR')} km`:'',isFuel&&e.pricePerLiter?`${fmt(e.pricePerLiter)}/L`:'',e.note].filter(Boolean).join(' • ');
     return `<div class="car-row">
       <div class="car-ico">${icon}</div>
       <div class="car-info"><div class="car-name">${esc(title)}</div><div class="car-meta">${esc(meta)}</div></div>
       <div class="car-amt">${fmt(e.amount)}</div>
+      ${single?`<button class="ib" onclick="openCarVehicleModal('${e.vehicleId}')" title="Editar veículo">🚗</button>`:''}
       <button class="ib del" onclick="deleteCarEvent('${e.id}')">🗑️</button>
     </div>`;
-  }).join(''):`<div class="empty"><span class="ei">🚗</span><p>Nenhum registro ainda. Comece com um abastecimento.</p></div>`;
+  }).join(''):`<div class="empty"><span class="ei">🚗</span><p>Nenhum registro neste filtro.</p></div>`;
 }
 // SETTINGS
 function renderSet(){

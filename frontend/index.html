@@ -370,11 +370,43 @@
       <div class="ps" id="carSubView">Consumo, abastecimentos e despesas</div>
     </div>
     <div class="car-actions">
+      <button class="btn btn-g btn-sm" onclick="openCarVehicleModal()">+ Veículo</button>
+      <button class="btn btn-g btn-sm" onclick="openSelectedCarVehicleModal()">Editar veículo</button>
       <label class="btn btn-g btn-sm" for="carCsvFile">Importar CSV</label>
       <input type="file" id="carCsvFile" accept=".csv,text/csv,.txt" style="display:none" onchange="importCarCsv(this)">
       <button class="btn btn-g btn-sm" onclick="openCarEntry('expense')">+ Despesa</button>
       <button class="btn btn-p" onclick="openCarEntry('fuel')">+ Abastecimento</button>
     </div>
+  </div>
+  <div class="car-filterbar">
+    <select class="fi" id="carVehicleFilter" onchange="setCarVehicleFilter(this.value)"></select>
+    <select class="fi" id="carPeriodFilter" onchange="setCarPeriodFilter(this.value)">
+      <option value="month">Mês atual</option>
+      <option value="30d">Últimos 30 dias</option>
+      <option value="90d">Últimos 90 dias</option>
+      <option value="year">Ano atual</option>
+      <option value="all">Tudo</option>
+      <option value="custom">Personalizado</option>
+    </select>
+    <select class="fi" id="carTypeFilter" onchange="setCarFilter('type',this.value)">
+      <option value="all">Todos os tipos</option>
+      <option value="fuel">Abastecimento</option>
+      <option value="expense">Despesa</option>
+    </select>
+    <select class="fi" id="carKindFilter" onchange="setCarFilter('kind',this.value)"></select>
+    <select class="fi" id="carSortFilter" onchange="setCarFilter('sort',this.value)">
+      <option value="date_desc">Mais recentes</option>
+      <option value="date_asc">Mais antigos</option>
+      <option value="odo_desc">Maior km</option>
+      <option value="odo_asc">Menor km</option>
+      <option value="amount_desc">Maior valor</option>
+      <option value="amount_asc">Menor valor</option>
+    </select>
+    <input type="search" class="fi" id="carSearchFilter" placeholder="Buscar no histórico..." oninput="setCarFilter('query',this.value)">
+  </div>
+  <div class="car-custom-range" id="carCustomRange">
+    <input type="date" class="fi" id="carFromFilter" onchange="setCarFilter('from',this.value)">
+    <input type="date" class="fi" id="carToFilter" onchange="setCarFilter('to',this.value)">
   </div>
   <div class="insight-grid" id="carStats"></div>
   <div class="box car-panel">
@@ -394,8 +426,7 @@
   <div class="mt">Registro do carro</div><div class="ms">Controle combustível, consumo e gastos do veículo</div>
   <input type="hidden" id="carEntryId">
   <div class="typetog"><button class="ttb active expense" id="carTypeFuel" onclick="setCarEntryType('fuel')">⛽ Abastecimento</button><button class="ttb income" id="carTypeExpense" onclick="setCarEntryType('expense')">🔧 Despesa</button></div>
-  <div class="frow"><div class="fg"><label class="fl">Veículo</label><input type="text" class="fi" id="carVehicleName" placeholder="Ex: HB20, Civic..."></div><div class="fg"><label class="fl">Placa</label><input type="text" class="fi" id="carPlate" placeholder="ABC1D23"></div></div>
-  <div class="frow"><div class="fg"><label class="fl">Modelo / ano</label><input type="text" class="fi" id="carModel" placeholder="Ex: 1.0 2020"></div><div class="fg"><label class="fl">Conta</label><select class="fi" id="carAcc"></select></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Veículo</label><select class="fi" id="carEntryVehicle"></select></div><div class="fg"><label class="fl">Conta</label><select class="fi" id="carAcc"></select></div></div>
   <div class="frow"><div class="fg"><label class="fl">Data</label><input type="date" class="fi" id="carDate"></div><div class="fg"><label class="fl">Hodômetro (km)</label><input type="number" class="fi" id="carOdo" min="0" step="1" placeholder="0"></div></div>
   <div id="carFuelFields">
     <div class="frow"><div class="fg"><label class="fl">Combustível</label><select class="fi" id="carFuelType"><option>Gasolina</option><option>Etanol</option><option>Diesel</option><option>GNV</option><option>Flex</option></select></div><div class="fg"><label class="fl">Litros</label><input type="number" class="fi" id="carLiters" min="0" step="0.001" oninput="updateCarAmount()"></div></div>
@@ -407,6 +438,15 @@
   </div>
   <div class="fg"><label class="fl">Observação</label><input type="text" class="fi" id="carNote" placeholder="Posto, oficina, detalhes..."></div>
   <div class="ma"><button class="btn btn-p" style="flex:1" onclick="saveCarEntry()">Salvar</button><button class="btn btn-g" onclick="closeM('carModal')">Cancelar</button></div>
+</div></div>
+
+<div class="ov" id="carVehicleModal"><div class="modal">
+  <button class="mc" onclick="closeM('carVehicleModal')">✕</button>
+  <div class="mt" id="carVehicleModalTitle">Novo veículo</div><div class="ms">Cadastre carro, moto ou qualquer veículo que você quer acompanhar</div>
+  <input type="hidden" id="carVehicleId">
+  <div class="frow"><div class="fg"><label class="fl">Nome</label><input type="text" class="fi" id="carVehicleName" placeholder="Ex: Astra, Moto R3"></div><div class="fg"><label class="fl">Placa</label><input type="text" class="fi" id="carPlate" placeholder="ABC1D23"></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Modelo / ano</label><input type="text" class="fi" id="carModel" placeholder="Ex: 2.0 2011"></div><div class="fg"><label class="fl">Hodômetro atual</label><input type="number" class="fi" id="carVehicleOdo" min="0" step="1" placeholder="0"></div></div>
+  <div class="ma"><button class="btn btn-d" id="carVehicleDeleteBtn" onclick="deleteCarVehicle()">Excluir</button><button class="btn btn-p" style="flex:1" onclick="saveCarVehicle()">Salvar veículo</button><button class="btn btn-g" onclick="closeM('carVehicleModal')">Cancelar</button></div>
 </div></div>
 
 <div class="ov" id="newListModal">

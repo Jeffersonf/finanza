@@ -1556,6 +1556,9 @@ select.sel {
 /* ─── CARRO ─────────────────────────────────────── */
 .car-hero{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:12px;flex-wrap:wrap;}
 .car-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.car-filterbar{display:grid;grid-template-columns:minmax(180px,1.2fr) repeat(4,minmax(140px,1fr)) minmax(180px,1.2fr);gap:8px;margin-bottom:12px;}
+.car-filterbar .fi,.car-custom-range .fi{height:40px;}
+.car-custom-range{display:none;grid-template-columns:repeat(2,minmax(160px,1fr));gap:8px;margin:-4px 0 12px auto;max-width:420px;}
 .car-panel{padding-bottom:14px;}
 .car-row{display:flex;align-items:center;gap:12px;padding:13px 10px;border-bottom:1px solid var(--bd);}
 .car-row:last-child{border-bottom:none;}
@@ -1570,7 +1573,15 @@ select.sel {
 .car-import-status.success{color:var(--ac);}
 .car-import-status.error{color:var(--dan);}
 
+@media(max-width:1100px){
+  .car-filterbar{grid-template-columns:repeat(3,minmax(0,1fr));}
+  .car-filterbar .fi:last-child{grid-column:span 3;}
+}
+
 @media(max-width:640px){
+  .car-filterbar{grid-template-columns:1fr 1fr;}
+  .car-filterbar .fi:last-child{grid-column:1/-1;}
+  .car-custom-range{grid-template-columns:1fr;max-width:none;margin-top:-2px;}
   .car-row{align-items:flex-start;padding:12px 4px;}
   .car-amt{font-size:13px;}
   .car-actions{width:100%;}
