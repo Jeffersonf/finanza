@@ -1578,6 +1578,7 @@ function saveCarVehicle(){
   const id=document.getElementById('carVehicleId').value;
   const name=document.getElementById('carVehicleName').value.trim();
   if(!name){toast('Informe o nome do veículo','error');return;}
+  const isNew=!id;
   const data={
     id:id||uid(),
     name,
@@ -1589,7 +1590,9 @@ function saveCarVehicle(){
   if(idx>=0)carState.vehicles[idx]={...carState.vehicles[idx],...data};
   else carState.vehicles.push(data);
   carState.activeVehicleId=data.id;
-  carFilters.vehicle=data.id;
+  if(carFilters.vehicle!=='all'){
+    carFilters.vehicle=isNew&&carState.events.length?'all':data.id;
+  }
   saveCar();
   closeM('carVehicleModal');
   renderCar();

@@ -43,6 +43,14 @@ function cleanText(v, fallback = '') {
   return typeof v === 'string' ? v : fallback;
 }
 
+function toJsonb(value, fallback) {
+  try {
+    return JSON.stringify(value ?? fallback);
+  } catch {
+    return JSON.stringify(fallback);
+  }
+}
+
 function normalizeCategoryName(v) {
   return ({
     Salario: 'Salário',
@@ -169,7 +177,7 @@ async function replaceAppState(client, userId, state = {}) {
 
   await client.query(
     `INSERT INTO user_settings (user_id,theme,rates,widget_prefs,widget_order,tx_view,active_list)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)
+     VALUES ($1,$2,$3::jsonb,$4::jsonb,$5::jsonb,$6,$7)
      ON CONFLICT (user_id) DO UPDATE SET
        theme=EXCLUDED.theme,
        rates=EXCLUDED.rates,
@@ -178,9 +186,9 @@ async function replaceAppState(client, userId, state = {}) {
        tx_view=EXCLUDED.tx_view,
        active_list=EXCLUDED.active_list,
        updated_at=NOW()`,
-    [userId, cleanText(settings.theme, 'dark'), rates,
-     settings.widgetPrefs || settings.widget_prefs || {},
-     settings.widgetOrder || settings.widget_order || [],
+    [userId, cleanText(settings.theme, 'dark'), toJsonb(rates, {}),
+     toJsonb(settings.widgetPrefs || settings.widget_prefs || {}, {}),
+     toJsonb(settings.widgetOrder || settings.widget_order || [], []),
      cleanText(settings.txView || settings.tx_view, 'n'),
      settings.activeList || settings.active_list || null]
   );
