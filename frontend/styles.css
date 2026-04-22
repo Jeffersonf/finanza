@@ -1564,12 +1564,16 @@ select.sel {
 .car-name{font-size:14px;font-weight:700;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .car-meta{font-size:11px;color:var(--mt);margin-top:3px;line-height:1.4;}
 .car-amt{font-family:var(--font-money);font-size:14px;font-weight:800;color:var(--dan);white-space:nowrap;}
+.car-import-note{margin-top:10px;display:flex;justify-content:flex-end;}
+.car-sync-toggle{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:10px 12px;margin:0;}
 
 @media(max-width:640px){
   .car-row{align-items:flex-start;padding:12px 4px;}
   .car-amt{font-size:13px;}
   .car-actions{width:100%;}
   .car-actions .btn{flex:1;}
+  .car-import-note{justify-content:stretch;}
+  .car-sync-toggle{width:100%;}
 }
 
 /* ─── NOTIFICACAO PERSISTENTE (Android) ─────────── */

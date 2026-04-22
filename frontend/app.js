@@ -1591,13 +1591,14 @@ async function importCarCsv(inp){
     loadCar();
     const v=carVehicle();
     const vehicleName=headers.some(h=>h.includes('veiculo')||h.includes('vehicle'));
+    const createTransactions=!!document.getElementById('carImportTxChk')?.checked;
     let imported=0,fuels=0,expenses=0;
     for(const row of rows.slice(1)){
       const event=mapDrivvoCsvEvent(row,headers,v.id);
       if(!event)continue;
       const csvVehicle=vehicleName?pickCsv(row,headers,['veiculo','vehicle','carro','car']):'';
       if(csvVehicle&&!v.name)v.name=csvVehicle;
-      event.txId=await createCarTransaction(event);
+      if(createTransactions)event.txId=await createCarTransaction(event);
       carState.events.unshift(event);
       v.odometer=Math.max(v.odometer||0,event.odometer||0);
       imported++;
@@ -1607,7 +1608,7 @@ async function importCarCsv(inp){
     saveCar();
     renderCar();
     refreshAll();
-    toast(`Importado: ${imported} registros (${fuels} abastecimentos, ${expenses} despesas)`,'success');
+    toast(`Importado: ${imported} registros (${fuels} abastecimentos, ${expenses} despesas)${createTransactions?' + transações':' sem transações'}`,'success');
   }catch(e){
     toast('Erro ao importar CSV: '+e.message,'error');
   }finally{
