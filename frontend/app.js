@@ -3,6 +3,7 @@ const APP_VERSION='3.9-final';
 const DEFAULT_API_URL='https://finanza-api.onrender.com';
 const CK='fz_cfg',LK='fz_local',CCK='fz_cats',VK='fz_view',AVK='fz_avatar',PRIVK='fz_privacy',CAR_KEY='fz_car';
 const RATES_KEY='fz_rates', WIDGET_ORDER_KEY='fz_widget_order', DUE_KEY='fz_due_items';
+const SAVE_STATE_KEY='fz_save_state', SYNC_HISTORY_KEY='fz_sync_history';
 let monthlyIncomeCents=0;
 let dueItems=[];
 let cfg={url:'',key:'',mode:'',userName:'',userId:''};
@@ -14,6 +15,9 @@ let curTxP='1m-p',curFP='7d',curDt=new Date();
 let chartMode='bars',curView='n',catFilter=null,carChartMode='bars';
 let editId=null,accEditId=null,qaTyp='expense',qaVal='',qaSelCat='';
 let privacyMode=false;
+let syncHistory=[];
+let undoState=null;
+let importPreviewState=null;
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2);
 const rawFmt=n=>'R$ '+Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmt=n=>privacyMode?'R$ •••':rawFmt(n);
@@ -119,7 +123,7 @@ function togglePrivacy(){
 function privacyFromSet(v){applyPrivacy(v);refreshAll();}
 function initPrivacy(){applyPrivacy(localStorage.getItem(PRIVK)==='1');}
 function loadCC(){try{custCats=JSON.parse(localStorage.getItem(CCK)||'[]');}catch{custCats=[];}}
-function saveCC(){localStorage.setItem(CCK,JSON.stringify(custCats));if(cfg.mode==='api')saveRemoteState().catch(()=>{});}
+function saveCC(){localStorage.setItem(CCK,JSON.stringify(custCats));noteLocalSave('Categorias salvas localmente');if(cfg.mode==='api')saveRemoteState().catch(()=>{});}
 function addCustCat(){
   const ico=document.getElementById('nCatIco').value.trim()||'\u{1F3F7}\uFE0F';
   const name=normCatName(document.getElementById('nCatNm').value.trim());
@@ -243,6 +247,180 @@ function applyBackupData(data){
   localStorage.setItem(CAR_KEY,JSON.stringify(carState));
   localStorage.setItem(DUE_KEY,JSON.stringify(dueItems));
 }
+function fmtDateTime(ts){
+  if(!ts)return'—';
+  return new Date(ts).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+}
+function loadSaveState(){
+  try{return JSON.parse(localStorage.getItem(SAVE_STATE_KEY)||'{}');}
+  catch{return{};}
+}
+function setSaveState(status,message,extra={}){
+  const payload={status,message,at:Date.now(),mode:cfg.mode||'local',...extra};
+  localStorage.setItem(SAVE_STATE_KEY,JSON.stringify(payload));
+  updateTrustPanel();
+}
+function noteLocalSave(message='Dados salvos neste dispositivo'){
+  setSaveState('local',message);
+}
+function loadSyncHistory(){
+  try{syncHistory=JSON.parse(localStorage.getItem(SYNC_HISTORY_KEY)||'[]');}
+  catch{syncHistory=[];}
+}
+function saveSyncHistory(){localStorage.setItem(SYNC_HISTORY_KEY,JSON.stringify(syncHistory.slice(0,20)));}
+function logSyncEvent(kind,message,meta=''){
+  syncHistory.unshift({id:uid(),kind,message,meta,at:Date.now()});
+  syncHistory=syncHistory.slice(0,20);
+  saveSyncHistory();
+  updateTrustPanel();
+}
+function updateTrustPanel(){
+  const state=loadSaveState();
+  const pill=document.getElementById('dataStatePill');
+  const txt=document.getElementById('dataStateTxt');
+  const meta=document.getElementById('dataStateMeta');
+  const queue=document.getElementById('syncQueueTxt');
+  const hist=document.getElementById('syncHistoryList');
+  const map={
+    local:{label:'Local',cls:'local'},
+    syncing:{label:'Sincronizando',cls:'syncing'},
+    synced:{label:'Sincronizado',cls:'synced'},
+    error:{label:'Erro',cls:'error'}
+  };
+  const cur=map[state.status]||{label:'Sem status',cls:'local'};
+  if(pill){pill.textContent=cur.label;pill.className=`state-pill ${cur.cls}`;}
+  if(txt)txt.textContent=state.message||'Sem atividade recente';
+  if(meta)meta.textContent=`${cfg.mode==='api'?'Modo online':'Modo local'} • ${fmtDateTime(state.at)}`;
+  if(queue)queue.textContent=syncQ.length?`${syncQ.length} operação(ões) aguardando envio`:'Sem pendências na fila';
+  if(hist)hist.innerHTML=syncHistory.length?syncHistory.slice(0,6).map(item=>`<div class="sync-item ${item.kind}"><div><div class="sync-title">${esc(item.message)}</div><div class="sync-meta">${esc(item.meta||fmtDateTime(item.at))}</div></div><span class="sync-time">${fmtDateTime(item.at)}</span></div>`).join(''):'<div class="sync-empty">Sem eventos recentes de sincronização.</div>';
+}
+function txFingerprint(t={}){
+  return [
+    String(t.type||''),
+    String(t.date||'').substring(0,10),
+    roundCarImportNum(t.amount,2),
+    normalizeTxText(t.description||t.desc||''),
+    normalizeTxText(t.category||''),
+    normalizeTxText(t.note||''),
+    String(t.accountId||t.account_id||'')
+  ].join('|');
+}
+function goalFingerprint(g={}){
+  return [normalizeTxText(g.name||''),String(g.deadline||'').substring(0,10),roundCarImportNum(g.target,2)].join('|');
+}
+function dedupeBy(items,fingerprint,preferLatest=true){
+  const map=new Map();
+  items.forEach(item=>{
+    const key=fingerprint(item);
+    if(!map.has(key)||preferLatest)map.set(key,item);
+  });
+  return [...map.values()];
+}
+function buildMergedBackupData(imported){
+  const current=buildBackupData();
+  const mergedTx=dedupeBy([...current.transactions,...imported.transactions],txFingerprint);
+  const mergedBudgets=dedupeBy([...current.budgets,...imported.budgets],b=>normalizeTxText(b.category||'')); 
+  const mergedGoals=dedupeBy([...current.goals,...imported.goals],goalFingerprint);
+  const mergedAccounts=dedupeBy([...current.accounts,...imported.accounts],a=>String(a.id||''));
+  const mergedCategories=dedupeBy([...current.categories,...imported.categories],c=>normalizeTxText(c.name||''));
+  const curLists=current.shopping?.lists||[],impLists=imported.shopping?.lists||[];
+  const curItems=current.shopping?.items||[],impItems=imported.shopping?.items||[];
+  const mergedLists=dedupeBy([...curLists,...impLists],l=>String(l.id||''));
+  const mergedItems=dedupeBy([...curItems,...impItems],i=>String(i.id||''));
+  const curCar=normalizeCarState(current.car||{}),impCar=normalizeCarState(imported.car||{});
+  const mergedVehicles=dedupeBy([...curCar.vehicles,...impCar.vehicles],v=>String(v.id||''));
+  const mergedEvents=dedupeBy([...curCar.events,...impCar.events],carEventFingerprint);
+  const mergedDue=dedupeBy([...(current.dueItems||[]),...(imported.dueItems||[])],d=>String(d.id||''));
+  return {
+    ...current,
+    version:'4.0-preview',
+    transactions:mergedTx,
+    budgets:mergedBudgets,
+    goals:mergedGoals,
+    accounts:mergedAccounts,
+    categories:mergedCategories,
+    shopping:{lists:mergedLists,items:mergedItems},
+    car:{vehicles:mergedVehicles,events:mergedEvents,activeVehicleId:impCar.activeVehicleId||curCar.activeVehicleId||mergedVehicles[0]?.id||''},
+    dueItems:mergedDue,
+    settings:{...current.settings,rates:{...(current.settings?.rates||{}),dueItems:mergedDue,car:{vehicles:mergedVehicles,events:mergedEvents,activeVehicleId:impCar.activeVehicleId||curCar.activeVehicleId||mergedVehicles[0]?.id||''}}}
+  };
+}
+function summarizeBackupImport(data){
+  const current=buildBackupData();
+  const curTx=new Set((current.transactions||[]).map(txFingerprint));
+  const impTx=(data.transactions||[]).map(txFingerprint);
+  const dupTx=impTx.filter(k=>curTx.has(k)).length;
+  const curCar=new Set((normalizeCarState(current.car||{}).events||[]).map(carEventFingerprint));
+  const impCar=(normalizeCarState(data.car||{}).events||[]).map(carEventFingerprint);
+  const dupCar=impCar.filter(k=>curCar.has(k)).length;
+  return {
+    tx:data.transactions.length,
+    txDup:dupTx,
+    accounts:data.accounts.length,
+    budgets:data.budgets.length,
+    goals:data.goals.length,
+    categories:data.categories.length,
+    carEvents:normalizeCarState(data.car||{}).events.length,
+    carDup:dupCar,
+    due:(data.dueItems||[]).length
+  };
+}
+function openImportPreview(data,fileName){
+  importPreviewState={data,fileName,summary:summarizeBackupImport(data)};
+  const s=importPreviewState.summary;
+  document.getElementById('importPreviewName').textContent=fileName||'backup.json';
+  document.getElementById('importPreviewVersion').textContent=data.version||'sem versão';
+  document.getElementById('importPreviewReplace').innerHTML=`<strong>${s.tx}</strong> transações • <strong>${s.accounts}</strong> contas • <strong>${s.carEvents}</strong> registros do carro`;
+  document.getElementById('importPreviewMerge').innerHTML=`Ignora aprox. <strong>${s.txDup}</strong> transações e <strong>${s.carDup}</strong> registros do carro já presentes`;
+  document.getElementById('importPreviewNotes').innerHTML=`<div class="import-note-row">Orçamentos: <strong>${s.budgets}</strong></div><div class="import-note-row">Metas: <strong>${s.goals}</strong></div><div class="import-note-row">Categorias: <strong>${s.categories}</strong></div><div class="import-note-row">Vencimentos: <strong>${s.due}</strong></div>`;
+  document.getElementById('importPreviewModal').classList.add('open');
+}
+async function confirmImportBackup(mode='replace'){
+  if(!importPreviewState)return;
+  const payload=mode==='merge'?buildMergedBackupData(importPreviewState.data):importPreviewState.data;
+  try{
+    if(cfg.mode==='api'){
+      const result=await api('PUT','/api/import',payload);
+      await loadAll();
+      logSyncEvent('success',mode==='merge'?'Backup mesclado no online':'Backup restaurado no online',`${result.imported?.transactions||payload.transactions.length} transações processadas`);
+      setSaveState('synced',mode==='merge'?'Backup mesclado e sincronizado':'Backup restaurado e sincronizado');
+    }else{
+      applyBackupData(payload);
+      noteLocalSave(mode==='merge'?'Backup mesclado localmente':'Backup restaurado localmente');
+    }
+    refreshAll();
+    closeM('importPreviewModal');
+    importPreviewState=null;
+    toast(mode==='merge'?'Backup mesclado sem duplicar':'Backup importado com substituição','success');
+  }catch(err){
+    setSaveState('error','Falha ao importar backup');
+    logSyncEvent('error','Erro ao importar backup',err.message);
+    toast('Erro ao importar: '+err.message,'error');
+  }
+}
+function queueUndo(label,restore){
+  if(undoState?.timer)clearTimeout(undoState.timer);
+  undoState={label,restore,timer:setTimeout(()=>dismissUndo(),9000)};
+  const bar=document.getElementById('undoBar');
+  const lbl=document.getElementById('undoLabel');
+  if(lbl)lbl.textContent=label;
+  if(bar)bar.classList.add('show');
+}
+function dismissUndo(){
+  if(undoState?.timer)clearTimeout(undoState.timer);
+  undoState=null;
+  document.getElementById('undoBar')?.classList.remove('show');
+}
+async function undoLastAction(){
+  if(!undoState)return;
+  const restore=undoState.restore;
+  dismissUndo();
+  try{
+    await restore();
+    refreshAll();
+    toast('Ação desfeita','success');
+  }catch(err){toast('Não foi possível desfazer: '+err.message,'error');}
+}
 function importLocal(inp){
   const f=inp.files[0];if(!f)return;
   const r=new FileReader();
@@ -267,17 +445,7 @@ function importBackupFile(inp){
   r.onload=async e=>{
     try{
       const data=normalizeBackupData(JSON.parse(e.target.result));
-      const msg=`Importar ${data.transactions.length} transações, ${data.accounts.length} contas, ${data.budgets.length} orçamentos e ${data.goals.length} metas? Isso substitui os dados atuais desta conta.`;
-      if(!confirm(msg)){inp.value='';return;}
-      if(cfg.mode==='api'){
-        const result=await api('PUT','/api/import',data);
-        await loadAll();
-        toast(`Importado: ${result.imported?.transactions||S.transactions.length} transações, ${S.accounts.length} contas, ${S.budgets.length} orçamentos, ${S.goals.length} metas`,'success');
-      }else{
-        applyBackupData(data);
-        toast('Backup importado localmente OK','success');
-      }
-      refreshAll();
+      openImportPreview(data,f.name);
     }catch(err){toast('Erro ao importar: '+err.message,'error');}
     finally{inp.value='';}
   };
@@ -362,6 +530,7 @@ function loadCar(){
 }
 function saveCar(){
   localStorage.setItem(CAR_KEY,JSON.stringify(carState));
+  noteLocalSave('Carro atualizado localmente');
   if(cfg.mode==='api')saveRemoteState().catch(e=>toast('Erro ao salvar carro: '+e.message,'error'));
 }
 function getAppSettings(){
@@ -393,7 +562,19 @@ async function saveRemoteState(){
   if(cfg.mode!=='api')return;
   const shopping=sl?.lists?.length?sl:(()=>{try{return JSON.parse(localStorage.getItem(SL_KEY)||'{}');}catch{return{lists:[],items:[]};}})();
   const car=carState?.vehicles?.length?carState:(()=>{try{return normalizeCarState(JSON.parse(localStorage.getItem(CAR_KEY)||'{}'));}catch{return normalizeCarState();}})();
-  await api('PUT','/api/state',{accounts:S.accounts,categories:custCats,shopping,car,settings:getAppSettings()});
+  setSaveState('syncing','Sincronizando alterações com a nuvem');
+  showConnBar('syncing','Sincronizando dados...',0);
+  try{
+    await api('PUT','/api/state',{accounts:S.accounts,categories:custCats,shopping,car,settings:getAppSettings()});
+    setSaveState('synced','Tudo sincronizado com a conta online');
+    logSyncEvent('success','Sincronização concluída',`${S.transactions.length} transações • ${car.events?.length||0} registros do carro`);
+    showConnBar('online','Dados sincronizados',2200);
+  }catch(err){
+    setSaveState('error','Falha ao sincronizar com o servidor',{error:err.message});
+    logSyncEvent('error','Falha na sincronização',err.message);
+    showConnBar('error','Falha ao sincronizar',3200);
+    throw err;
+  }
 }
 function persistLocalOrRemote(){
   if(cfg.mode==='api')saveRemoteState().catch(e=>toast('Erro ao salvar estado: '+e.message,'error'));
@@ -468,6 +649,7 @@ function loadDueItems(){
 function saveDueItems(){
   dueItems=dueItems.map(nDue).filter(Boolean);
   localStorage.setItem(DUE_KEY,JSON.stringify(dueItems));
+  noteLocalSave('Vencimentos salvos localmente');
   if(cfg.mode==='api')saveRemoteState().catch(e=>toast('Erro ao salvar vencimentos: '+e.message,'error'));
 }
 function parseMoneyToCents(v){
@@ -869,7 +1051,19 @@ async function saveTx(){
 }
 async function delTx(id){
   if(!confirm('Remover?'))return;
-  try{if(cfg.mode==='api')await api('DELETE',`/api/transactions/${id}`);S.transactions=S.transactions.filter(t=>t.id!==id);if(cfg.mode==='local')saveLocal();toast('Removida','error');refreshAll();}
+  const tx=S.transactions.find(t=>t.id===id);if(!tx)return;
+  try{
+    if(cfg.mode==='api')await api('DELETE',`/api/transactions/${id}`);
+    S.transactions=S.transactions.filter(t=>t.id!==id);
+    if(cfg.mode==='local')saveLocal();
+    queueUndo(`Transação removida: ${tx.desc}`,async()=>{
+      if(cfg.mode==='api'){
+        const restored=await api('POST','/api/transactions',{type:tx.type,description:tx.desc,amount:tx.amount,category:tx.category,date:tx.date,note:tx.note||'',account_id:tx.accountId,paid:tx.paid,pending:tx.pending});
+        S.transactions.unshift(nTx({...restored,accountId:tx.accountId}));
+      }else{S.transactions.unshift(tx);saveLocal();}
+    });
+    toast('Removida','error');refreshAll();
+  }
   catch(e){toast('Erro: '+e.message,'error');}
 }
 async function delGrp(gid,field){
@@ -878,7 +1072,16 @@ async function delGrp(gid,field){
     const toD=S.transactions.filter(t=>t[field]===gid);
     if(cfg.mode==='api')await Promise.all(toD.map(t=>api('DELETE',`/api/transactions/${t.id}`)));
     S.transactions=S.transactions.filter(t=>t[field]!==gid);
-    if(cfg.mode==='local')saveLocal();toast(`${toD.length} removidos`,'error');refreshAll();
+    if(cfg.mode==='local')saveLocal();
+    queueUndo(`${toD.length} lançamentos removidos`,async()=>{
+      if(cfg.mode==='api'){
+        for(const tx of toD){
+          const restored=await api('POST','/api/transactions',{type:tx.type,description:tx.desc,amount:tx.amount,category:tx.category,date:tx.date,note:tx.note||'',account_id:tx.accountId,paid:tx.paid,pending:tx.pending});
+          S.transactions.unshift(nTx({...restored,accountId:tx.accountId,installmentGroup:tx.installmentGroup,installmentNum:tx.installmentNum,installmentTotal:tx.installmentTotal,recurGroup:tx.recurGroup}));
+        }
+      }else{S.transactions.unshift(...toD);saveLocal();}
+    });
+    toast(`${toD.length} removidos`,'error');refreshAll();
   }catch(e){toast('Erro: '+e.message,'error');}
 }
 async function markPaid(id){
@@ -972,6 +1175,7 @@ function exportJson(){
   a.click();
   document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  logSyncEvent('success','Backup JSON exportado',`${backup.stats?.transactions||S.transactions.length} transações`);
   toast('Backup exportado: '+S.transactions.length+' transações OK','success');
 }
 
@@ -1271,8 +1475,11 @@ async function payDue(id,date){
 }
 function delDue(id){
   if(!confirm('Remover este vencimento?'))return;
+  const removed=dueItems.find(x=>x.id===id);if(!removed)return;
   dueItems=dueItems.filter(x=>x.id!==id);
-  saveDueItems();renderFut();toast('Vencimento removido','info');
+  saveDueItems();renderFut();
+  queueUndo(`Vencimento removido: ${removed.name}`,async()=>{dueItems.push(removed);saveDueItems();renderFut();});
+  toast('Vencimento removido','info');
 }
 // BUDGETS
 function openBudModal(){popCatSels();document.getElementById('budLim').value='';document.getElementById('budModal').classList.add('open');}
@@ -1843,6 +2050,7 @@ async function importCarCsv(inp){
 async function deleteCarEvent(id){
   const event=carState.events.find(e=>e.id===id);if(!event)return;
   if(!confirm('Remover este registro do carro?'))return;
+  const txSnapshot=event.txId?S.transactions.find(t=>t.id===event.txId):null;
   try{
     if(event.txId){
       if(cfg.mode==='api')await api('DELETE',`/api/transactions/${event.txId}`).catch(()=>{});
@@ -1853,6 +2061,20 @@ async function deleteCarEvent(id){
     saveCar();
     renderCar();
     refreshAll();
+    queueUndo(`Registro removido: ${event.type==='fuel'?'Abastecimento':'Despesa do carro'}`,async()=>{
+      let restoredTxId=event.txId||null;
+      if(txSnapshot){
+        if(cfg.mode==='api'){
+          const restored=await api('POST','/api/transactions',{type:txSnapshot.type,description:txSnapshot.desc,amount:txSnapshot.amount,category:txSnapshot.category,date:txSnapshot.date,note:txSnapshot.note||'',account_id:txSnapshot.accountId,paid:txSnapshot.paid,pending:txSnapshot.pending});
+          const normalized=nTx({...restored,accountId:txSnapshot.accountId});
+          S.transactions.unshift(normalized);
+          restoredTxId=normalized.id;
+        }else{S.transactions.unshift(txSnapshot);saveLocal();restoredTxId=txSnapshot.id;}
+      }
+      carState.events.unshift({...event,txId:restoredTxId});
+      saveCar();
+      renderCar();
+    });
     toast('Registro removido','info');
   }catch(e){toast('Erro: '+e.message,'error');}
 }
@@ -1917,6 +2139,7 @@ function renderSet(){
   renderCatChips();
   const pJ=document.getElementById('popJsonExp');if(pJ)pJ.style.display=loc?'':'none';
   const pM=document.getElementById('popMig');if(pM)pM.style.display=loc?'':'none';
+  updateTrustPanel();
   renderDiag();
 }
 function getDiagText(){
@@ -1960,9 +2183,14 @@ function clearCache(){if(!confirm('Limpar cache local?'))return;localStorage.rem
 // RELOAD
 async function doReload(){
   ['rlBtn','rlBtnS'].forEach(id=>{const b=document.getElementById(id);if(b){b.classList.add('spin');b.disabled=true;}});
-  try{await loadAll();popCatSels();popAccSels();refreshAll();toast('Dados atualizados! ✓','success');}
-  catch(e){toast('Erro: '+e.message,'error');}
-  finally{['rlBtn','rlBtnS'].forEach(id=>{const b=document.getElementById(id);if(b){b.classList.remove('spin');b.disabled=false;}});}
+  setSaveState('syncing','Atualizando dados do servidor');
+  let ok=false;
+  try{await loadAll();popCatSels();popAccSels();refreshAll();ok=true;toast('Dados atualizados! ✓','success');}
+  catch(e){setSaveState('error','Falha ao atualizar dados');logSyncEvent('error','Atualização manual falhou',e.message);toast('Erro: '+e.message,'error');}
+  finally{
+    if(cfg.mode==='api'&&ok){setSaveState('synced','Atualização manual concluída');logSyncEvent('success','Atualização manual concluída',cfg.url||'servidor');}
+    ['rlBtn','rlBtnS'].forEach(id=>{const b=document.getElementById(id);if(b){b.classList.remove('spin');b.disabled=false;}});
+  }
 }
 // PTR
 (()=>{
@@ -2026,7 +2254,10 @@ async function initApp(){
   applyAvatar();
   const sv=localStorage.getItem(VK)||'n';setView(sv);
   loadSyncQ();
+  loadSyncHistory();
   updSyncBadge();
+  if(!loadSaveState().status)noteLocalSave(cfg.mode==='api'?'Conta pronta para sincronizar':'Dados prontos neste dispositivo');
+  updateTrustPanel();
   checkAutoBackup();
   initDeepLink();
   setTimeout(initNotifications, 3000);
@@ -2075,6 +2306,7 @@ function updSyncBadge(){
 async function syncQueue(){
   if(!syncQ.length){toast('Nada para sincronizar','info');return;}
   if(cfg.mode!=='api'){toast('Conecte ao servidor primeiro','error');return;}
+  setSaveState('syncing','Enviando fila offline');
   let ok=0,fail=0;
   for(const op of [...syncQ]){
     try{
@@ -2086,6 +2318,14 @@ async function syncQueue(){
     }catch{fail++;}
   }
   saveSyncQ();updSyncBadge();
+  if(fail){
+    setSaveState('error','Parte da fila offline ainda falhou');
+    logSyncEvent('error','Fila offline com falhas',`${ok} enviada(s), ${fail} falha(s)`);
+  }else{
+    setSaveState('synced','Fila offline enviada com sucesso');
+    logSyncEvent('success','Fila offline sincronizada',`${ok} operação(ões) enviadas`);
+  }
+  updateTrustPanel();
   toast(`Sincronizado: ${ok} OK${fail?', '+fail+' falha(s)':''}`,fail?'error':'success');
 }
 
@@ -2127,6 +2367,7 @@ function autoBackupNow(){
   exportJson();
   localStorage.setItem(BK_KEY,Date.now().toString());
   updBackupStatus();
+  noteLocalSave('Backup local atualizado');
   if(parseInt(localStorage.getItem(BK_KEY)||'0')>0)
     toast('Backup automtico salvo ✓','success');
 }

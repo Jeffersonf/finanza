@@ -316,6 +316,12 @@
     <div class="ss-r" id="setMigRow" style="display:none"><div><div class="ss-l">Migrar para online</div><div class="ss-s">Envia dados para o servidor</div></div><button class="btn btn-g btn-sm" onclick="migrateToOnline()">☁️ Migrar</button></div>
     <div class="ss-r"><div><div class="ss-l">Transações</div></div><span style="font-family:var(--font-money);font-weight:700;font-size:13px" id="setTxCt">—</span></div>
   </div>
+  <div class="ss"><div class="ss-t">Saúde dos dados</div>
+    <div class="ss-r"><div><div class="ss-l">Estado atual</div><div class="ss-s" id="dataStateTxt">—</div></div><span class="state-pill local" id="dataStatePill">Local</span></div>
+    <div class="ss-r"><div><div class="ss-l">Última atividade</div><div class="ss-s" id="dataStateMeta">—</div></div><button class="btn btn-g btn-sm" onclick="syncQueue()">Sincronizar</button></div>
+    <div class="ss-r"><div><div class="ss-l">Fila offline</div><div class="ss-s" id="syncQueueTxt">—</div></div></div>
+    <div class="sync-history" id="syncHistoryList"></div>
+  </div>
   <div class="ss"><div class="ss-t">Avançado</div>
     <div class="ss-r"><div><div class="ss-l" style="color:var(--dan)">Limpar cache</div><div class="ss-s">Remove dados locais (banco OK)</div></div><button class="btn btn-d btn-sm" onclick="clearCache()">Limpar</button></div>
   </div>
@@ -560,7 +566,19 @@
   <div class="fg"><label class="fl">Usuário</label><input type="text" class="fi" id="connUser" autocomplete="username"></div><div class="fg"><label class="fl">Senha</label><input type="password" class="fi" id="connPass" autocomplete="current-password"></div>
   <div class="ma"><button class="btn btn-p" style="flex:1" onclick="saveConn()">Salvar</button><button class="btn btn-g" onclick="closeM('connModal')">Cancelar</button></div>
 </div></div>
+<div class="ov" id="importPreviewModal"><div class="modal">
+  <button class="mc" onclick="closeM('importPreviewModal')">✕</button>
+  <div class="mt">Prévia da importação</div><div class="ms">Escolha se você quer substituir tudo ou mesclar sem duplicar o que já estiver salvo.</div>
+  <div class="ss-r"><div><div class="ss-l">Arquivo</div><div class="ss-s" id="importPreviewName">—</div></div><span class="diag-pill" id="importPreviewVersion">—</span></div>
+  <div class="import-preview-grid">
+    <div class="import-preview-card"><div class="ss-l">Substituir tudo</div><div class="import-preview-main" id="importPreviewReplace">—</div><div class="ss-s">Apaga os dados atuais da conta e coloca o conteúdo do backup.</div></div>
+    <div class="import-preview-card"><div class="ss-l">Mesclar sem duplicar</div><div class="import-preview-main" id="importPreviewMerge">—</div><div class="ss-s">Mantém o que já existe e adiciona só o que for novo.</div></div>
+  </div>
+  <div class="import-preview-notes" id="importPreviewNotes"></div>
+  <div class="ma"><button class="btn btn-p" style="flex:1" onclick="confirmImportBackup('merge')">Mesclar</button><button class="btn btn-g" onclick="confirmImportBackup('replace')">Substituir</button><button class="btn btn-g" onclick="closeM('importPreviewModal')">Cancelar</button></div>
+</div></div>
 <div class="twrap" id="twrap"></div>
+<div class="undo-bar" id="undoBar"><span id="undoLabel">Ação removida</span><div class="undo-actions"><button class="btn btn-g btn-sm" onclick="undoLastAction()">Desfazer</button><button class="btn btn-g btn-sm" onclick="dismissUndo()">Fechar</button></div></div>
 <script src="app.js?v=3.9-final"></script>
 <script src="api.js?v=3.9-final"></script>
 <script src="storage.js?v=3.9-final"></script>

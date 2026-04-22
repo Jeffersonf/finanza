@@ -28,4 +28,4 @@ function normalizeState(st){
   };
 }
 function loadLocal(){const r=localStorage.getItem(LK);return normalizeState(r?JSON.parse(r):{transactions:[],budgets:[],goals:[],accounts:[]});}
-function saveLocal(){localStorage.setItem(LK,JSON.stringify(S));}
+function saveLocal(){localStorage.setItem(LK,JSON.stringify(S));if(typeof noteLocalSave==='function')noteLocalSave();}
