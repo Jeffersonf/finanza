@@ -11,7 +11,7 @@ let custCats=[];
 let carState={vehicles:[],events:[],activeVehicleId:''};
 let carFilters={vehicle:'active',period:'month',type:'all',kind:'all',query:'',sort:'date_desc',from:'',to:''};
 let curTxP='1m-p',curFP='7d',curDt=new Date();
-let chartMode='bars',curView='n',catFilter=null;
+let chartMode='bars',curView='n',catFilter=null,carChartMode='bars';
 let editId=null,accEditId=null,qaTyp='expense',qaVal='',qaSelCat='';
 let privacyMode=false;
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2);
@@ -1377,6 +1377,11 @@ function carSortEvents(events){
   if(sort.startsWith('amount'))return arr.sort((a,b)=>((a.amount||0)-(b.amount||0))*dir||b.date.localeCompare(a.date));
   return arr.sort((a,b)=>a.date.localeCompare(b.date)*dir+(a.date===b.date?(a.createdAt-b.createdAt)*dir:0));
 }
+function daysSinceDate(date){
+  if(!date)return null;
+  const diff=Math.floor((new Date(today()+'T12:00:00')-new Date(String(date).substring(0,10)+'T12:00:00'))/864e5);
+  return Number.isFinite(diff)?Math.max(0,diff):null;
+}
 function carFilteredEvents(){
   loadCar();
   const vehicle=currentCarVehicleFilter(),range=carPeriodRange(),q=normalizeTxText(carFilters.query||'');
@@ -1400,11 +1405,23 @@ function carStats(events=carFilteredEvents()){
   const total=events.reduce((s,e)=>s+e.amount,0);
   const fuelTotal=events.filter(e=>e.type==='fuel').reduce((s,e)=>s+e.amount,0);
   const expenseTotal=events.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  const fuelCount=events.filter(e=>e.type==='fuel').length;
+  const expenseCount=events.filter(e=>e.type==='expense').length;
   const kmPerLiter=distance&&liters?distance/liters:0;
   const costPerKm=distance?total/distance:0;
+  const avgTicket=events.length?total/events.length:0;
+  const avgFuelPrice=liters?fuelTotal/liters:0;
   const vehicle=currentCarVehicleFilter();
   const maxOdo=vehicle==='all'?0:Math.max(carVehicle(vehicle).odometer||0,...events.map(e=>e.odometer||0));
-  return {events,distance,liters,kmPerLiter,total,fuelTotal,expenseTotal,costPerKm,maxOdo,vehicle};
+  const lastEvent=[...events].sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt)[0]||null;
+  const byKind=new Map();
+  events.forEach(e=>{
+    const key=e.type==='fuel'?(e.fuelType||'Combustível'):(e.title||carExpenseLabel(e.category));
+    if(!byKind.has(key))byKind.set(key,{label:key,total:0,count:0});
+    const item=byKind.get(key);item.total+=e.amount;item.count++;
+  });
+  const topKind=[...byKind.values()].sort((a,b)=>b.total-a.total)[0]||null;
+  return {events,distance,liters,kmPerLiter,total,fuelTotal,expenseTotal,fuelCount,expenseCount,costPerKm,maxOdo,vehicle,avgTicket,avgFuelPrice,lastEvent,topKind};
 }
 function popCarAccSel(){
   const el=document.getElementById('carAcc');if(!el)return;
@@ -1429,7 +1446,7 @@ function renderCarKindFilter(events=carState.events){
     if(e.type==='fuel')fuel.set(`fuel:${keyCsvHeader(e.fuelType)}`,e.fuelType||'Combustível');
     else cats.set(`cat:${e.category}`,carExpenseLabel(e.category));
   });
-  let html='<option value="all">Combustíveis/categorias</option>';
+  let html='<option value="all">Combustível / tipo</option>';
   if(fuel.size)html+='<optgroup label="Combustíveis">'+[...fuel].sort((a,b)=>a[1].localeCompare(b[1])).map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join('')+'</optgroup>';
   if(cats.size)html+='<optgroup label="Despesas">'+[...cats].sort((a,b)=>a[1].localeCompare(b[1])).map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join('')+'</optgroup>';
   el.innerHTML=html;
@@ -1461,6 +1478,12 @@ function setCarPeriodFilter(value){
 }
 function setCarFilter(key,value){
   carFilters[key]=value||'';
+  renderCar();
+}
+function setCarChartMode(mode){
+  carChartMode=mode==='line'?'line':'bars';
+  document.getElementById('carChartBars')?.classList.toggle('active',carChartMode==='bars');
+  document.getElementById('carChartLine')?.classList.toggle('active',carChartMode==='line');
   renderCar();
 }
 function updateCarAmount(){
@@ -1843,15 +1866,24 @@ function renderCar(){
   const title=document.getElementById('carTitleView');if(title)title.textContent=single?(v.name||'Meu veículo'):'Todos os veículos';
   const sub=document.getElementById('carSubView');if(sub)sub.textContent=single?[v.model,v.plate,st.maxOdo?`${Math.round(st.maxOdo).toLocaleString('pt-BR')} km`:'' ].filter(Boolean).join(' • ')||'Consumo, abastecimentos e despesas':`${carState.vehicles.length} veículo${carState.vehicles.length!==1?'s':''} cadastrados`;
   const stats=document.getElementById('carStats');
+  const activeVehicles=new Set(st.events.map(e=>e.vehicleId)).size;
+  const lastDays=daysSinceDate(st.lastEvent?.date);
+  const lastLabel=st.lastEvent?`${fmtD(st.lastEvent.date)}${lastDays===0?' • hoje':lastDays!==null?` • há ${lastDays}d`:''}`:'sem registros';
   if(stats)stats.innerHTML=`
     <div class="insight-card"><div class="insight-k">Gastos totais</div><div class="insight-v" style="color:var(--dan)">${fmt(st.total)}</div><div class="cc">${st.events.length} registro${st.events.length!==1?'s':''} no filtro</div></div>
     <div class="insight-card"><div class="insight-k">Km rodados</div><div class="insight-v" style="color:var(--ac2)">${st.distance?Math.round(st.distance).toLocaleString('pt-BR'):'—'}</div><div class="cc">${st.distance?'calculado por veículo':'precisa de 2 abastecimentos'}</div></div>
     <div class="insight-card"><div class="insight-k">Consumo médio</div><div class="insight-v" style="color:var(--ac)">${st.kmPerLiter?st.kmPerLiter.toFixed(1).replace('.',','):'—'} km/l</div><div class="cc">${st.liters?st.liters.toLocaleString('pt-BR',{maximumFractionDigits:1})+' L medidos':'sem litros suficientes'}</div></div>
     <div class="insight-card"><div class="insight-k">Custo por km</div><div class="insight-v" style="color:var(--warn)">${st.costPerKm?fmt(st.costPerKm):'—'}</div><div class="cc">combustível + despesas</div></div>
-    <div class="insight-card"><div class="insight-k">Combustível</div><div class="insight-v" style="color:var(--warn)">${fmt(st.fuelTotal)}</div><div class="cc">abastecimentos filtrados</div></div>
-    <div class="insight-card"><div class="insight-k">Despesas</div><div class="insight-v" style="color:var(--dan)">${fmt(st.expenseTotal)}</div><div class="cc">manutenção, impostos e outros</div></div>
+    <div class="insight-card"><div class="insight-k">Combustível</div><div class="insight-v" style="color:var(--warn)">${fmt(st.fuelTotal)}</div><div class="cc">${st.fuelCount} abastecimento${st.fuelCount!==1?'s':''} • ${st.avgFuelPrice?fmt(st.avgFuelPrice)+'/L':'sem média'}</div></div>
+    <div class="insight-card"><div class="insight-k">Despesas</div><div class="insight-v" style="color:var(--dan)">${fmt(st.expenseTotal)}</div><div class="cc">${st.expenseCount} despesa${st.expenseCount!==1?'s':''} fora do tanque</div></div>
+    <div class="insight-card"><div class="insight-k">Ticket médio</div><div class="insight-v">${st.avgTicket?fmt(st.avgTicket):'—'}</div><div class="cc">por registro no período</div></div>
+    <div class="insight-card"><div class="insight-k">Último lançamento</div><div class="insight-v">${st.lastEvent?fmt(st.lastEvent.amount):'—'}</div><div class="cc">${lastLabel}</div></div>
     <div class="insight-card"><div class="insight-k">Hodômetro</div><div class="insight-v">${single&&st.maxOdo?Math.round(st.maxOdo).toLocaleString('pt-BR'):'—'}</div><div class="cc">${single?'veículo selecionado':'selecione um veículo'}</div></div>
-    <div class="insight-card"><div class="insight-k">Veículos</div><div class="insight-v">${single?'1':new Set(st.events.map(e=>e.vehicleId)).size}</div><div class="cc">${single?esc(v.name):'com registros no filtro'}</div></div>`;
+    <div class="insight-card"><div class="insight-k">Maior peso</div><div class="insight-v">${st.topKind?esc(st.topKind.label):'—'}</div><div class="cc">${st.topKind?`${fmt(st.topKind.total)} em ${st.topKind.count} registro${st.topKind.count!==1?'s':''}`:'sem dados'}</div></div>
+    <div class="insight-card"><div class="insight-k">Veículos</div><div class="insight-v">${single?'1':activeVehicles}</div><div class="cc">${single?esc(v.name):'com registros no filtro'}</div></div>`;
+  document.getElementById('carChartBars')?.classList.toggle('active',carChartMode==='bars');
+  document.getElementById('carChartLine')?.classList.toggle('active',carChartMode==='line');
+  if(typeof renderCarCharts==='function')renderCarCharts(events,st);
   const list=document.getElementById('carList');
   if(list)list.innerHTML=st.events.length?st.events.map(e=>{
     const isFuel=e.type==='fuel';

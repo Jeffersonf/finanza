@@ -409,6 +409,20 @@
     <input type="date" class="fi" id="carToFilter" onchange="setCarFilter('to',this.value)">
   </div>
   <div class="insight-grid" id="carStats"></div>
+  <div class="box car-chart-panel">
+    <div class="bh">
+      <div><div class="ct">Evolução do carro</div><div class="cs">Barras para gasto por período, linha para tendência de custo e consumo</div></div>
+      <div class="vtog">
+        <button class="vbtn active" id="carChartBars" onclick="setCarChartMode('bars')" title="Barras">▮</button>
+        <button class="vbtn" id="carChartLine" onclick="setCarChartMode('line')" title="Linha">／</button>
+      </div>
+    </div>
+    <div class="car-chart-grid">
+      <div class="car-chart-card"><canvas id="carSpendChart" style="max-height:220px;"></canvas></div>
+      <div class="car-chart-card"><canvas id="carMixChart" style="max-height:220px;"></canvas></div>
+    </div>
+    <div class="empty" id="carChartsEmpty" style="display:none"><span class="ei">📈</span><p>Adicione mais registros para ver a evolução do veículo.</p></div>
+  </div>
   <div class="box car-panel">
     <div class="bh"><div><div class="ct">Histórico do carro</div><div class="cs">Abastecimentos, manutenção, seguro, impostos e lavagens</div></div></div>
     <div id="carList"></div>

@@ -6,6 +6,111 @@ if(window.Chart){
   Chart.defaults.responsiveAnimationDuration=0;
 }
 
+function renderCarCharts(events=[],stats={}){
+  const isDark=document.documentElement.dataset.theme==='dark';
+  const tick=isDark?'rgba(240,243,255,.45)':'rgba(13,16,32,.42)';
+  const grid=isDark?'rgba(255,255,255,.05)':'rgba(0,0,0,.05)';
+  const canvasA=document.getElementById('carSpendChart');
+  const canvasB=document.getElementById('carMixChart');
+  const empty=document.getElementById('carChartsEmpty');
+  if(window._carSpendChart)window._carSpendChart.destroy();
+  if(window._carMixChart)window._carMixChart.destroy();
+  if(!canvasA||!canvasB)return;
+  if(!events.length){
+    canvasA.style.display='none';
+    canvasB.style.display='none';
+    if(empty)empty.style.display='block';
+    return;
+  }
+  canvasA.style.display='';
+  canvasB.style.display='';
+  if(empty)empty.style.display='none';
+
+  const byMonth={};
+  [...events].sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
+    const key=String(e.date||'').slice(0,7);
+    if(!byMonth[key])byMonth[key]={fuel:0,expense:0,total:0,liters:0,km:0};
+    byMonth[key].total+=e.amount||0;
+    if(e.type==='fuel'){
+      byMonth[key].fuel+=e.amount||0;
+      byMonth[key].liters+=e.liters||0;
+    }else byMonth[key].expense+=e.amount||0;
+  });
+  const distanceByMonth=new Map();
+  const byVehicle=new Map();
+  events.forEach(e=>{if(!byVehicle.has(e.vehicleId))byVehicle.set(e.vehicleId,[]);byVehicle.get(e.vehicleId).push(e);});
+  byVehicle.forEach(items=>{
+    const fuels=items.filter(e=>e.type==='fuel'&&e.odometer>0).sort((a,b)=>a.date.localeCompare(b.date)||a.odometer-b.odometer);
+    const monthOdo={};
+    fuels.forEach(e=>{
+      const key=String(e.date||'').slice(0,7);
+      if(!monthOdo[key])monthOdo[key]={min:e.odometer,max:e.odometer};
+      monthOdo[key].min=Math.min(monthOdo[key].min,e.odometer);
+      monthOdo[key].max=Math.max(monthOdo[key].max,e.odometer);
+    });
+    Object.entries(monthOdo).forEach(([key,val])=>{
+      distanceByMonth.set(key,(distanceByMonth.get(key)||0)+Math.max(0,(val.max||0)-(val.min||0)));
+    });
+  });
+  const months=Object.keys(byMonth).sort();
+  const monthLabels=months.map(k=>{
+    const [y,m]=k.split('-');
+    return `${m}/${String(y).slice(2)}`;
+  });
+  const fuelSeries=months.map(k=>byMonth[k].fuel);
+  const expenseSeries=months.map(k=>byMonth[k].expense);
+  const totalSeries=months.map(k=>byMonth[k].total);
+  const kmSeries=months.map(k=>distanceByMonth.get(k)||0);
+  const ctxA=canvasA.getContext('2d');
+  const ctxB=canvasB.getContext('2d');
+  const moneyTick=v=>privacyMode?'R$•••':'R$'+(v>=1000?(v/1000).toFixed(0)+'k':Number(v).toLocaleString('pt-BR'));
+
+  window._carSpendChart=new Chart(ctxA,{
+    type:carChartMode==='line'?'line':'bar',
+    data:{
+      labels:monthLabels,
+      datasets:carChartMode==='line'
+        ?[
+          {label:'Total',data:totalSeries,borderColor:'#c8f55a',backgroundColor:'rgba(200,245,90,.12)',fill:true,tension:.35,pointRadius:3,pointBackgroundColor:'#c8f55a'},
+          {label:'Combustível',data:fuelSeries,borderColor:'rgba(245,200,90,.95)',backgroundColor:'rgba(245,200,90,.10)',fill:false,tension:.35,pointRadius:2},
+          {label:'Despesas',data:expenseSeries,borderColor:'rgba(245,112,90,.95)',backgroundColor:'rgba(245,112,90,.10)',fill:false,tension:.35,pointRadius:2}
+        ]
+        :[
+          {label:'Combustível',data:fuelSeries,backgroundColor:'rgba(245,200,90,.75)',borderRadius:4,borderSkipped:false},
+          {label:'Despesas',data:expenseSeries,backgroundColor:'rgba(245,112,90,.68)',borderRadius:4,borderSkipped:false}
+        ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:true,animation:false,animations:false,resizeDelay:120,
+      plugins:{legend:{labels:{color:tick,font:{family:'DM Sans',size:10},boxWidth:8,boxHeight:8}}},
+      scales:{
+        x:{grid:{color:grid},ticks:{color:tick,font:{family:'DM Sans',size:10}}},
+        y:{grid:{color:grid},ticks:{color:tick,font:{family:'DM Sans',size:10},callback:v=>moneyTick(v)}}
+      }
+    }
+  });
+
+  window._carMixChart=new Chart(ctxB,{
+    type:'line',
+    data:{
+      labels:monthLabels,
+      datasets:[
+        {label:'Km medidos',data:kmSeries,borderColor:'rgba(90,245,200,.95)',backgroundColor:'rgba(90,245,200,.14)',fill:true,tension:.35,pointRadius:3,pointBackgroundColor:'rgba(90,245,200,.95)',yAxisID:'y'},
+        {label:'Consumo (km/l)',data:months.map(k=>byMonth[k].liters&&distanceByMonth.get(k)?(distanceByMonth.get(k)/byMonth[k].liters):null),borderColor:'rgba(167,139,250,.95)',backgroundColor:'rgba(167,139,250,.10)',fill:false,tension:.35,pointRadius:3,pointBackgroundColor:'rgba(167,139,250,.95)',yAxisID:'y1'}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:true,animation:false,animations:false,resizeDelay:120,
+      plugins:{legend:{labels:{color:tick,font:{family:'DM Sans',size:10},boxWidth:8,boxHeight:8}}},
+      scales:{
+        x:{grid:{color:grid},ticks:{color:tick,font:{family:'DM Sans',size:10}}},
+        y:{position:'left',grid:{color:grid},ticks:{color:tick,font:{family:'DM Sans',size:10}}},
+        y1:{position:'right',grid:{drawOnChartArea:false},ticks:{color:tick,font:{family:'DM Sans',size:10}}}
+      }
+    }
+  });
+}
+
 function renderTxCharts(){
   const isDark=document.documentElement.dataset.theme==='dark';
   const moneyTick=()=>privacyMode?'R$•••':null;
