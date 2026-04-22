@@ -53,6 +53,7 @@
 <div class="srch-ov" id="srchOv" onclick="if(event.target===this)closeSrch()">
   <div class="srch-box">
     <div class="srch-inp"><span style="font-size:16px;color:var(--mt)">🔍</span><input id="srchInp" placeholder="Buscar transações, carro, vencimentos, compras..." oninput="doSrch(this.value)"><button onclick="closeSrch()" style="background:none;border:none;cursor:pointer;color:var(--mt);font-size:16px;">✕</button></div>
+    <div class="srch-scopes" id="srchScopes"></div>
     <div class="srch-res" id="srchRes"><div class="srch-empty">Digite para buscar...</div></div>
   </div>
 </div>
@@ -233,6 +234,7 @@
     <div class="sc sc-glow-dan"><span class="ci">⚠️</span><div class="cl">Vencidos</div><div class="cv neg" id="futOvd">—</div><div class="cc dn">atrasados</div></div>
     <div class="sc sc-glow-fut"><span class="ci">📅</span><div class="cl">Próximo</div><div class="cv" id="futNxt" style="font-size:15px">—</div><div class="cc" id="futNxtN">—</div></div>
   </div>
+  <div class="box fixed-bills-panel"><div id="fixedBillsHub"></div></div>
   <div class="sdiv"><div class="sdiv-line"></div><span class="sdiv-lbl" style="color:var(--fut)">📌 Vencimentos e lembretes</span><div class="sdiv-line"></div></div>
   <div class="box"><div class="tl" id="dueList"></div></div>
   <div class="box future-center-panel"><div id="futureCommandCenter"></div></div>
@@ -263,7 +265,7 @@
   </div>
   <div class="ss"><div class="ss-t">Conta</div>
     <div class="ss-r"><div><div class="ss-l">Usuário</div><div class="ss-s" id="setUsr">—</div></div></div>
-    <div class="ss-r"><div><div class="ss-l">Foto do perfil</div><div class="ss-s">Imagem salva neste dispositivo</div></div>
+    <div class="ss-r"><div><div class="ss-l">Foto do perfil</div><div class="ss-s">Imagem salva no dispositivo e sincronizada no modo online</div></div>
       <div class="avatar-actions">
         <label class="btn btn-g btn-sm" for="avatarFile">Escolher</label>
         <button class="btn btn-d btn-sm" onclick="removeAvatar()">Remover</button>
@@ -322,6 +324,10 @@
     <div class="ss-r"><div><div class="ss-l">Última atividade</div><div class="ss-s" id="dataStateMeta">—</div></div><button class="btn btn-g btn-sm" onclick="syncQueue()">Sincronizar</button></div>
     <div class="ss-r"><div><div class="ss-l">Fila offline</div><div class="ss-s" id="syncQueueTxt">—</div></div></div>
     <div class="sync-history" id="syncHistoryList"></div>
+  </div>
+  <div class="ss"><div class="ss-t">Atividade importante</div>
+    <div class="ss-r"><div><div class="ss-l">Auditoria leve</div><div class="ss-s">Criações, importações, migração e ações que mexem no estado principal</div></div></div>
+    <div class="sync-history" id="activityHistoryList"></div>
   </div>
   <div class="ss"><div class="ss-t">Avançado</div>
     <div class="ss-r"><div><div class="ss-l" style="color:var(--dan)">Limpar cache</div><div class="ss-s">Remove dados locais (banco OK)</div></div><button class="btn btn-d btn-sm" onclick="clearCache()">Limpar</button></div>
@@ -502,7 +508,7 @@
   <button class="mc" onclick="closeM('txModal')">✕</button>
   <div class="mt" id="mTit">Nova Transação</div><div class="ms" id="mSub">Registre uma receita ou despesa</div>
   <div class="typetog"><button class="ttb active expense" id="tExp" onclick="setTyp('expense')">⬇ Despesa</button><button class="ttb income" id="tInc" onclick="setTyp('income')">⬆ Receita</button></div>
-  <div class="frow"><div class="fg" style="flex:1.8"><label class="fl">Lançamento rápido</label><input type="text" class="fi" id="txQuickText" placeholder="Ex: mercado 82,40 hoje"></div><div class="fg" style="flex:.7;justify-content:flex-end"><button class="btn btn-g" type="button" onclick="fillTxFromText()">Preencher</button></div></div>
+  <div class="frow"><div class="fg" style="flex:1.8"><label class="fl">Lançamento rápido</label><input type="text" class="fi" id="txQuickText" placeholder="Ex: mercado 82,40 hoje" onkeydown="if(event.key==='Enter'){event.preventDefault();fillAndSaveTxFromText();}"></div><div class="fg" style="flex:.7;justify-content:flex-end;display:flex;gap:6px"><button class="btn btn-g" type="button" onclick="fillTxFromText()">Preencher</button><button class="btn btn-p" type="button" onclick="fillAndSaveTxFromText()">Preencher + salvar</button></div></div>
   <div class="frow"><div class="fg"><label class="fl">Descrição</label><input type="text" class="fi" id="txDesc" placeholder="Ex: Aluguel..."></div><div class="fg"><label class="fl">Valor (R$)</label><input type="number" class="fi" id="txAmt" placeholder="0,00" min="0" step="0.01" oninput="updIPrev()"></div></div>
   <div class="frow"><div class="fg"><label class="fl">Categoria</label><select class="fi" id="txCat"></select></div><div class="fg"><label class="fl">Conta</label><select class="fi" id="txAcc"></select></div></div>
   <div class="frow"><div class="fg"><label class="fl">Data</label><input type="date" class="fi" id="txDt"></div><div class="fg"><label class="fl">Observação</label><input type="text" class="fi" id="txNote" placeholder="Opcional..."></div></div>

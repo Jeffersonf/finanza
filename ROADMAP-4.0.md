@@ -1,16 +1,16 @@
 # Finanza 4.0 Roadmap
 
-Este documento congela a release atual como `3.9 final` e define a proxima trilha principal do produto.
+Este documento congelou a release `3.9 final`, guiou a trilha principal da `4.0` e agora passa a registrar o fechamento dessa etapa.
 
 ## Estado atual
 
-- Web + app Capacitor: `3.9 final`
-- API Node/Express + PostgreSQL: linha `3.9.3`
+- Web + app Capacitor: `4.0 concluida`
+- API Node/Express + PostgreSQL: linha principal da `4.0`
 - Android Kotlin separado em `android-v4/`: continua existindo, mas nao e a frente principal agora
 
 ## Decisao de produto
 
-A proxima evolucao principal do Finanza sera a **versao 4.0**.
+A linha principal do Finanza nesta etapa foi a **versao 4.0**.
 
 Essa fase vai manter:
 
@@ -21,7 +21,30 @@ Essa fase vai manter:
 
 O app Android nativo em Kotlin sera renomeado para **5.0**, mas ficara para uma etapa posterior.
 
-## Escopo proposto para 4.0
+## Fechamento da 4.0
+
+Status geral: `concluida e pronta para evolucao incremental`
+
+### Entregas consolidadas
+
+- confiabilidade de dados com estado local / online / sincronizado
+- historico de sincronizacao e fila offline visivel
+- backup JSON/CSV mais acessivel, com importacao, validacao e preview
+- deduplicacao em importacoes JSON e CSV do carro
+- desfazer exclusoes nas areas principais
+- comparativo mensal e previsao ate o fim do mes
+- central de pendencias, busca global, recorrencias e parcelamentos
+- modulo do carro com manutencao, comparativos, postos/oficinas e historico mais rico
+- multiusuario funcional com login, usuarios e separacao por `user_id`
+- atividade importante visivel no app para acoes principais
+
+### Itens que ficam como acabamento ou proxima iteracao
+
+- papeis alem de `admin`
+- auditoria completa no backend com autor por registro e trilha persistente no servidor
+- reconciliacao offline com resolucao de conflito por item
+
+## Escopo original da 4.0
 
 ### 1. Confiabilidade dos dados
 
@@ -73,5 +96,6 @@ Quando a trilha principal 4.0 estiver estavel no web + Capacitor, o app nativo e
 ## Regra de versao daqui para frente
 
 - `3.9 final`: congelada como base estavel
-- `4.0`: proxima linha principal do produto
+- `4.0`: concluida como linha principal web + Capacitor + API
+- `4.1`: proxima etapa incremental de refinamento e profundidade
 - `5.0`: app Kotlin nativo, planejado para depois

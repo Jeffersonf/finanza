@@ -24,6 +24,21 @@ function widgetCards() {
     <div class="sc sc-glow-fut" style="cursor:pointer" onclick="showPage('future')"><span class="ci">🔮</span><div class="cl">A Pagar</div><div class="cv fut">${fmt(fut)}</div><div class="cc" style="color:var(--fut)">ver contas futuras</div></div>
   </div>`;
 }
+function widgetQuickActions() {
+  const dueSoon=dueOccurrences(offD(new Date(),7)).length;
+  const pending=S.transactions.filter(t=>t.pending).length;
+  return `<div class="quick-actions-widget dash-section">
+    <div class="bh"><div><div class="ct">Ações rápidas</div><div class="cs">Menos cliques para o que você faz toda hora</div></div></div>
+    <div class="quick-actions-grid">
+      <button class="quick-action-card primary" onclick="openModal()"><strong>+ Transação</strong><small>Lançamento manual</small></button>
+      <button class="quick-action-card" onclick="toggleQA()"><strong>+ Rápido</strong><small>Teclado numérico</small></button>
+      <button class="quick-action-card" onclick="openDueModal()"><strong>+ Vencimento</strong><small>${dueSoon} nos próximos 7 dias</small></button>
+      <button class="quick-action-card" onclick="openCarEntry('fuel')"><strong>+ Abastecimento</strong><small>Módulo do carro</small></button>
+      <button class="quick-action-card" onclick="openSrch()"><strong>Buscar</strong><small>Ctrl+K • tudo no app</small></button>
+      <button class="quick-action-card" onclick="showPage('transactions')"><strong>Pendentes</strong><small>${pending} para revisar</small></button>
+    </div>
+  </div>`;
+}
 function widgetMiniStats() {
   const txM = getMonthTx(curDt).filter(t=>!isFut(t.date)&&!t.paid&&t.type==='expense');
   if (!txM.length) return '';
@@ -195,3 +210,92 @@ function widgetBarCats() {
 
 // ─── RENDER DASH PRINCIPAL ───────────────────────────────────
 
+function widgetVehicles() {
+  loadCar();
+  const vehicles = carVehicles();
+  if (!vehicles.length) return '';
+  const previousFilter = { ...carFilters };
+  const activeId = carState.activeVehicleId || vehicles[0]?.id || 'all';
+  carFilters.vehicle = activeId || 'all';
+  carFilters.period = '90d';
+  carFilters.type = 'all';
+  carFilters.kind = 'all';
+  carFilters.query = '';
+  carFilters.sort = 'date_desc';
+  const stats = carStats();
+  const maint = carMaintenanceInsights(stats.events);
+  Object.assign(carFilters, previousFilter);
+
+  const activeVehicle = carVehicle(activeId);
+  const recent = [...carState.events]
+    .filter(e => e.vehicleId === activeId)
+    .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt)
+    .slice(0, 3);
+  const dueTone = maint.upcomingStatus === 'urgent'
+    ? 'var(--dan)'
+    : maint.upcomingStatus === 'warn'
+      ? 'var(--warn)'
+      : 'var(--ac)';
+  const dueText = maint.kmLeft !== null
+    ? `${Math.round(maint.kmLeft).toLocaleString('pt-BR')} km restantes`
+    : maint.nextOilDate
+      ? `proxima revisao ate ${fmtD(maint.nextOilDate)}`
+      : 'cadastre uma troca de oleo ou revisao';
+  const headerMeta = [
+    activeVehicle?.model,
+    activeVehicle?.plate,
+    activeVehicle?.odometer ? `${Math.round(activeVehicle.odometer).toLocaleString('pt-BR')} km` : ''
+  ].filter(Boolean).join(' • ');
+
+  return `<div class="vehicle-widget dash-section">
+    <div class="bh">
+      <div>
+        <div class="ct">Veiculos</div>
+        <div class="cs">${vehicles.length} veiculo${vehicles.length !== 1 ? 's' : ''} • foco no ativo</div>
+      </div>
+      <button class="btn btn-g btn-sm" onclick="showPage('car')">Abrir modulo →</button>
+    </div>
+    <div class="vehicle-widget-hero" onclick="showPage('car')">
+      <div>
+        <div class="vehicle-widget-name">${esc(activeVehicle?.name || 'Meu carro')}</div>
+        <div class="vehicle-widget-meta">${esc(headerMeta || 'Consumo, manutencao e historico')}</div>
+      </div>
+      <div class="vehicle-widget-kpi">
+        <span class="vehicle-widget-kpi-label">Gasto 90 dias</span>
+        <strong>${fmt(stats.total)}</strong>
+      </div>
+    </div>
+    <div class="vehicle-widget-grid">
+      <div class="vehicle-widget-card">
+        <div class="vehicle-widget-label">Consumo medio</div>
+        <div class="vehicle-widget-value" style="color:var(--ac2)">${stats.kmPerLiter ? `${stats.kmPerLiter.toFixed(1).replace('.', ',')} km/l` : '—'}</div>
+        <div class="vehicle-widget-note">${stats.liters ? `${stats.liters.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L medidos` : 'precisa de pelo menos 2 abastecimentos'}</div>
+      </div>
+      <div class="vehicle-widget-card">
+        <div class="vehicle-widget-label">Custo por km</div>
+        <div class="vehicle-widget-value" style="color:var(--warn)">${stats.costPerKm ? fmt(stats.costPerKm) : '—'}</div>
+        <div class="vehicle-widget-note">${stats.distance ? `${Math.round(stats.distance).toLocaleString('pt-BR')} km calculados` : 'sem distancia suficiente no periodo'}</div>
+      </div>
+      <div class="vehicle-widget-card">
+        <div class="vehicle-widget-label">Proxima manutencao</div>
+        <div class="vehicle-widget-value" style="color:${dueTone}">${maint.nextOilKm ? `${Math.round(maint.nextOilKm).toLocaleString('pt-BR')} km` : 'Revisar'}</div>
+        <div class="vehicle-widget-note">${esc(dueText)}</div>
+      </div>
+    </div>
+    <div class="vehicle-widget-list">
+      ${recent.length ? recent.map(e => {
+        const icon = e.type === 'fuel' ? '⛽' : '🧰';
+        const title = e.type === 'fuel' ? (e.fuelType || 'Abastecimento') : (e.title || carExpenseLabel(e.category));
+        const meta = [fmtD(e.date), e.odometer ? `${Math.round(e.odometer).toLocaleString('pt-BR')} km` : '', e.note].filter(Boolean).join(' • ');
+        return `<button class="vehicle-widget-row" onclick="openSearchTarget('car-event','${e.id}','car')">
+          <span class="vehicle-widget-row-ico">${icon}</span>
+          <span class="vehicle-widget-row-main">
+            <strong>${esc(title)}</strong>
+            <small>${esc(meta || 'Sem detalhes')}</small>
+          </span>
+          <span class="vehicle-widget-row-amt">${fmt(e.amount)}</span>
+        </button>`;
+      }).join('') : `<div class="vehicle-widget-empty">Adicione abastecimentos ou despesas para montar os insights do veiculo.</div>`}
+    </div>
+  </div>`;
+}
