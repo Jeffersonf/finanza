@@ -144,12 +144,13 @@ function widgetCharts() {
 }
 
 function widgetRecent() {
+  const type=(widgetFilters?.recent?.type)||'all';
   const sorted = [...S.transactions]
-    .filter(t=>!isFut(t.date)&&!t.paid)
+    .filter(t=>!isFut(t.date)&&!t.paid&&(type==='all'||t.type===type))
     .sort((a,b)=>b.date.localeCompare(a.date))
     .slice(0,6);
   return `<div class="box dash-section">
-    <div class="bh"><div class="ct">Últimas Transações</div><button class="btn btn-g btn-sm" onclick="showPage('transactions')">Ver todas →</button></div>
+    <div class="bh"><div class="ct">Ultimas Transacoes</div><div class="widget-filter-row"><select class="widget-filter" onchange="setWidgetFilter('recent','type',this.value)"><option value="all" ${type==='all'?'selected':''}>Todas</option><option value="expense" ${type==='expense'?'selected':''}>Despesas</option><option value="income" ${type==='income'?'selected':''}>Receitas</option></select><button class="btn btn-g btn-sm" onclick="showPage('transactions')">Ver todas</button></div></div>
     <div class="recent-list" id="recList">${sorted.length ? sorted.map(recentTxHTML).join('') : '<div class="empty"><span class="ei">💸</span><p>Nenhuma transação ainda.</p></div>'}</div>
   </div>`;
 }
@@ -214,10 +215,11 @@ function widgetVehicles() {
   loadCar();
   const vehicles = carVehicles();
   if (!vehicles.length) return '';
+  const period=(widgetFilters?.vehicles?.period)||'90d';
   const previousFilter = { ...carFilters };
   const activeId = carState.activeVehicleId || vehicles[0]?.id || 'all';
   carFilters.vehicle = activeId || 'all';
-  carFilters.period = '90d';
+  carFilters.period = period;
   carFilters.type = 'all';
   carFilters.kind = 'all';
   carFilters.query = '';
@@ -253,7 +255,7 @@ function widgetVehicles() {
         <div class="ct">Veiculos</div>
         <div class="cs">${vehicles.length} veiculo${vehicles.length !== 1 ? 's' : ''} • foco no ativo</div>
       </div>
-      <button class="btn btn-g btn-sm" onclick="showPage('car')">Abrir modulo →</button>
+      <div class="widget-filter-row"><select class="widget-filter" onchange="setWidgetFilter('vehicles','period',this.value)"><option value="30d" ${period==='30d'?'selected':''}>30 dias</option><option value="90d" ${period==='90d'?'selected':''}>90 dias</option><option value="year" ${period==='year'?'selected':''}>Ano</option><option value="all" ${period==='all'?'selected':''}>Tudo</option></select><button class="btn btn-g btn-sm" onclick="showPage('car')">Abrir modulo</button></div>
     </div>
     <div class="vehicle-widget-hero" onclick="showPage('car')">
       <div>
@@ -261,7 +263,7 @@ function widgetVehicles() {
         <div class="vehicle-widget-meta">${esc(headerMeta || 'Consumo, manutencao e historico')}</div>
       </div>
       <div class="vehicle-widget-kpi">
-        <span class="vehicle-widget-kpi-label">Gasto 90 dias</span>
+        <span class="vehicle-widget-kpi-label">Gasto ${period==='30d'?'30 dias':period==='year'?'ano':period==='all'?'total':'90 dias'}</span>
         <strong>${fmt(stats.total)}</strong>
       </div>
     </div>

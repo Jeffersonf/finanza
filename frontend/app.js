@@ -2,7 +2,7 @@
 const APP_VERSION='4.0.0';
 const DEFAULT_API_URL='https://finanza-api.onrender.com';
 const CK='fz_cfg',LK='fz_local',CCK='fz_cats',VK='fz_view',AVK='fz_avatar',PRIVK='fz_privacy',CAR_KEY='fz_car';
-const RATES_KEY='fz_rates', WIDGET_ORDER_KEY='fz_widget_order', DUE_KEY='fz_due_items', TX_FILTERS_KEY='fz_tx_filters';
+const RATES_KEY='fz_rates', WIDGET_ORDER_KEY='fz_widget_order', WIDGET_SIZE_KEY='fz_widget_sizes', WIDGET_FILTER_KEY='fz_widget_filters', DUE_KEY='fz_due_items', TX_FILTERS_KEY='fz_tx_filters';
 const SAVE_STATE_KEY='fz_save_state', SYNC_HISTORY_KEY='fz_sync_history', AUDIT_HISTORY_KEY='fz_audit_history';
 let monthlyIncomeCents=0;
 let dueItems=[];
@@ -579,7 +579,7 @@ function saveCar(){
 }
 function getAppSettings(){
   const avatarData=localStorage.getItem(AVK)||'';
-  return {theme:document.documentElement.dataset.theme||localStorage.getItem('fz_t')||'dark',rates:{cdi:RATES.cdi,selic:RATES.selic,monthlyIncomeCents,monthly_income_cents:monthlyIncomeCents,dueItems,car:carState?.vehicles?.length?carState:normalizeCarState(),avatarData,avatar_data:avatarData},widgetPrefs,widgetOrder,txView:curView,activeList:slActiveList};
+  return {theme:document.documentElement.dataset.theme||localStorage.getItem('fz_t')||'dark',rates:{cdi:RATES.cdi,selic:RATES.selic,monthlyIncomeCents,monthly_income_cents:monthlyIncomeCents,dueItems,car:carState?.vehicles?.length?carState:normalizeCarState(),avatarData,avatar_data:avatarData},widgetPrefs,widgetOrder,widgetSizes,widgetFilters,txView:curView,activeList:slActiveList};
 }
 function applyRemoteSettings(settings={}){
   if(settings.theme)applyTheme(settings.theme);
@@ -604,8 +604,9 @@ function applyRemoteSettings(settings={}){
   }
   localStorage.setItem(RATES_KEY,JSON.stringify({cdi:RATES.cdi,selic:RATES.selic,monthlyIncomeCents,monthly_income_cents:monthlyIncomeCents,dueItems,avatarData:localStorage.getItem(AVK)||''}));
   widgetPrefs=asObj(settings.widget_prefs||settings.widgetPrefs||widgetPrefs);
-  FIXED_WIDGET_IDS.forEach(id => widgetPrefs[id] = true);
   widgetOrder=asArr(settings.widget_order||settings.widgetOrder||widgetOrder);
+  widgetSizes=asObj(settings.widget_sizes||settings.widgetSizes||widgetSizes);
+  widgetFilters=asObj(settings.widget_filters||settings.widgetFilters||widgetFilters);
   if(settings.tx_view||settings.txView)localStorage.setItem(VK,settings.tx_view||settings.txView);
   if(settings.active_list||settings.activeList)slActiveList=settings.active_list||settings.activeList;
 }
@@ -3221,8 +3222,7 @@ function initDeepLink() {
 // SISTEMA DE WIDGETS DO DASHBOARD
 // ════════════════════════════════════════════════════════════
 const WIDGETS_KEY = 'fz_widgets';
-const FIXED_WIDGET_IDS = ['cards', 'projection', 'weekly', 'anomaly'];
-const FIXED_WIDGET_SET = new Set(FIXED_WIDGET_IDS);
+const MIN_DASH_WIDGETS = 3;
 
 // Definição de todos os widgets disponíveis
 const WIDGET_DEFS = [
@@ -3247,6 +3247,8 @@ const WIDGET_DEFS = [
 
 let widgetPrefs = {};
 let widgetOrder = [];
+let widgetSizes = {};
+let widgetFilters = {};
 
 function loadWidgetPrefs() {
   try {
@@ -3257,10 +3259,13 @@ function loadWidgetPrefs() {
   WIDGET_DEFS.forEach(w => {
     if (widgetPrefs[w.id] === undefined) widgetPrefs[w.id] = w.default;
   });
-  FIXED_WIDGET_IDS.forEach(id => widgetPrefs[id] = true);
   try{widgetOrder=asArr(JSON.parse(localStorage.getItem(WIDGET_ORDER_KEY)||'[]'));}catch{widgetOrder=[];}
+  try{widgetSizes=asObj(JSON.parse(localStorage.getItem(WIDGET_SIZE_KEY)||'{}'));}catch{widgetSizes={};}
+  try{widgetFilters=asObj(JSON.parse(localStorage.getItem(WIDGET_FILTER_KEY)||'{}'));}catch{widgetFilters={};}
   const ids=WIDGET_DEFS.map(w=>w.id);
-  widgetOrder=[...FIXED_WIDGET_IDS,...widgetOrder.filter(id=>ids.includes(id)&&!FIXED_WIDGET_SET.has(id)),...ids.filter(id=>!widgetOrder.includes(id)&&!FIXED_WIDGET_SET.has(id))];
+  widgetOrder=[...widgetOrder.filter(id=>ids.includes(id)),...ids.filter(id=>!widgetOrder.includes(id))];
+  widgetSizes=Object.fromEntries(Object.entries(widgetSizes).filter(([id])=>ids.includes(id)));
+  ensureAtLeastOneWidget();
 }
 
 function saveWidgetPrefs() {
@@ -3268,30 +3273,80 @@ function saveWidgetPrefs() {
   if(cfg.mode==='api')saveRemoteState().catch(()=>{});
 }
 function saveWidgetOrder(){localStorage.setItem(WIDGET_ORDER_KEY,JSON.stringify(widgetOrder));if(cfg.mode==='api')saveRemoteState().catch(()=>{});}
+function saveWidgetSizes(){localStorage.setItem(WIDGET_SIZE_KEY,JSON.stringify(widgetSizes));if(cfg.mode==='api')saveRemoteState().catch(()=>{});}
+function saveWidgetFilters(){localStorage.setItem(WIDGET_FILTER_KEY,JSON.stringify(widgetFilters));if(cfg.mode==='api')saveRemoteState().catch(()=>{});}
 function isWidgetOn(id) {
-  if(FIXED_WIDGET_SET.has(id))return true;
   return widgetPrefs[id] !== false;
+}
+function activeWidgetCount(){
+  return WIDGET_DEFS.filter(w=>isWidgetOn(w.id)).length;
+}
+function ensureAtLeastOneWidget(){
+  if(activeWidgetCount()>=MIN_DASH_WIDGETS)return;
+  WIDGET_DEFS.filter(w=>w.default||w.id==='cards').some(w=>{
+    widgetPrefs[w.id]=true;
+    return activeWidgetCount()>=MIN_DASH_WIDGETS;
+  });
+  WIDGET_DEFS.some(w=>{
+    if(activeWidgetCount()>=MIN_DASH_WIDGETS)return true;
+    widgetPrefs[w.id]=true;
+    return false;
+  });
 }
 
 function toggleWidget(id) {
-  if(FIXED_WIDGET_SET.has(id)){toast('Este bloco fica fixo no topo da dashboard','info');return;}
-  widgetPrefs[id] = !widgetPrefs[id];
+  const willDisable=isWidgetOn(id);
+  if(willDisable&&activeWidgetCount()<=MIN_DASH_WIDGETS){
+    toast(`Mantenha pelo menos ${MIN_DASH_WIDGETS} widgets na dashboard`,'info');
+    return;
+  }
+  widgetPrefs[id] = !willDisable;
   saveWidgetPrefs();
   renderWidgetToggles();
   renderDash();
 }
-function resetWidgetOrder(){widgetOrder=[...FIXED_WIDGET_IDS,...WIDGET_DEFS.map(w=>w.id).filter(id=>!FIXED_WIDGET_SET.has(id))];saveWidgetOrder();renderDash();toast('Ordem do dashboard restaurada','info');}
+function resetWidgetOrder(){widgetOrder=WIDGET_DEFS.map(w=>w.id);saveWidgetOrder();renderDash();toast('Ordem do dashboard restaurada','info');}
+function resetDashboardWidgets(){
+  widgetPrefs={};
+  WIDGET_DEFS.forEach(w=>widgetPrefs[w.id]=w.default);
+  widgetOrder=WIDGET_DEFS.map(w=>w.id);
+  widgetSizes={};
+  widgetFilters={};
+  ensureAtLeastOneWidget();
+  localStorage.setItem(WIDGETS_KEY,JSON.stringify(widgetPrefs));
+  localStorage.setItem(WIDGET_ORDER_KEY,JSON.stringify(widgetOrder));
+  localStorage.setItem(WIDGET_SIZE_KEY,JSON.stringify(widgetSizes));
+  localStorage.setItem(WIDGET_FILTER_KEY,JSON.stringify(widgetFilters));
+  if(cfg.mode==='api')saveRemoteState().catch(()=>{});
+  renderWidgetToggles();
+  renderDash();
+  toast('Dashboard voltou aos padrões','success');
+}
+function widgetSize(id){return ['compact','normal','large'].includes(widgetSizes[id])?widgetSizes[id]:'normal';}
+function cycleWidgetSize(id){
+  const next={compact:'normal',normal:'large',large:'compact'}[widgetSize(id)]||'normal';
+  widgetSizes[id]=next;
+  saveWidgetSizes();
+  renderDash();
+  toast(next==='compact'?'Widget compacto':next==='large'?'Widget grande':'Widget normal','info');
+}
+function setWidgetFilter(widget,key,value){
+  widgetFilters[widget]=asObj(widgetFilters[widget]);
+  widgetFilters[widget][key]=value;
+  saveWidgetFilters();
+  renderDash();
+}
 
 function renderWidgetToggles() {
   const el = document.getElementById('widgetToggles');
   if (!el) return;
   el.innerHTML = WIDGET_DEFS.map(w => `
-    <div class="widget-chip ${widgetPrefs[w.id] || FIXED_WIDGET_SET.has(w.id) ? 'on' : ''} ${FIXED_WIDGET_SET.has(w.id)?'locked':''}" onclick="toggleWidget('${w.id}')">
+    <div class="widget-chip ${isWidgetOn(w.id) ? 'on' : ''}" onclick="toggleWidget('${w.id}')">
       <span class="wc-dot"></span>
       <span class="wc-ico">${w.ico}</span>
       <div class="wc-info">
-        <div class="wc-name">${w.name}${FIXED_WIDGET_SET.has(w.id)?' • fixo':''}</div>
-        <div class="wc-desc">${FIXED_WIDGET_SET.has(w.id)?'Fica sempre no topo. ':''}${w.desc}</div>
+        <div class="wc-name">${w.name}</div>
+        <div class="wc-desc">${w.desc}</div>
       </div>
     </div>
   `).join('');
@@ -3304,8 +3359,11 @@ function renderDash() {
   const ids=WIDGET_DEFS.map(w=>w.id);
   widgetPrefs=asObj(widgetPrefs);
   widgetOrder=asArr(widgetOrder);
-  FIXED_WIDGET_IDS.forEach(id => widgetPrefs[id] = true);
-  widgetOrder=[...FIXED_WIDGET_IDS,...widgetOrder.filter(id=>ids.includes(id)&&!FIXED_WIDGET_SET.has(id)),...ids.filter(id=>!widgetOrder.includes(id)&&!FIXED_WIDGET_SET.has(id))];
+  widgetSizes=asObj(widgetSizes);
+  widgetFilters=asObj(widgetFilters);
+  widgetOrder=[...widgetOrder.filter(id=>ids.includes(id)),...ids.filter(id=>!widgetOrder.includes(id))];
+  widgetSizes=Object.fromEntries(Object.entries(widgetSizes).filter(([id])=>ids.includes(id)));
+  ensureAtLeastOneWidget();
 
   const renderers={
     cards:widgetCards,quickactions:widgetQuickActions,ministats:widgetMiniStats,accounts:widgetAccounts,vehicles:widgetVehicles,shopping:widgetShoppingDash,
@@ -3318,9 +3376,10 @@ function renderDash() {
   };
   const wrap=(id,html)=>{
     if(!html)return '';
-    const fixed=FIXED_WIDGET_SET.has(id);
-    const tools=fixed?'':`<div class="widget-tools"><div class="widget-stepper"><button class="widget-move-btn" onclick="moveWidgetStep('${id}',-1)" title="Mover widget para cima" aria-label="Mover widget para cima">▲</button><button class="widget-move-btn" onclick="moveWidgetStep('${id}',1)" title="Mover widget para baixo" aria-label="Mover widget para baixo">▼</button></div><button class="widget-drag-btn" title="Arrastar widget" aria-label="Arrastar widget">⋮⋮</button><button class="widget-remove-btn" onclick="toggleWidget('${id}')" title="Remover widget" aria-label="Remover widget">✕</button></div>`;
-    return `<div class="dash-section-wrap ${fixed?'fixed-widget':''}" draggable="${fixed?'false':'true'}" data-widget-id="${id}">${tools}${html}</div>`;
+    const size=widgetSize(id);
+    const sizeLabel=size==='compact'?'Compacto':size==='large'?'Grande':'Normal';
+    const tools=`<div class="widget-tools"><button class="widget-size-btn" onclick="cycleWidgetSize('${id}')" title="Tamanho: ${sizeLabel}" aria-label="Alterar tamanho do widget">${size==='compact'?'P':size==='large'?'G':'M'}</button><div class="widget-stepper"><button class="widget-move-btn" onclick="moveWidgetStep('${id}',-1)" title="Mover widget para cima" aria-label="Mover widget para cima">▲</button><button class="widget-move-btn" onclick="moveWidgetStep('${id}',1)" title="Mover widget para baixo" aria-label="Mover widget para baixo">▼</button></div><button class="widget-drag-btn" title="Arrastar widget" aria-label="Arrastar widget">⋮⋮</button><button class="widget-remove-btn" onclick="toggleWidget('${id}')" title="Remover widget" aria-label="Remover widget">✕</button></div>`;
+    return `<div class="dash-section-wrap widget-size-${size}" draggable="true" data-widget-id="${id}">${tools}${html}</div>`;
   };
   const sections=widgetOrder.filter(id=>isWidgetOn(id)&&renderers[id]).map(id=>wrap(id,renderers[id]())).filter(Boolean);
 
@@ -3357,9 +3416,8 @@ function animateDashWidgetsFrom(container,first){
 }
 function persistWidgetOrderFromDom(container){
   const visible=getDashWidgetItems(container).map(el=>el.dataset.widgetId);
-  const unlockedVisible=visible.filter(id=>!FIXED_WIDGET_SET.has(id));
-  const hidden=widgetOrder.filter(id=>!visible.includes(id)&&!FIXED_WIDGET_SET.has(id));
-  widgetOrder=[...FIXED_WIDGET_IDS,...unlockedVisible,...hidden];
+  const hidden=widgetOrder.filter(id=>!visible.includes(id));
+  widgetOrder=[...visible,...hidden];
   saveWidgetOrder();
 }
 function settleWidget(item){
@@ -3367,13 +3425,11 @@ function settleWidget(item){
   setTimeout(()=>item.classList.remove('drop-settle'),320);
 }
 function moveWidgetStep(id,dir){
-  if(FIXED_WIDGET_SET.has(id))return;
   const container=document.getElementById('dashWidgets');
   const item=container?.querySelector(`.dash-section-wrap[data-widget-id="${id}"]`);
   if(!container||!item)return;
   const target=dir<0?item.previousElementSibling:item.nextElementSibling;
   if(!target||!target.classList.contains('dash-section-wrap'))return;
-  if(target.classList.contains('fixed-widget'))return;
   const first=captureDashWidgetRects(container);
   if(dir<0)container.insertBefore(item,target);
   else container.insertBefore(target,item);
@@ -3402,7 +3458,6 @@ function initWidgetDrag(){
   };
   const moveDragged=(target,e)=>{
     if(!dragged||!target||dragged===target)return;
-    if(target.classList.contains('fixed-widget'))return;
     const rect=target.getBoundingClientRect();
     const after=e.clientY>rect.top+rect.height/2;
     const next=after?target.nextSibling:target;
@@ -3413,13 +3468,11 @@ function initWidgetDrag(){
   };
   const persistOrder=()=>{
     const visible=widgetItems().map(el=>el.dataset.widgetId);
-    const unlockedVisible=visible.filter(id=>!FIXED_WIDGET_SET.has(id));
-    const hidden=widgetOrder.filter(id=>!visible.includes(id)&&!FIXED_WIDGET_SET.has(id));
-    widgetOrder=[...FIXED_WIDGET_IDS,...unlockedVisible,...hidden];
+    const hidden=widgetOrder.filter(id=>!visible.includes(id));
+    widgetOrder=[...visible,...hidden];
     saveWidgetOrder();
   };
   container.querySelectorAll('.dash-section-wrap').forEach(item=>{
-    if(item.classList.contains('fixed-widget'))return;
     item.addEventListener('dragstart',e=>{
       dragged=item;
       container.classList.add('is-reordering');
