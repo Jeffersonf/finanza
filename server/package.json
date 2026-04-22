@@ -1,6 +1,6 @@
 {
   "name": "finanza-api",
-  "version": "3.9.3",
+  "version": "4.0.0",
   "description": "Finanza API multi-usuário",
   "main": "index.js",
   "engines": { "node": ">=18" },

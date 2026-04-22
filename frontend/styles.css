@@ -1592,6 +1592,25 @@ select.sel {
 .car-chart-panel{margin-bottom:14px;}
 .car-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px;}
 .car-chart-card{background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:12px;min-height:250px;}
+.car-maint-wrap{margin-bottom:14px;padding:14px 16px;}
+.car-maint-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px;}
+.car-maint-card{background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:14px;}
+.car-maint-k{font-size:10px;color:var(--mt);text-transform:uppercase;font-weight:700;}
+.car-maint-v{font-family:var(--font-money);font-size:18px;font-weight:800;margin-top:4px;}
+.car-vendor-box{background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:12px;}
+.car-vendor-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+.car-vendor-row{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--sf2);}
+.car-vendor-name{font-size:13px;font-weight:700;color:var(--tx);}
+.car-vendor-meta{font-size:11px;color:var(--mt);margin-top:2px;line-height:1.4;}
+.car-vendor-amt{font-family:var(--font-money);font-size:14px;font-weight:800;white-space:nowrap;}
+.future-center-panel{margin-bottom:14px;}
+.future-center-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.future-center-card{background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:14px;}
+.future-center-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+.future-center-row{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--sf2);}
+.future-center-name{font-size:13px;font-weight:700;color:var(--tx);}
+.future-center-meta{font-size:11px;color:var(--mt);margin-top:2px;}
+.future-center-amt{font-family:var(--font-money);font-size:14px;font-weight:800;white-space:nowrap;}
 .car-panel{padding-bottom:14px;}
 .car-row{display:flex;align-items:center;gap:12px;padding:13px 10px;border-bottom:1px solid var(--bd);}
 .car-row:last-child{border-bottom:none;}
@@ -1610,6 +1629,7 @@ select.sel {
   .car-filterbar{grid-template-columns:repeat(3,minmax(0,1fr));}
   .car-filterbar .fi:last-child{grid-column:span 3;}
   .car-chart-grid{grid-template-columns:1fr;}
+  .car-maint-grid,.future-center-grid{grid-template-columns:1fr;}
 }
 
 @media(max-width:640px){

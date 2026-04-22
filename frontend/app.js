@@ -1,5 +1,5 @@
 ﻿'use strict';
-const APP_VERSION='3.9-final';
+const APP_VERSION='4.0.0';
 const DEFAULT_API_URL='https://finanza-api.onrender.com';
 const CK='fz_cfg',LK='fz_local',CCK='fz_cats',VK='fz_view',AVK='fz_avatar',PRIVK='fz_privacy',CAR_KEY='fz_car';
 const RATES_KEY='fz_rates', WIDGET_ORDER_KEY='fz_widget_order', DUE_KEY='fz_due_items';
@@ -1372,6 +1372,28 @@ function renderFut(){
   if(fI.length){incS.style.display='block';document.getElementById('futIncList').innerHTML=fI.map(x=>{const dl=dDiff(x.date);const c=getCat(x.category);return`<div class="ti" style="border-left:3px solid var(--ac);background:rgba(200,245,90,.03)"><div class="tico" style="background:rgba(200,245,90,.1)">${c.ico}</div><div class="tinf"><div class="tnm">${x.desc}</div><div class="tcat"><span class="bdg bdg-f" style="color:var(--ac)">💰 em ${dl}d</span><span class="bdg" style="background:${c.col}20;color:${c.col}">${x.category}</span></div></div><div class="tr"><div class="tam income">+${fmt(x.amount)}</div><div class="tdt">${fmtD(x.date)}</div></div><div class="tact"><button class="ib ok" onclick="markPaid('${x.id}')">✓</button><button class="ib" onclick="openModal('${x.id}')">✏️</button><button class="ib del" onclick="delTx('${x.id}')">🗑️</button></div></div>`;}).join('');}
   else incS.style.display='none';
   document.getElementById('futExpList').innerHTML=fE.length?fE.map(x=>{const dl=dDiff(x.date);const c=getCat(x.category);const urg=dl<=3?'var(--dan)':dl<=7?'var(--warn)':'var(--fut)';return`<div class="ti fut-tx"><div class="tico" style="background:rgba(167,139,250,.1)">${c.ico}</div><div class="tinf"><div class="tnm">${x.desc}</div><div class="tcat"><span class="bdg" style="background:rgba(167,139,250,.12);color:${urg}">🔮 em ${dl}d</span><span class="bdg" style="background:${c.col}20;color:${c.col}">${x.category}</span>${x.installmentNum?`<span class="bdg bdg-i">💳 ${x.installmentNum}/${x.installmentTotal}</span>`:''}</div></div><div class="tr"><div class="tam fut-c">-${fmt(x.amount)}</div><div class="tdt">${fmtD(x.date)}</div></div><div class="tact"><button class="ib ok" onclick="markPaid('${x.id}')">✓</button><button class="ib" onclick="openModal('${x.id}')">✏️</button><button class="ib" onclick="dupTx('${x.id}')">⧉</button><button class="ib del" onclick="${x.installmentGroup?`delGrp('${x.installmentGroup}','installmentGroup')`:x.recurGroup?`delGrp('${x.recurGroup}','recurGroup')`:`delTx('${x.id}')`}">🗑️</button></div></div>`;}).join(''):`<div class="empty"><span class="ei">🔮</span><p>Nenhum gasto futuro no período.</p></div>`;
+  const center=document.getElementById('futureCommandCenter');
+  if(center){
+    const urgent=[...ovd.map(x=>({name:x.desc,date:x.date,amount:x.amount,kind:'Atrasado',color:'var(--dan)'})),...fE.filter(x=>dDiff(x.date)<=7).map(x=>({name:x.desc,date:x.date,amount:x.amount,kind:dDiff(x.date)<=3?'Vence logo':'Próximo',color:dDiff(x.date)<=3?'var(--dan)':'var(--warn)'}))].sort((a,b)=>a.date.localeCompare(b.date)).slice(0,6);
+    const horizon=getFutEnd('1m');
+    const byCategory={};
+    [...fE.filter(x=>x.date<=horizon),...dueOccurrences(horizon).map(o=>({category:o.item.category||'A classificar',amount:o.item.amount}))].forEach(item=>{byCategory[item.category]=(byCategory[item.category]||0)+item.amount;});
+    const topCats=Object.entries(byCategory).sort((a,b)=>b[1]-a[1]).slice(0,4);
+    const total30=Object.values(byCategory).reduce((s,v)=>s+v,0);
+    center.innerHTML=`
+      <div class="future-center-grid">
+        <div class="future-center-card">
+          <div class="ct">Comando rápido</div>
+          <div class="cs">Atenção imediata para os próximos dias</div>
+          <div class="future-center-list">${urgent.length?urgent.map(item=>`<div class="future-center-row"><div><div class="future-center-name">${esc(item.name)}</div><div class="future-center-meta" style="color:${item.color}">${item.kind} • ${fmtD(item.date)}</div></div><div class="future-center-amt">${fmt(item.amount)}</div></div>`).join(''):'<div class="sync-empty">Sem contas urgentes neste horizonte.</div>'}</div>
+        </div>
+        <div class="future-center-card">
+          <div class="ct">Peso dos próximos 30 dias</div>
+          <div class="cs">Categorias que mais apertam seu caixa</div>
+          <div class="future-center-list">${topCats.length?topCats.map(([name,total])=>`<div class="future-center-row"><div><div class="future-center-name">${esc(name)}</div><div class="future-center-meta">${Math.round((total/Math.max(total30,1))*100)}% do previsto no mês</div></div><div class="future-center-amt">${fmt(total)}</div></div>`).join(''):'<div class="sync-empty">Sem compromissos fortes no próximo mês.</div>'}</div>
+        </div>
+      </div>`;
+  }
 }
 function dueKey(date){return date.substring(0,7);}
 function dueDateForMonth(item,ym){
@@ -1629,6 +1651,44 @@ function carStats(events=carFilteredEvents()){
   });
   const topKind=[...byKind.values()].sort((a,b)=>b.total-a.total)[0]||null;
   return {events,distance,liters,kmPerLiter,total,fuelTotal,expenseTotal,fuelCount,expenseCount,costPerKm,maxOdo,vehicle,avgTicket,avgFuelPrice,lastEvent,topKind};
+}
+function monthBounds(date=new Date()){
+  const y=date.getFullYear(),m=date.getMonth();
+  const first=`${y}-${String(m+1).padStart(2,'0')}-01`;
+  const last=new Date(y,m+1,0).getDate();
+  return {from:first,to:`${y}-${String(m+1).padStart(2,'0')}-${String(last).padStart(2,'0')}`,days:last};
+}
+function extractCarVendor(note=''){
+  const cleaned=String(note||'').split('•')[0].trim();
+  if(!cleaned||/^importado do drivvo$/i.test(cleaned))return '';
+  return cleaned;
+}
+function carMaintenanceInsights(events=carFilteredEvents()){
+  const singleVehicle=currentCarVehicleFilter()==='all'?null:currentCarVehicleFilter();
+  const baseEvents=singleVehicle?events.filter(e=>e.vehicleId===singleVehicle):events;
+  const maintenance=baseEvents.filter(e=>e.type==='expense');
+  const fuelEvents=baseEvents.filter(e=>e.type==='fuel');
+  const oilLike=maintenance.filter(e=>/oleo|filtro|revis|troca/.test(normalizeTxText(`${e.title} ${e.note}`)));
+  const latestOil=[...oilLike].sort((a,b)=>b.date.localeCompare(a.date)||b.odometer-a.odometer)[0]||null;
+  const highestOdo=Math.max(0,...baseEvents.map(e=>e.odometer||0));
+  const nextOilKm=latestOil?.odometer?latestOil.odometer+5000:null;
+  const kmLeft=nextOilKm?Math.max(0,nextOilKm-highestOdo):null;
+  const nextOilDate=latestOil?.date?offD(new Date(latestOil.date+'T12:00:00'),180):null;
+  const vendors=new Map();
+  baseEvents.forEach(e=>{
+    const vendor=extractCarVendor(e.note);
+    if(!vendor)return;
+    if(!vendors.has(vendor))vendors.set(vendor,{name:vendor,total:0,count:0,fuel:0,expense:0});
+    const item=vendors.get(vendor);
+    item.total+=e.amount||0;
+    item.count++;
+    if(e.type==='fuel')item.fuel+=e.amount||0;else item.expense+=e.amount||0;
+  });
+  const topVendors=[...vendors.values()].sort((a,b)=>b.total-a.total).slice(0,4);
+  const recurringCats={};
+  maintenance.forEach(e=>{const label=carExpenseLabel(e.category);recurringCats[label]=(recurringCats[label]||0)+e.amount;});
+  const topMaintenance=Object.entries(recurringCats).sort((a,b)=>b[1]-a[1])[0]||null;
+  return {latestOil,nextOilKm,kmLeft,nextOilDate,topVendors,topMaintenance,highestOdo};
 }
 function popCarAccSel(){
   const el=document.getElementById('carAcc');if(!el)return;
@@ -2083,6 +2143,7 @@ function renderCar(){
   syncCarFilterControls();
   const events=carFilteredEvents();
   const st=carStats(events);
+  const maint=carMaintenanceInsights(events);
   const single=st.vehicle!=='all';
   const v=single?carVehicle(st.vehicle):null;
   const title=document.getElementById('carTitleView');if(title)title.textContent=single?(v.name||'Meu veículo'):'Todos os veículos';
@@ -2106,6 +2167,29 @@ function renderCar(){
   document.getElementById('carChartBars')?.classList.toggle('active',carChartMode==='bars');
   document.getElementById('carChartLine')?.classList.toggle('active',carChartMode==='line');
   if(typeof renderCarCharts==='function')renderCarCharts(events,st);
+  const maintEl=document.getElementById('carMaintenancePanel');
+  if(maintEl)maintEl.innerHTML=`
+    <div class="car-maint-grid">
+      <div class="car-maint-card">
+        <div class="car-maint-k">Próxima revisão</div>
+        <div class="car-maint-v">${maint.nextOilKm?`${Math.round(maint.nextOilKm).toLocaleString('pt-BR')} km`:'—'}</div>
+        <div class="cc">${maint.kmLeft!==null?`${Math.round(maint.kmLeft).toLocaleString('pt-BR')} km restantes`:'cadastre troca de óleo ou revisão'}</div>
+      </div>
+      <div class="car-maint-card">
+        <div class="car-maint-k">Prazo por data</div>
+        <div class="car-maint-v">${maint.nextOilDate?fmtD(maint.nextOilDate):'—'}</div>
+        <div class="cc">${maint.latestOil?`última revisão em ${fmtD(maint.latestOil.date)}`:'sem referência ainda'}</div>
+      </div>
+      <div class="car-maint-card">
+        <div class="car-maint-k">Maior gasto de manutenção</div>
+        <div class="car-maint-v">${maint.topMaintenance?esc(maint.topMaintenance[0]):'—'}</div>
+        <div class="cc">${maint.topMaintenance?fmt(maint.topMaintenance[1]):'sem despesas suficientes'}</div>
+      </div>
+    </div>
+    <div class="car-vendor-box">
+      <div class="bh"><div><div class="ct">Postos e oficinas</div><div class="cs">Quem mais pesa no período filtrado</div></div></div>
+      <div class="car-vendor-list">${maint.topVendors.length?maint.topVendors.map(vendor=>`<div class="car-vendor-row"><div><div class="car-vendor-name">${esc(vendor.name)}</div><div class="car-vendor-meta">${vendor.count} registro${vendor.count!==1?'s':''} • combustível ${fmt(vendor.fuel)} • despesas ${fmt(vendor.expense)}</div></div><div class="car-vendor-amt">${fmt(vendor.total)}</div></div>`).join(''):'<div class="sync-empty">Adicione observações com posto ou oficina para ver o ranking.</div>'}</div>
+    </div>`;
   const list=document.getElementById('carList');
   if(list)list.innerHTML=st.events.length?st.events.map(e=>{
     const isFuel=e.type==='fuel';
@@ -2437,6 +2521,19 @@ function renderMonthCompare(){
 function renderProjection(){
   const el=document.getElementById('projCard');
   if(!el)return;
+  const now=new Date();
+  const {from,to,days}=monthBounds(curDt);
+  const isCurrentMonth=curDt.getMonth()===now.getMonth()&&curDt.getFullYear()===now.getFullYear();
+  const dayOfMonth=isCurrentMonth?now.getDate():days;
+  const currentMonthTx=S.transactions.filter(t=>t.date>=from&&t.date<=to&&!isFut(t.date)&&!t.paid);
+  const curInc=currentMonthTx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const curExp=currentMonthTx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const paceInc=dayOfMonth?curInc/dayOfMonth:0;
+  const paceExp=dayOfMonth?curExp/dayOfMonth:0;
+  const projectedInc=paceInc*days;
+  const projectedExp=paceExp*days;
+  const projectedBalance=projectedInc-projectedExp;
+  const dueThisMonth=dueOccurrences(to).filter(o=>o.date>=today()).reduce((s,o)=>s+o.item.amount,0);
   // Média dos últimos 3 meses
   let totalInc=0,totalExp=0,cnt=0;
   for(let i=1;i<=3;i++){
@@ -2446,7 +2543,7 @@ function renderProjection(){
     const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
     if(inc>0||exp>0){totalInc+=inc;totalExp+=exp;cnt++;}
   }
-  if(!cnt){el.innerHTML=`<div class="proj-card"><div class="proj-icon">🔭</div><div class="proj-info"><div class="proj-title">Projeção em preparação</div><div class="proj-detail">Depois de alguns lançamentos, este balão mostra tendência mensal e quanto sobra ou falta nos próximos meses.</div></div></div>`;return;}
+  if(!cnt&&!currentMonthTx.length){el.innerHTML=`<div class="proj-card"><div class="proj-icon">🔭</div><div class="proj-info"><div class="proj-title">Projeção em preparação</div><div class="proj-detail">Depois de alguns lançamentos, este balão mostra tendência mensal e quanto sobra ou falta nos próximos meses.</div></div></div>`;return;}
   const avgInc=totalInc/cnt,avgExp=totalExp/cnt,avgSav=avgInc-avgExp;
   const curBal=S.accounts.reduce((s,a)=>s+getAccBal(a.id),0);
   const proj3=curBal+(avgSav*3);
@@ -2462,7 +2559,8 @@ function renderProjection(){
           Tendência <strong style="color:${trendColor}">${trend}</strong>
           média mensal de <strong style="color:${avgSav>=0?'var(--ac)':'var(--dan)'}">${fmt(Math.abs(avgSav))}</strong>
           ${avgSav>=0?'economizados':'de dficit'}<br>
-          Em 3 meses: <strong>${fmt(proj3)}</strong> &nbsp;&nbsp; Em 6 meses: <strong>${fmt(proj6)}</strong>
+          Em 3 meses: <strong>${fmt(proj3)}</strong> &nbsp;&nbsp; Em 6 meses: <strong>${fmt(proj6)}</strong><br>
+          Fechamento estimado do mês: <strong style="color:${projectedBalance>=0?'var(--ac)':'var(--dan)'}">${fmt(projectedBalance)}</strong> • contas/vencimentos restantes: <strong>${fmt(dueThisMonth)}</strong>
         </div>
       </div>
     </div>`;

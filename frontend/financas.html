@@ -9,14 +9,14 @@
 <meta name="apple-mobile-web-app-title" content="Finanza">
 <meta name="application-name" content="Finanza">
 <meta name="theme-color" id="themeColorMeta" content="#08090d">
-<meta name="app-version" content="3.9-final">
+<meta name="app-version" content="4.0.0">
 <title>Finanza</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='10' fill='%2308090d'/%3E%3Ctext x='5' y='23' font-family='Arial Black' font-weight='900' font-size='17' fill='%23c8f55a'%3Efz%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<link rel="stylesheet" href="styles.css?v=3.9-final">
+<link rel="stylesheet" href="styles.css?v=4.0.0">
 </head>
 <body>
 
@@ -235,6 +235,7 @@
   </div>
   <div class="sdiv"><div class="sdiv-line"></div><span class="sdiv-lbl" style="color:var(--fut)">📌 Vencimentos e lembretes</span><div class="sdiv-line"></div></div>
   <div class="box"><div class="tl" id="dueList"></div></div>
+  <div class="box future-center-panel"><div id="futureCommandCenter"></div></div>
   <div id="ovdSec" style="display:none"><div class="sdiv"><div class="sdiv-line"></div><span class="sdiv-lbl" style="color:var(--dan)">⚠️ Vencidos</span><div class="sdiv-line"></div></div><div class="box" style="border-color:rgba(245,112,90,.2)"><div class="tl" id="ovdList"></div></div></div>
   <div id="futIncSec" style="display:none"><div class="sdiv"><div class="sdiv-line"></div><span class="sdiv-lbl" style="color:var(--ac)">💰 A Receber</span><div class="sdiv-line"></div></div><div class="box" style="border-color:rgba(200,245,90,.18)"><div class="tl" id="futIncList"></div></div></div>
   <div class="sdiv"><div class="sdiv-line"></div><span class="sdiv-lbl" style="color:var(--fut)">🔮 A Pagar</span><div class="sdiv-line"></div></div>
@@ -415,6 +416,7 @@
     <input type="date" class="fi" id="carToFilter" onchange="setCarFilter('to',this.value)">
   </div>
   <div class="insight-grid" id="carStats"></div>
+  <div class="box car-maint-wrap" id="carMaintenancePanel"></div>
   <div class="box car-chart-panel">
     <div class="bh">
       <div><div class="ct">Evolução do carro</div><div class="cs">Barras para gasto por período, linha para tendência de custo e consumo</div></div>
@@ -579,12 +581,12 @@
 </div></div>
 <div class="twrap" id="twrap"></div>
 <div class="undo-bar" id="undoBar"><span id="undoLabel">Ação removida</span><div class="undo-actions"><button class="btn btn-g btn-sm" onclick="undoLastAction()">Desfazer</button><button class="btn btn-g btn-sm" onclick="dismissUndo()">Fechar</button></div></div>
-<script src="app.js?v=3.9-final"></script>
-<script src="api.js?v=3.9-final"></script>
-<script src="storage.js?v=3.9-final"></script>
-<script src="charts.js?v=3.9-final"></script>
-<script src="components.js?v=3.9-final"></script>
-<script src="boot.js?v=3.9-final"></script>
+<script src="app.js?v=4.0.0"></script>
+<script src="api.js?v=4.0.0"></script>
+<script src="storage.js?v=4.0.0"></script>
+<script src="charts.js?v=4.0.0"></script>
+<script src="components.js?v=4.0.0"></script>
+<script src="boot.js?v=4.0.0"></script>
 </body>
 </html>
 
