@@ -2804,9 +2804,9 @@ function showConnBar(state,msg,duration=3000){
   _lastConnState=state;
   const b=document.getElementById('connBar');
   if(!b)return;
-  const icons={online:'✅',offline:'📴',error:'⚠️',syncing:'🔄'};
-  b.className='conn-bar '+state+' show';
-  b.innerHTML=`<span>${icons[state]||''}</span><span>${msg}</span>`;
+  const icons={online:'✓',offline:'📴',error:'!',syncing:''};
+  b.className='conn-toast '+state+' show';
+  b.innerHTML=`<span class="conn-ico">${state==='syncing'?'<span class="conn-spin"></span>':icons[state]||''}</span><span>${msg}</span>`;
   if(duration>0)setTimeout(()=>b.classList.remove('show'),duration);
 }
 

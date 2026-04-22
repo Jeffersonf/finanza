@@ -973,6 +973,7 @@ select.sel {
   #setup { align-items: flex-end; }
   .setup-box { width: 100%; max-width: 100%; border-radius: 28px 28px 0 0; padding: 28px 18px calc(28px + env(safe-area-inset-bottom)); }
   .twrap { bottom: calc(96px + env(safe-area-inset-bottom)); right: 8px; left: 8px; }
+  .conn-toast { right: 8px; left: 8px; bottom: calc(96px + env(safe-area-inset-bottom)); max-width:none; }
   .toast { min-width: unset; font-size: 12px; }
   .sc { padding: 14px 16px; }
   .cv { font-size: 19px; }
@@ -1016,6 +1017,7 @@ select.sel {
 .no-blur .sidebar,
 .no-blur .setup-box,
 .no-blur .toast,
+.no-blur .conn-toast,
 .no-blur .qa-panel,
 .no-blur .pbar,
 .no-blur .srch-box,
@@ -1036,6 +1038,7 @@ select.sel {
 [data-theme=dark] .no-blur .pbar,
 [data-theme=dark] .no-blur .mnav { background: rgba(18,21,30,.98) !important; }
 [data-theme=dark] .no-blur .toast { background: rgba(22,25,38,.99) !important; }
+[data-theme=dark] .no-blur .conn-toast { background: rgba(22,25,38,.99) !important; }
 [data-theme=light] .no-blur .sc,
 [data-theme=light] .no-blur .cc-box,
 [data-theme=light] .no-blur .box,
@@ -1096,19 +1099,33 @@ select.sel {
 [data-theme=light] .sb:focus { box-shadow: 0 0 0 3px rgba(160,215,30,.2) !important; }
 
 
-/* ─── CONN STATUS BAR ───────────────────────────────────────── */
-.conn-bar{
-  position:fixed;top:0;left:0;right:0;z-index:500;
-  padding:calc(6px + env(safe-area-inset-top)) 16px 6px;
-  font-size:12px;font-weight:600;text-align:center;
-  transform:translateY(-100%);transition:transform .3s;
-  display:flex;align-items:center;justify-content:center;gap:7px;
+/* ─── CONN STATUS TOAST ─────────────────────────────────────── */
+.conn-toast{
+  display:flex;align-items:center;gap:9px;
+  position:fixed;right:22px;bottom:calc(22px + env(safe-area-inset-bottom));z-index:998;
+  min-width:210px;max-width:min(320px,calc(100vw - 32px));
+  padding:12px 16px;border-radius:16px;
+  background:var(--sf);
+  backdrop-filter:blur(24px) saturate(200%);
+  -webkit-backdrop-filter:blur(24px) saturate(200%);
+  border:1px solid var(--bd);
+  border-left:3px solid var(--ac2);
+  color:var(--tx);font-size:13px;font-weight:700;
+  box-shadow:0 12px 32px var(--sh);
+  opacity:0;pointer-events:none;
+  transform:translateY(10px) scale(.98);
+  transition:opacity .18s,transform .18s;
 }
-.conn-bar.show{transform:translateY(0);}
-.conn-bar.offline{background:rgba(245,200,90,.95);color:#1a1200;}
-.conn-bar.error{background:rgba(245,112,90,.95);color:#fff;}
-.conn-bar.syncing{background:rgba(90,175,245,.95);color:#fff;}
-.conn-bar.online{background:rgba(74,222,128,.95);color:#0a1a0a;}
+.conn-toast.show{opacity:1;transform:none;}
+.conn-toast.syncing{border-left-color:#5aaff5;}
+.conn-toast.online{border-left-color:var(--grn);}
+.conn-toast.error{border-left-color:var(--dan);}
+.conn-toast.offline{border-left-color:var(--warn);}
+.conn-ico{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:900;background:var(--sf2);color:var(--tx);}
+.conn-toast.online .conn-ico{background:rgba(74,222,128,.14);color:var(--grn);}
+.conn-toast.error .conn-ico{background:rgba(245,112,90,.14);color:var(--dan);}
+.conn-toast.offline .conn-ico{background:rgba(245,200,90,.14);color:var(--warn);}
+.conn-spin{width:13px;height:13px;border:2px solid rgba(90,175,245,.18);border-top-color:#5aaff5;border-radius:50%;animation:spin .75s linear infinite;}
 
 /* ─── SYNC QUEUE BADGE ──────────────────────────────────────── */
 .sync-badge{
