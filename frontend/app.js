@@ -1555,7 +1555,26 @@ function eventLooksFuel(rowText, liters, fuelType){
   const n=normalizeTxText(`${rowText} ${fuelType}`);
   return liters>0||/abastec|combust|gasolina|etanol|alcool|diesel|gnv|fuel|refuel|gas station/.test(n);
 }
-function mapDrivvoCsvEvent(row, headers, vehicleId){
+function csvHeaderScore(row){
+  const keys=row.map(keyCsvHeader);
+  const joined=keys.join(' ');
+  let score=0;
+  ['data','date','odometro','odometer','valor total','amount','combustivel','fuel','volume','litros','tipo de despesa','expense'].forEach(k=>{
+    if(joined.includes(keyCsvHeader(k)))score++;
+  });
+  return score;
+}
+function csvSectionName(row){
+  const first=String(row?.[0]||'').trim();
+  return first.startsWith('##')?keyCsvHeader(first.replace(/^##/,'')):'';
+}
+function carImportStatus(message,type='info'){
+  const el=document.getElementById('carImportStatus');
+  if(!el)return;
+  el.textContent=message||'';
+  el.className=`car-import-status ${type}`;
+}
+function mapDrivvoCsvEvent(row, headers, vehicleId, section=''){
   const rowText=row.join(' ');
   const date=parseCsvDate(pickCsv(row,headers,['data','date','dia']));
   const odometer=parseCsvNumber(pickCsv(row,headers,['odometro','odômetro','odometer','hodometro','quilometragem','quilometragem atual','km','mileage']));
@@ -1565,10 +1584,11 @@ function mapDrivvoCsvEvent(row, headers, vehicleId){
   const amount=parseCsvNumber(pickCsv(row,headers,['valor total','preco total','preço total','total','amount','valor','custo','cost','valor pago']))||Number((liters*pricePerLiter).toFixed(2));
   const title=pickCsv(row,headers,['descricao','descrição','description','servico','serviço','service','categoria','category','tipo','type']);
   if(!amount&&!liters)return null;
-  const isFuel=eventLooksFuel(rowText,liters,fuelType);
+  const isFuel=section.includes('refuelling')||section.includes('abastec')||eventLooksFuel(rowText,liters,fuelType);
+  const isExpense=section.includes('expense')||section.includes('despesa');
   return nCarEvent({
     vehicleId,
-    type:isFuel?'fuel':'expense',
+    type:isExpense?'expense':isFuel?'fuel':'expense',
     date,
     odometer,
     fuelType,
@@ -1584,32 +1604,47 @@ function mapDrivvoCsvEvent(row, headers, vehicleId){
 async function importCarCsv(inp){
   const file=inp.files?.[0];if(!file)return;
   try{
+    carImportStatus(`Lendo ${file.name}...`,'info');
     const text=await readCsvFileText(file);
     const rows=parseCsvRows(text);
     if(rows.length<2)throw new Error('CSV sem linhas suficientes.');
-    const headers=rows[0].map(keyCsvHeader);
     loadCar();
     const v=carVehicle();
-    const vehicleName=headers.some(h=>h.includes('veiculo')||h.includes('vehicle'));
     const createTransactions=!!document.getElementById('carImportTxChk')?.checked;
-    let imported=0,fuels=0,expenses=0;
-    for(const row of rows.slice(1)){
-      const event=mapDrivvoCsvEvent(row,headers,v.id);
-      if(!event)continue;
-      const csvVehicle=vehicleName?pickCsv(row,headers,['veiculo','vehicle','carro','car']):'';
-      if(csvVehicle&&!v.name)v.name=csvVehicle;
-      if(createTransactions)event.txId=await createCarTransaction(event);
-      carState.events.unshift(event);
-      v.odometer=Math.max(v.odometer||0,event.odometer||0);
-      imported++;
-      if(event.type==='fuel')fuels++;else expenses++;
+    let imported=0,fuels=0,expenses=0,section='',headers=null,vehicleName=false;
+    for(let idx=0;idx<rows.length;idx++){
+      const row=rows[idx];
+      const nextSection=csvSectionName(row);
+      if(nextSection){section=nextSection;headers=null;continue;}
+      if(!headers){
+        if(csvHeaderScore(row)>=2){
+          headers=row.map(keyCsvHeader);
+          vehicleName=headers.some(h=>h.includes('veiculo')||h.includes('vehicle'));
+        }
+        continue;
+      }
+      if(csvHeaderScore(row)>=3){headers=row.map(keyCsvHeader);continue;}
+      const event=mapDrivvoCsvEvent(row,headers,v.id,section);
+      if(event){
+        const csvVehicle=vehicleName?pickCsv(row,headers,['veiculo','vehicle','carro','car']):'';
+        if(csvVehicle&&!v.name)v.name=csvVehicle;
+        if(createTransactions)event.txId=await createCarTransaction(event);
+        carState.events.unshift(event);
+        v.odometer=Math.max(v.odometer||0,event.odometer||0);
+        imported++;
+        if(event.type==='fuel')fuels++;else expenses++;
+        if(imported%25===0)carImportStatus(`Importando... ${imported} registros lidos`,'info');
+      }
     }
     if(!imported)throw new Error('Nao encontrei abastecimentos ou despesas reconheciveis nesse CSV.');
     saveCar();
     renderCar();
     refreshAll();
-    toast(`Importado: ${imported} registros (${fuels} abastecimentos, ${expenses} despesas)${createTransactions?' + transações':' sem transações'}`,'success');
+    const msg=`Importado: ${imported} registros (${fuels} abastecimentos, ${expenses} despesas)${createTransactions?' + transações':' sem transações'}`;
+    carImportStatus(msg,'success');
+    toast(msg,'success');
   }catch(e){
+    carImportStatus('Erro ao importar CSV: '+e.message,'error');
     toast('Erro ao importar CSV: '+e.message,'error');
   }finally{
     inp.value='';
