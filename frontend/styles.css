@@ -1553,6 +1553,25 @@ select.sel {
 .list-ico-btn{width:36px;height:36px;border-radius:9px;border:1px solid var(--bd);background:var(--sf2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;}
 .list-ico-btn.sel{border-color:var(--ac);background:rgba(200,245,90,.12);}
 
+/* ─── CARRO ─────────────────────────────────────── */
+.car-hero{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:12px;flex-wrap:wrap;}
+.car-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.car-panel{padding-bottom:14px;}
+.car-row{display:flex;align-items:center;gap:12px;padding:13px 10px;border-bottom:1px solid var(--bd);}
+.car-row:last-child{border-bottom:none;}
+.car-ico{width:38px;height:38px;border-radius:13px;background:rgba(90,245,200,.10);border:1px solid rgba(90,245,200,.16);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.car-info{flex:1;min-width:0;}
+.car-name{font-size:14px;font-weight:700;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.car-meta{font-size:11px;color:var(--mt);margin-top:3px;line-height:1.4;}
+.car-amt{font-family:var(--font-money);font-size:14px;font-weight:800;color:var(--dan);white-space:nowrap;}
+
+@media(max-width:640px){
+  .car-row{align-items:flex-start;padding:12px 4px;}
+  .car-amt{font-size:13px;}
+  .car-actions{width:100%;}
+  .car-actions .btn{flex:1;}
+}
+
 /* ─── NOTIFICACAO PERSISTENTE (Android) ─────────── */
 /* Apenas visual no app - a logica real - via plugin */
 .persistent-notif-banner{

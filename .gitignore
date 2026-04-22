@@ -6,3 +6,5 @@ backup/*.sql.gz
 backup/*.log
 dados-locais.json
 .gradle-user/
+.android-user/
+.android-build-home/

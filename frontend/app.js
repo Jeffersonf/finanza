@@ -1,13 +1,14 @@
 ﻿'use strict';
 const APP_VERSION='3.9.2';
 const DEFAULT_API_URL='https://finanza-api.onrender.com';
-const CK='fz_cfg',LK='fz_local',CCK='fz_cats',VK='fz_view',AVK='fz_avatar',PRIVK='fz_privacy';
+const CK='fz_cfg',LK='fz_local',CCK='fz_cats',VK='fz_view',AVK='fz_avatar',PRIVK='fz_privacy',CAR_KEY='fz_car';
 const RATES_KEY='fz_rates', WIDGET_ORDER_KEY='fz_widget_order', DUE_KEY='fz_due_items';
 let monthlyIncomeCents=0;
 let dueItems=[];
 let cfg={url:'',key:'',mode:'',userName:'',userId:''};
 let S={transactions:[],budgets:[],goals:[],accounts:[]};
 let custCats=[];
+let carState={vehicles:[],events:[]};
 let curTxP='1m-p',curFP='7d',curDt=new Date();
 let chartMode='bars',curView='n',catFilter=null;
 let editId=null,accEditId=null,qaTyp='expense',qaVal='',qaSelCat='';
@@ -33,6 +34,7 @@ const BCATS=[
   {id:'mor',ico:'\u{1F3E0}',name:'Moradia',col:'#5af5c8'},
   {id:'ali',ico:'\u{1F37D}\uFE0F',name:'Alimentação',col:'#f5c85a'},
   {id:'tra',ico:'\u{1F697}',name:'Transporte',col:'#5a9ef5'},
+  {id:'car',ico:'\u{1F699}',name:'Carro',col:'#5af5c8'},
   {id:'sau',ico:'\u{1F48A}',name:'Saúde',col:'#f55a9e'},
   {id:'laz',ico:'\u{1F3AC}',name:'Lazer',col:'#c85af5'},
   {id:'edu',ico:'\u{1F4DA}',name:'Educação',col:'#5af55a'},
@@ -223,6 +225,7 @@ function normalizeBackupData(d){
   const shopping=data.shopping||{lists:data.shoppingLists||[],items:data.shoppingItems||[]};
   data.shopping={lists:(shopping.lists||[]).map(nShopList),items:(shopping.items||[]).map(nShopItem)};
   data.settings=data.settings||{};
+  data.car=normalizeCarState(data.car||data.vehicle||data.vehicles||data.settings?.rates?.car||{});
   data.dueItems=(data.dueItems||data.settings?.rates?.dueItems||data.settings?.rates?.due_items||[]).map(nDue).filter(Boolean);
   return data;
 }
@@ -230,11 +233,13 @@ function applyBackupData(data){
   S={transactions:data.transactions,budgets:data.budgets,goals:data.goals,accounts:data.accounts.length?data.accounts:defAccs()};
   custCats=data.categories||[];
   sl=data.shopping?.lists?.length?data.shopping:{lists:[{id:uid(),name:'Mercado',ico:'\u{1F6D2}'}],items:[]};
+  carState=normalizeCarState(data.car||{});
   dueItems=data.dueItems||[];
   slActiveList=data.settings?.activeList||data.settings?.active_list||sl.lists[0]?.id||null;
   localStorage.setItem(LK,JSON.stringify(S));
   localStorage.setItem(CCK,JSON.stringify(custCats));
   localStorage.setItem(SL_KEY,JSON.stringify(sl));
+  localStorage.setItem(CAR_KEY,JSON.stringify(carState));
   localStorage.setItem(DUE_KEY,JSON.stringify(dueItems));
 }
 function importLocal(inp){
@@ -308,8 +313,56 @@ function nShopItem(i){return{id:i.id,listId:i.list_id||i.listId,name:i.name,qty:
 function defAccs(){return[{id:uid(),name:'Principal',icon:'\u{1F3E6}',type:'checking',balance:0,yieldRate:0,note:''}];}
 function asObj(v){return v&&typeof v==='object'&&!Array.isArray(v)?v:{};}
 function asArr(v){return Array.isArray(v)?v:[];}
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function nCarVehicle(v={}){
+  return {
+    id:String(v.id||uid()),
+    name:String(v.name||'Meu carro'),
+    plate:String(v.plate||''),
+    model:String(v.model||''),
+    odometer:Number(v.odometer)||0
+  };
+}
+function nCarEvent(e={}){
+  const type=e.type==='service'||e.type==='expense'?'expense':'fuel';
+  const liters=Number(e.liters)||0;
+  const pricePerLiter=Number(e.pricePerLiter??e.price_per_liter)||0;
+  const amount=Number(e.amount)||Number((liters*pricePerLiter).toFixed(2))||0;
+  return {
+    id:String(e.id||uid()),
+    vehicleId:String(e.vehicleId||e.vehicle_id||''),
+    type,
+    date:String(e.date||today()).substring(0,10),
+    odometer:Number(e.odometer)||0,
+    fuelType:String(e.fuelType||e.fuel_type||'Gasolina'),
+    liters,
+    pricePerLiter,
+    amount,
+    title:String(e.title||''),
+    category:String(e.category||'Combustivel'),
+    note:String(e.note||''),
+    accountId:e.accountId||e.account_id||null,
+    txId:e.txId||e.tx_id||null,
+    createdAt:Number(e.createdAt||e.created_at||Date.now())
+  };
+}
+function normalizeCarState(data={}){
+  const vehicles=asArr(data.vehicles).map(nCarVehicle);
+  const fallback=vehicles[0]?.id||uid();
+  if(!vehicles.length)vehicles.push({id:fallback,name:'Meu carro',plate:'',model:'',odometer:0});
+  const events=asArr(data.events).map(e=>nCarEvent({...e,vehicleId:e.vehicleId||e.vehicle_id||fallback})).filter(e=>e.amount>0||e.liters>0);
+  return {vehicles,events};
+}
+function loadCar(){
+  if(carState?.vehicles?.length)return;
+  try{carState=normalizeCarState(JSON.parse(localStorage.getItem(CAR_KEY)||'{}'));}catch{carState=normalizeCarState();}
+}
+function saveCar(){
+  localStorage.setItem(CAR_KEY,JSON.stringify(carState));
+  if(cfg.mode==='api')saveRemoteState().catch(e=>toast('Erro ao salvar carro: '+e.message,'error'));
+}
 function getAppSettings(){
-  return {theme:document.documentElement.dataset.theme||localStorage.getItem('fz_t')||'dark',rates:{cdi:RATES.cdi,selic:RATES.selic,monthlyIncomeCents,monthly_income_cents:monthlyIncomeCents,dueItems},widgetPrefs,widgetOrder,txView:curView,activeList:slActiveList};
+  return {theme:document.documentElement.dataset.theme||localStorage.getItem('fz_t')||'dark',rates:{cdi:RATES.cdi,selic:RATES.selic,monthlyIncomeCents,monthly_income_cents:monthlyIncomeCents,dueItems,car:carState?.vehicles?.length?carState:normalizeCarState()},widgetPrefs,widgetOrder,txView:curView,activeList:slActiveList};
 }
 function applyRemoteSettings(settings={}){
   if(settings.theme)applyTheme(settings.theme);
@@ -322,6 +375,10 @@ function applyRemoteSettings(settings={}){
     dueItems=(rates.dueItems||rates.due_items).map(nDue).filter(Boolean);
     localStorage.setItem(DUE_KEY,JSON.stringify(dueItems));
   }
+  if(rates.car){
+    carState=normalizeCarState(rates.car);
+    localStorage.setItem(CAR_KEY,JSON.stringify(carState));
+  }
   localStorage.setItem(RATES_KEY,JSON.stringify({cdi:RATES.cdi,selic:RATES.selic,monthlyIncomeCents,monthly_income_cents:monthlyIncomeCents,dueItems}));
   widgetPrefs=asObj(settings.widget_prefs||settings.widgetPrefs||widgetPrefs);
   FIXED_WIDGET_IDS.forEach(id => widgetPrefs[id] = true);
@@ -332,7 +389,8 @@ function applyRemoteSettings(settings={}){
 async function saveRemoteState(){
   if(cfg.mode!=='api')return;
   const shopping=sl?.lists?.length?sl:(()=>{try{return JSON.parse(localStorage.getItem(SL_KEY)||'{}');}catch{return{lists:[],items:[]};}})();
-  await api('PUT','/api/state',{accounts:S.accounts,categories:custCats,shopping,settings:getAppSettings()});
+  const car=carState?.vehicles?.length?carState:(()=>{try{return normalizeCarState(JSON.parse(localStorage.getItem(CAR_KEY)||'{}'));}catch{return normalizeCarState();}})();
+  await api('PUT','/api/state',{accounts:S.accounts,categories:custCats,shopping,car,settings:getAppSettings()});
 }
 function persistLocalOrRemote(){
   if(cfg.mode==='api')saveRemoteState().catch(e=>toast('Erro ao salvar estado: '+e.message,'error'));
@@ -349,6 +407,8 @@ async function loadAll(){
     custCats=(state.categories||[]).map(nCat);
     sl={lists:(state.shopping?.lists||[]).map(nShopList),items:(state.shopping?.items||[]).map(nShopItem)};
     if(!sl.lists.length)sl={lists:[{id:uid(),name:'Mercado',ico:'\u{1F6D2}'}],items:[]};
+    carState=normalizeCarState(state.car||state.vehicle||state.vehicles||state.settings?.rates?.car||{});
+    localStorage.setItem(CAR_KEY,JSON.stringify(carState));
     slActiveList=state.settings?.active_list||sl.lists[0]?.id||null;
     applyRemoteSettings(state.settings||{});
     saveLocal();setConn('online');
@@ -891,6 +951,7 @@ function buildBackupData(){
     accounts:S.accounts,
     categories:custCats,
     shopping:sl?.lists?.length?sl:(()=>{try{return JSON.parse(localStorage.getItem(SL_KEY)||'{}');}catch{return{lists:[],items:[]};}})(),
+    car:carState?.vehicles?.length?carState:(()=>{try{return normalizeCarState(JSON.parse(localStorage.getItem(CAR_KEY)||'{}'));}catch{return normalizeCarState();}})(),
     dueItems,
     settings:getAppSettings()
   };
@@ -957,6 +1018,7 @@ function showPage(id){
   else if(id==='budget')renderBuds();
   else if(id==='goals')renderGoals();
   else if(id==='shopping'){loadSL();renderShopping();}
+  else if(id==='car'){loadCar();renderCar();}
   else if(id==='settings')renderSet();
 }
 document.querySelectorAll('.nav-item,.fn-item,[data-page]').forEach(n=>{n.onclick=()=>showPage(n.dataset.page);});
@@ -1282,6 +1344,318 @@ function renderGoals(){
     return`<div class="bg-card"><span style="font-size:24px;margin-bottom:9px;display:block">${g.icon}</span><div style="font-family:var(--font-money);font-size:13px;font-weight:800;margin-bottom:2px">${g.name}</div><div style="font-size:10px;color:var(--mt);margin-bottom:10px">${g.desc}</div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><div style="font-family:var(--font-money);font-size:20px;font-weight:700;color:var(--ac)">${fmt(g.current)}</div><div style="font-size:10px;color:var(--mt);align-self:flex-end">de ${fmt(g.target)}</div></div><div class="prg"><div class="pf" style="width:${pct}%;background:${col}"></div></div><div style="display:flex;justify-content:space-between;margin-top:5px"><div style="font-size:11px;color:var(--mt)">📅 ${dl>0?dl+'d':'Encerrado'}</div><span style="font-size:11px;font-weight:600;color:${col}">${Math.round(pct)}%</span></div>${proj}<div style="display:flex;gap:4px;margin-top:9px"><button class="btn btn-g btn-sm" style="flex:1" onclick="addGoalAmt('${g.id}')">+ Adicionar</button><button class="ib del" onclick="delGoal('${g.id}')">🗑️</button></div></div>`;
   }).join('');
 }
+// CARRO
+function carVehicle(){
+  loadCar();
+  return carState.vehicles[0]||nCarVehicle();
+}
+function carEvents(){
+  const v=carVehicle();
+  return [...carState.events].filter(e=>e.vehicleId===v.id).sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt);
+}
+function carMonthEvents(){
+  const now=new Date();
+  return carEvents().filter(e=>{
+    const d=new Date(e.date+'T12:00:00');
+    return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+  });
+}
+function carStats(){
+  const events=carEvents();
+  const month=carMonthEvents();
+  const fuels=events.filter(e=>e.type==='fuel'&&e.liters>0).sort((a,b)=>a.odometer-b.odometer||a.date.localeCompare(b.date));
+  const distance=fuels.length>=2?Math.max(0,fuels[fuels.length-1].odometer-fuels[0].odometer):0;
+  const liters=fuels.slice(1).reduce((s,e)=>s+e.liters,0);
+  const kmPerLiter=distance&&liters?distance/liters:0;
+  const total=events.reduce((s,e)=>s+e.amount,0);
+  const maxOdo=Math.max(carVehicle().odometer||0,...events.map(e=>e.odometer||0));
+  const monthSpent=month.reduce((s,e)=>s+e.amount,0);
+  const monthFuel=month.filter(e=>e.type==='fuel').reduce((s,e)=>s+e.amount,0);
+  const costPerKm=distance?total/distance:0;
+  return {events,fuels,distance,liters,kmPerLiter,total,maxOdo,monthSpent,monthFuel,costPerKm};
+}
+function popCarAccSel(){
+  const el=document.getElementById('carAcc');if(!el)return;
+  el.innerHTML=S.accounts.map(a=>`<option value="${a.id}">${esc(a.icon)} ${esc(a.name)}</option>`).join('');
+}
+function updateCarAmount(){
+  const liters=Number(document.getElementById('carLiters')?.value)||0;
+  const price=Number(document.getElementById('carPrice')?.value)||0;
+  const amount=document.getElementById('carAmount');
+  if(amount&&liters&&price&&!amount.dataset.manual)amount.value=(liters*price).toFixed(2);
+}
+function setCarEntryType(type){
+  const isFuel=type==='fuel';
+  document.getElementById('carTypeFuel')?.classList.toggle('active',isFuel);
+  document.getElementById('carTypeExpense')?.classList.toggle('active',!isFuel);
+  const fuelFields=document.getElementById('carFuelFields');
+  const expenseFields=document.getElementById('carExpenseFields');
+  if(fuelFields)fuelFields.style.display=isFuel?'block':'none';
+  if(expenseFields)expenseFields.style.display=isFuel?'none':'block';
+}
+function openCarEntry(type='fuel'){
+  const v=carVehicle();
+  document.getElementById('carEntryId').value='';
+  document.getElementById('carVehicleName').value=v.name||'';
+  document.getElementById('carPlate').value=v.plate||'';
+  document.getElementById('carModel').value=v.model||'';
+  document.getElementById('carDate').value=today();
+  document.getElementById('carOdo').value=v.odometer||'';
+  document.getElementById('carFuelType').value='Gasolina';
+  document.getElementById('carLiters').value='';
+  document.getElementById('carPrice').value='';
+  const amount=document.getElementById('carAmount');amount.value='';delete amount.dataset.manual;
+  const expenseAmount=document.getElementById('carAmountExpense');if(expenseAmount)expenseAmount.value='';
+  document.getElementById('carCategory').value='Maintenance';
+  document.getElementById('carTitle').value='';
+  document.getElementById('carNote').value='';
+  popCarAccSel();
+  setCarEntryType(type);
+  document.getElementById('carModal').classList.add('open');
+}
+async function createCarTransaction(event){
+  const accountId=event.accountId||S.accounts[0]?.id||null;
+  const desc=event.type==='fuel'
+    ? `Abastecimento - ${event.fuelType}`
+    : (event.title||carExpenseLabel(event.category));
+  const note=[carVehicle().name,event.odometer?`${event.odometer} km`:'',event.note].filter(Boolean).join(' • ');
+  const payload={type:'expense',description:desc,amount:event.amount,category:'Carro',date:event.date,note,account_id:accountId,paid:false,pending:false};
+  if(cfg.mode==='api'){
+    const saved=await api('POST','/api/transactions',payload);
+    const tx=nTx({...saved,accountId});
+    S.transactions.unshift(tx);
+    return tx.id;
+  }
+  const tx={id:uid(),type:'expense',desc,amount:event.amount,category:'Carro',date:event.date,note,accountId,installmentGroup:null,installmentNum:null,installmentTotal:null,recurGroup:null,paid:false,pending:false};
+  S.transactions.unshift(tx);
+  saveLocal();
+  return tx.id;
+}
+async function saveCarEntry(){
+  loadCar();
+  const v=carVehicle();
+  v.name=document.getElementById('carVehicleName').value.trim()||'Meu carro';
+  v.plate=document.getElementById('carPlate').value.trim().toUpperCase();
+  v.model=document.getElementById('carModel').value.trim();
+  const isFuel=document.getElementById('carTypeFuel').classList.contains('active');
+  const date=document.getElementById('carDate').value||today();
+  const odometer=Number(document.getElementById('carOdo').value)||0;
+  const liters=Number(document.getElementById('carLiters').value)||0;
+  const pricePerLiter=Number(document.getElementById('carPrice').value)||0;
+  const amount=isFuel
+    ? (Number(document.getElementById('carAmount').value)||Number((liters*pricePerLiter).toFixed(2))||0)
+    : (Number(document.getElementById('carAmountExpense').value)||0);
+  if(!amount||amount<=0){toast('Informe o valor','error');return;}
+  if(isFuel&&(!liters||!pricePerLiter)){toast('Informe litros e preço por litro','error');return;}
+  const event=nCarEvent({
+    vehicleId:v.id,
+    type:isFuel?'fuel':'expense',
+    date,
+    odometer,
+    fuelType:document.getElementById('carFuelType').value,
+    liters,
+    pricePerLiter,
+    amount,
+    title:document.getElementById('carTitle').value.trim(),
+    category:document.getElementById('carCategory').value,
+    note:document.getElementById('carNote').value.trim(),
+    accountId:document.getElementById('carAcc').value||S.accounts[0]?.id||null
+  });
+  v.odometer=Math.max(v.odometer||0,odometer||0);
+  try{
+    event.txId=await createCarTransaction(event);
+    carState.events.unshift(event);
+    saveCar();
+    closeM('carModal');
+    renderCar();
+    renderDash();
+    toast('Registro do carro salvo e lançado nas transações','success');
+  }catch(e){toast('Erro: '+e.message,'error');}
+}
+function carExpenseLabel(cat){
+  return ({Maintenance:'Manutenção',Insurance:'Seguro',Tax:'Imposto',Parking:'Estacionamento',Wash:'Lavagem',Fine:'Multa',Other:'Outro'})[cat]||cat||'Despesa do carro';
+}
+function parseCsvRows(text){
+  const raw=String(text||'').replace(/^\uFEFF/,'');
+  const sample=raw.split(/\r?\n/).slice(0,5).join('\n');
+  const candidates=[';',',','\t'];
+  const delimiter=candidates.map(d=>({d,n:(sample.match(new RegExp(d==='\t'?'\\t':`\\${d}`,'g'))||[]).length})).sort((a,b)=>b.n-a.n)[0]?.d||';';
+  const rows=[];let row=[],cell='',q=false;
+  for(let i=0;i<raw.length;i++){
+    const ch=raw[i],nx=raw[i+1];
+    if(ch==='"'){
+      if(q&&nx==='"'){cell+='"';i++;}
+      else q=!q;
+    }else if(ch===delimiter&&!q){row.push(cell);cell='';}
+    else if((ch==='\n'||ch==='\r')&&!q){
+      if(ch==='\r'&&nx==='\n')i++;
+      row.push(cell);cell='';
+      if(row.some(v=>String(v).trim()))rows.push(row);
+      row=[];
+    }else cell+=ch;
+  }
+  row.push(cell);
+  if(row.some(v=>String(v).trim()))rows.push(row);
+  return rows;
+}
+async function readCsvFileText(file){
+  const buffer=await file.arrayBuffer();
+  const utf8=new TextDecoder('utf-8').decode(buffer);
+  if(!utf8.includes('\uFFFD'))return utf8;
+  try{return new TextDecoder('windows-1252').decode(buffer);}
+  catch{return utf8;}
+}
+function keyCsvHeader(h){
+  return String(h||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+}
+function pickCsv(row, headers, aliases){
+  for(const alias of aliases){
+    const key=keyCsvHeader(alias);
+    const i=headers.findIndex(h=>h&&(h===key||h.includes(key)||key.includes(h)));
+    if(i>=0&&row[i]!=null&&String(row[i]).trim()!=='')return String(row[i]).trim();
+  }
+  return '';
+}
+function parseCsvNumber(value){
+  let raw=String(value||'').trim().replace(/[^\d,.-]/g,'');
+  if(!raw)return 0;
+  const lastComma=raw.lastIndexOf(','),lastDot=raw.lastIndexOf('.');
+  if(lastComma>=0&&lastDot>=0)raw=lastComma>lastDot?raw.replace(/\./g,'').replace(',','.'):raw.replace(/,/g,'');
+  else if(lastComma>=0)raw=raw.replace(/\./g,'').replace(',','.');
+  const n=parseFloat(raw);
+  return Number.isFinite(n)?n:0;
+}
+function parseCsvDate(value){
+  const raw=String(value||'').trim();
+  if(!raw)return today();
+  const iso=raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if(iso)return `${iso[1]}-${iso[2].padStart(2,'0')}-${iso[3].padStart(2,'0')}`;
+  const br=raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
+  if(br){
+    let y=br[3];if(y.length===2)y='20'+y;
+    const a=parseInt(br[1],10),b=parseInt(br[2],10);
+    const day=a>12?a:(b>12?b:a);
+    const month=a>12?b:(b>12?a:b);
+    return `${y}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  }
+  const d=new Date(raw);
+  return Number.isNaN(d.getTime())?today():d.toISOString().split('T')[0];
+}
+function carCategoryFromText(text){
+  const n=normalizeTxText(text);
+  if(/seguro|insurance/.test(n))return 'Insurance';
+  if(/ipva|licenciamento|taxa|imposto|document|tax/.test(n))return 'Tax';
+  if(/estacion|parking|pedagio|toll/.test(n))return 'Parking';
+  if(/lavagem|lava|wash/.test(n))return 'Wash';
+  if(/multa|fine/.test(n))return 'Fine';
+  if(/manut|revis|oleo|pneu|oficina|service|repair|maintenance/.test(n))return 'Maintenance';
+  return 'Other';
+}
+function eventLooksFuel(rowText, liters, fuelType){
+  const n=normalizeTxText(`${rowText} ${fuelType}`);
+  return liters>0||/abastec|combust|gasolina|etanol|alcool|diesel|gnv|fuel|refuel|gas station/.test(n);
+}
+function mapDrivvoCsvEvent(row, headers, vehicleId){
+  const rowText=row.join(' ');
+  const date=parseCsvDate(pickCsv(row,headers,['data','date','dia']));
+  const odometer=parseCsvNumber(pickCsv(row,headers,['odometro','odômetro','odometer','hodometro','quilometragem','quilometragem atual','km','mileage']));
+  const liters=parseCsvNumber(pickCsv(row,headers,['litros','liters','litres','volume','quantidade','qtd','quantity']));
+  const fuelType=pickCsv(row,headers,['combustivel','combustível','fuel','fuel type','tipo combustivel'])||'Gasolina';
+  const pricePerLiter=parseCsvNumber(pickCsv(row,headers,['preco litro','preço litro','valor litro','price liter','price per liter','unit price','preco por litro','preço por litro','preco','preço']));
+  const amount=parseCsvNumber(pickCsv(row,headers,['valor total','preco total','preço total','total','amount','valor','custo','cost','valor pago']))||Number((liters*pricePerLiter).toFixed(2));
+  const title=pickCsv(row,headers,['descricao','descrição','description','servico','serviço','service','categoria','category','tipo','type']);
+  if(!amount&&!liters)return null;
+  const isFuel=eventLooksFuel(rowText,liters,fuelType);
+  return nCarEvent({
+    vehicleId,
+    type:isFuel?'fuel':'expense',
+    date,
+    odometer,
+    fuelType,
+    liters,
+    pricePerLiter:pricePerLiter||(liters&&amount?amount/liters:0),
+    amount,
+    title:isFuel?'':title,
+    category:isFuel?'Combustivel':carCategoryFromText(`${title} ${rowText}`),
+    note:pickCsv(row,headers,['observacao','observação','notes','note','posto','gas station','local','place'])||'Importado do Drivvo',
+    accountId:S.accounts[0]?.id||null
+  });
+}
+async function importCarCsv(inp){
+  const file=inp.files?.[0];if(!file)return;
+  try{
+    const text=await readCsvFileText(file);
+    const rows=parseCsvRows(text);
+    if(rows.length<2)throw new Error('CSV sem linhas suficientes.');
+    const headers=rows[0].map(keyCsvHeader);
+    loadCar();
+    const v=carVehicle();
+    const vehicleName=headers.some(h=>h.includes('veiculo')||h.includes('vehicle'));
+    let imported=0,fuels=0,expenses=0;
+    for(const row of rows.slice(1)){
+      const event=mapDrivvoCsvEvent(row,headers,v.id);
+      if(!event)continue;
+      const csvVehicle=vehicleName?pickCsv(row,headers,['veiculo','vehicle','carro','car']):'';
+      if(csvVehicle&&!v.name)v.name=csvVehicle;
+      event.txId=await createCarTransaction(event);
+      carState.events.unshift(event);
+      v.odometer=Math.max(v.odometer||0,event.odometer||0);
+      imported++;
+      if(event.type==='fuel')fuels++;else expenses++;
+    }
+    if(!imported)throw new Error('Nao encontrei abastecimentos ou despesas reconheciveis nesse CSV.');
+    saveCar();
+    renderCar();
+    refreshAll();
+    toast(`Importado: ${imported} registros (${fuels} abastecimentos, ${expenses} despesas)`,'success');
+  }catch(e){
+    toast('Erro ao importar CSV: '+e.message,'error');
+  }finally{
+    inp.value='';
+  }
+}
+async function deleteCarEvent(id){
+  const event=carState.events.find(e=>e.id===id);if(!event)return;
+  if(!confirm('Remover este registro do carro?'))return;
+  try{
+    if(event.txId){
+      if(cfg.mode==='api')await api('DELETE',`/api/transactions/${event.txId}`).catch(()=>{});
+      S.transactions=S.transactions.filter(t=>t.id!==event.txId);
+      if(cfg.mode==='local')saveLocal();
+    }
+    carState.events=carState.events.filter(e=>e.id!==id);
+    saveCar();
+    renderCar();
+    refreshAll();
+    toast('Registro removido','info');
+  }catch(e){toast('Erro: '+e.message,'error');}
+}
+function renderCar(){
+  loadCar();
+  const v=carVehicle();
+  const st=carStats();
+  const title=document.getElementById('carTitleView');if(title)title.textContent=v.name||'Meu carro';
+  const sub=document.getElementById('carSubView');if(sub)sub.textContent=[v.model,v.plate,st.maxOdo?`${Math.round(st.maxOdo).toLocaleString('pt-BR')} km`:'' ].filter(Boolean).join(' • ')||'Consumo, abastecimentos e despesas';
+  const stats=document.getElementById('carStats');
+  if(stats)stats.innerHTML=`
+    <div class="insight-card"><div class="insight-k">Gasto no mês</div><div class="insight-v" style="color:var(--dan)">${fmt(st.monthSpent)}</div><div class="cc">${fmt(st.monthFuel)} em combustível</div></div>
+    <div class="insight-card"><div class="insight-k">Consumo médio</div><div class="insight-v" style="color:var(--ac)">${st.kmPerLiter?st.kmPerLiter.toFixed(1).replace('.',','):'—'} km/l</div><div class="cc">${st.distance?Math.round(st.distance)+' km medidos':'precisa de 2 abastecimentos'}</div></div>
+    <div class="insight-card"><div class="insight-k">Custo por km</div><div class="insight-v" style="color:var(--warn)">${st.costPerKm?fmt(st.costPerKm):'—'}</div><div class="cc">combustível + despesas</div></div>
+    <div class="insight-card"><div class="insight-k">Hodômetro</div><div class="insight-v">${st.maxOdo?Math.round(st.maxOdo).toLocaleString('pt-BR'):'—'}</div><div class="cc">${st.events.length} registro${st.events.length!==1?'s':''}</div></div>`;
+  const list=document.getElementById('carList');
+  if(list)list.innerHTML=st.events.length?st.events.map(e=>{
+    const isFuel=e.type==='fuel';
+    const icon=isFuel?'⛽':'🔧';
+    const title=isFuel?`${e.fuelType} • ${e.liters.toLocaleString('pt-BR')} L`:(e.title||carExpenseLabel(e.category));
+    const meta=[fmtD(e.date),e.odometer?`${Math.round(e.odometer).toLocaleString('pt-BR')} km`:'',isFuel&&e.pricePerLiter?`${fmt(e.pricePerLiter)}/L`:'',e.note].filter(Boolean).join(' • ');
+    return `<div class="car-row">
+      <div class="car-ico">${icon}</div>
+      <div class="car-info"><div class="car-name">${esc(title)}</div><div class="car-meta">${esc(meta)}</div></div>
+      <div class="car-amt">${fmt(e.amount)}</div>
+      <button class="ib del" onclick="deleteCarEvent('${e.id}')">🗑️</button>
+    </div>`;
+  }).join(''):`<div class="empty"><span class="ei">🚗</span><p>Nenhum registro ainda. Comece com um abastecimento.</p></div>`;
+}
 // SETTINGS
 function renderSet(){
   const isDark=document.documentElement.dataset.theme==='dark';
@@ -1403,7 +1777,7 @@ async function initApp(){
   loadWidgetPrefs();
   loadRates();
   loadDueItems();
-  await loadAll();if(cfg.mode==='local')loadCC();popCatSels();popAccSels();updM();renderDash();
+  await loadAll();if(cfg.mode==='local')loadCC();loadCar();popCatSels();popAccSels();updM();renderDash();
   const name=cfg.userName||'Eu';
   document.getElementById('uName').textContent=name;
   applyAvatar();

@@ -30,6 +30,7 @@
   <div class="fn-item fut-n" data-page="future"><span class="fni">📌</span>Venc.</div>
   <div class="fn-item" data-page="budget"><span class="fni">🎯</span>Limites</div>
   <div class="fn-item sl-n" data-page="shopping"><span class="fni">🛒</span>Lista</div>
+  <div class="fn-item" data-page="car"><span class="fni">🚗</span>Carro</div>
   <div class="fn-item" data-page="goals"><span class="fni">🏆</span>Metas</div>
   <div class="fn-item" data-page="settings"><span class="fni">⚙️</span>Config</div>
 </nav>
@@ -117,6 +118,7 @@
     <div class="nav-item fn" data-page="future"><span class="ico">📌</span>Vencimentos</div>
     <div class="nav-item" data-page="budget"><span class="ico">🎯</span>Limites e orçamentos</div>
     <div class="nav-item sl-n" data-page="shopping"><span class="ico">🛒</span>Lista de compras</div>
+    <div class="nav-item" data-page="car"><span class="ico">🚗</span>Carro e combustível</div>
     <div class="nav-item" data-page="goals"><span class="ico">🏆</span>Metas</div>
     <div class="nav-item an" data-page="accounts"><span class="ico">🏦</span>Contas e rendimento</div>
     <div class="nav-item" data-page="settings"><span class="ico">⚙️</span>Configurações</div>
@@ -361,8 +363,47 @@
   </div>
   <div id="slContent"></div>
 </div>
+<div class="page" id="page-car">
+  <div class="car-hero">
+    <div>
+      <div class="pt">🚗 <span id="carTitleView">Meu carro</span></div>
+      <div class="ps" id="carSubView">Consumo, abastecimentos e despesas</div>
+    </div>
+    <div class="car-actions">
+      <label class="btn btn-g btn-sm" for="carCsvFile">Importar CSV</label>
+      <input type="file" id="carCsvFile" accept=".csv,text/csv,.txt" style="display:none" onchange="importCarCsv(this)">
+      <button class="btn btn-g btn-sm" onclick="openCarEntry('expense')">+ Despesa</button>
+      <button class="btn btn-p" onclick="openCarEntry('fuel')">+ Abastecimento</button>
+    </div>
+  </div>
+  <div class="insight-grid" id="carStats"></div>
+  <div class="box car-panel">
+    <div class="bh"><div><div class="ct">Histórico do carro</div><div class="cs">Abastecimentos, manutenção, seguro, impostos e lavagens</div></div></div>
+    <div id="carList"></div>
+  </div>
+</div>
 
 </main>
+
+<div class="ov" id="carModal"><div class="modal">
+  <button class="mc" onclick="closeM('carModal')">✕</button>
+  <div class="mt">Registro do carro</div><div class="ms">Controle combustível, consumo e gastos do veículo</div>
+  <input type="hidden" id="carEntryId">
+  <div class="typetog"><button class="ttb active expense" id="carTypeFuel" onclick="setCarEntryType('fuel')">⛽ Abastecimento</button><button class="ttb income" id="carTypeExpense" onclick="setCarEntryType('expense')">🔧 Despesa</button></div>
+  <div class="frow"><div class="fg"><label class="fl">Veículo</label><input type="text" class="fi" id="carVehicleName" placeholder="Ex: HB20, Civic..."></div><div class="fg"><label class="fl">Placa</label><input type="text" class="fi" id="carPlate" placeholder="ABC1D23"></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Modelo / ano</label><input type="text" class="fi" id="carModel" placeholder="Ex: 1.0 2020"></div><div class="fg"><label class="fl">Conta</label><select class="fi" id="carAcc"></select></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Data</label><input type="date" class="fi" id="carDate"></div><div class="fg"><label class="fl">Hodômetro (km)</label><input type="number" class="fi" id="carOdo" min="0" step="1" placeholder="0"></div></div>
+  <div id="carFuelFields">
+    <div class="frow"><div class="fg"><label class="fl">Combustível</label><select class="fi" id="carFuelType"><option>Gasolina</option><option>Etanol</option><option>Diesel</option><option>GNV</option><option>Flex</option></select></div><div class="fg"><label class="fl">Litros</label><input type="number" class="fi" id="carLiters" min="0" step="0.001" oninput="updateCarAmount()"></div></div>
+    <div class="frow"><div class="fg"><label class="fl">Preço por litro (R$)</label><input type="number" class="fi" id="carPrice" min="0" step="0.001" oninput="updateCarAmount()"></div><div class="fg"><label class="fl">Total (R$)</label><input type="number" class="fi" id="carAmount" min="0" step="0.01" oninput="this.dataset.manual='1'"></div></div>
+  </div>
+  <div id="carExpenseFields" style="display:none">
+    <div class="frow"><div class="fg"><label class="fl">Tipo</label><select class="fi" id="carCategory"><option value="Maintenance">Manutenção</option><option value="Insurance">Seguro</option><option value="Tax">Imposto / documento</option><option value="Parking">Estacionamento</option><option value="Wash">Lavagem</option><option value="Fine">Multa</option><option value="Other">Outro</option></select></div><div class="fg"><label class="fl">Valor (R$)</label><input type="number" class="fi" id="carAmountExpense" min="0" step="0.01"></div></div>
+    <div class="fg"><label class="fl">Descrição</label><input type="text" class="fi" id="carTitle" placeholder="Ex: Troca de óleo, IPVA, seguro..."></div>
+  </div>
+  <div class="fg"><label class="fl">Observação</label><input type="text" class="fi" id="carNote" placeholder="Posto, oficina, detalhes..."></div>
+  <div class="ma"><button class="btn btn-p" style="flex:1" onclick="saveCarEntry()">Salvar</button><button class="btn btn-g" onclick="closeM('carModal')">Cancelar</button></div>
+</div></div>
 
 <div class="ov" id="newListModal">
 <div class="modal">
