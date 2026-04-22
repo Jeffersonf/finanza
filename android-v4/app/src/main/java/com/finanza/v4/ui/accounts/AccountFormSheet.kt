@@ -57,25 +57,25 @@ fun AccountFormSheet(
         ) {
             FinanzaSheetHeader(
                 title = if (state.mode == FormMode.Edit) "Editar conta" else "Nova conta",
-                subtitle = "Saldo, tipo e rendimento",
-                emoji = state.icon.ifBlank { "🏦" },
+                subtitle = "Defina nome, saldo inicial e o papel dessa conta na sua rotina",
+                emoji = state.icon.ifBlank { "\uD83C\uDFE6" },
                 color = FinanzaMint
             )
             FinanzaTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = state.name,
                 onValueChange = { value -> onChange { it.copy(name = value) } },
-                label = "Nome"
+                label = "Nome da conta"
             )
             FinanzaTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = state.icon,
                 onValueChange = { value -> onChange { it.copy(icon = value) } },
-                label = "Emoji"
+                label = "Icone ou emoji"
             )
             FinanzaCard(radius = 22.dp, glowColor = FinanzaMint) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Tipo", style = MaterialTheme.typography.labelMedium, color = FinanzaMint)
+                    Text("Tipo de conta", style = MaterialTheme.typography.labelMedium, color = FinanzaMint)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         state.types.forEach { (id, label) ->
                             FinanzaChip(
@@ -92,23 +92,23 @@ fun AccountFormSheet(
                 modifier = Modifier.fillMaxWidth(),
                 value = state.balance,
                 onValueChange = { value -> onChange { it.copy(balance = value) } },
-                label = "Saldo atual",
+                label = "Saldo inicial",
                 prefix = "R$",
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
             )
             if (state.type == "investment") {
                 FinanzaCard(radius = 22.dp, glowColor = FinanzaGreen) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Rendimento", style = MaterialTheme.typography.labelMedium, color = FinanzaGreen)
+                        Text("Rendimento mensal", style = MaterialTheme.typography.labelMedium, color = FinanzaGreen)
                         FinanzaTextField(
                             modifier = Modifier.fillMaxWidth(),
                             value = state.yieldRate,
                             onValueChange = { value -> onChange { it.copy(yieldRate = value) } },
-                            label = "Rendimento mensal (%)",
+                            label = "Percentual estimado ao mes",
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                         )
                         Text(
-                            "Use a mesma base de projeção do painel web para contas de investimento.",
+                            "Use a mesma logica da dashboard para projetar crescimento e reserva.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -120,7 +120,7 @@ fun AccountFormSheet(
             }
             FinanzaPrimaryButton(
                 modifier = Modifier.fillMaxWidth(),
-                text = if (state.saving) "Salvando..." else "Salvar conta",
+                text = if (state.saving) "Salvando..." else "Salvar conta agora",
                 onClick = onSave,
                 enabled = !state.saving
             )

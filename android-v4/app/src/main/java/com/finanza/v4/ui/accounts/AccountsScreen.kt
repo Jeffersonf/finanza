@@ -1,9 +1,8 @@
 package com.finanza.v4.ui.accounts
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -39,12 +38,13 @@ fun AccountsScreen(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 112.dp)
     ) {
         item {
             PageHeader(
                 title = "Contas",
-                subtitle = "Corrente, poupança, carteira e investimentos",
+                subtitle = "Acompanhe saldo, reserva e investimentos em um unico lugar",
                 trailing = { MetricPill("${accounts.size}", FinanzaGreen) }
             )
         }
@@ -52,7 +52,7 @@ fun AccountsScreen(
             item {
                 EmptyStateCard(
                     title = "Nenhuma conta",
-                    subtitle = "Crie uma conta para organizar seus saldos.",
+                    subtitle = "Cadastre sua primeira conta para organizar entradas, gastos e reserva.",
                     icon = Icons.Rounded.AccountBalance
                 )
             }
@@ -77,8 +77,7 @@ fun AccountsScreen(
                 }
             )
         }
-        item { AddItemCard(text = "+ Nova conta", onClick = onAdd) }
-        item { Spacer(Modifier.height(24.dp)) }
+        item { AddItemCard(text = "Nova conta", onClick = onAdd, color = FinanzaMint) }
     }
 }
 
@@ -87,13 +86,13 @@ private fun AccountSummary(accounts: List<Account>) {
     val total = accounts.sumOf { it.balanceCents }
     val investments = accounts.filter { it.type == "investment" }.sumOf { it.balanceCents }
     FinanzaSection(
-        title = "Saldos",
-        subtitle = "Base sincronizada com a v3",
+        title = "Resumo de saldo",
+        subtitle = "Leitura rapida das contas registradas",
         trailing = { MetricPill(money(total), FinanzaGreen) }
     ) {
         FinanzaListItem(
-            emoji = "💰",
-            title = "Patrimônio total",
+            emoji = "\uD83D\uDCB0",
+            title = "Patrimonio total",
             subtitle = "${accounts.size} conta(s) cadastrada(s)",
             amount = money(total),
             amountColor = FinanzaGreen,
@@ -101,9 +100,9 @@ private fun AccountSummary(accounts: List<Account>) {
             stripColor = FinanzaGreen
         )
         FinanzaListItem(
-            emoji = "📈",
+            emoji = "\uD83D\uDCC8",
             title = "Investimentos",
-            subtitle = "Contas com rendimento",
+            subtitle = "Reserva de medio prazo e contas com rendimento",
             amount = money(investments),
             amountColor = FinanzaMint,
             iconColor = FinanzaMint,
@@ -115,7 +114,7 @@ private fun AccountSummary(accounts: List<Account>) {
 private fun Account.typeLabel(): String {
     return when (type) {
         "checking" -> "Corrente"
-        "savings" -> "Poupança"
+        "savings" -> "Poupanca"
         "wallet" -> "Carteira"
         "investment" -> "Investimento"
         else -> "Conta ativa"

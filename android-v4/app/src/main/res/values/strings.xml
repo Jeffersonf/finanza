@@ -1,4 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Finanza v4</string>
+    <string name="app_name">Finanza</string>
+    <string name="widget_quick_add_description">Atalhos para adicionar dados no Finanza.</string>
+    <string name="widget_quick_add_title">Adicionar gasto</string>
+    <string name="widget_quick_add_subtitle">Toque para registrar uma despesa</string>
+    <string name="widget_action_transaction">Novo gasto</string>
+    <string name="widget_shopping_description">Atalhos da lista de compras do Finanza.</string>
+    <string name="widget_shopping_title">Lista de compras</string>
+    <string name="widget_shopping_subtitle">Abra a lista ativa ou adicione item</string>
+    <string name="widget_action_open_shopping">Abrir lista</string>
+    <string name="widget_action_add_item">Adicionar</string>
+    <string name="persistent_notification_channel">Atalhos do Finanza</string>
+    <string name="persistent_notification_channel_description">Atalhos fixos para adicionar gasto e abrir a lista de compras.</string>
+    <string name="persistent_notification_title">Finanza sempre a mao</string>
+    <string name="persistent_notification_text">Adicionar gasto rapido ou abrir a lista de compras.</string>
+    <string name="persistent_notification_add_expense">+ gasto</string>
+    <string name="persistent_notification_open_shopping">Lista</string>
 </resources>

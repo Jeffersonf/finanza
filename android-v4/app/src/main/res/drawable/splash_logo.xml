@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="176dp"
+    android:height="176dp"
+    android:viewportWidth="176"
+    android:viewportHeight="176">
+    <group
+        android:name="logo_group"
+        android:pivotX="88"
+        android:pivotY="88"
+        android:scaleX="0.86"
+        android:scaleY="0.86">
+        <path
+            android:fillColor="#12151E"
+            android:pathData="M32,20h112a12,12 0 0,1 12,12v112a12,12 0 0,1 -12,12H32a12,12 0 0,1 -12,-12V32a12,12 0 0,1 12,-12z" />
+        <path
+            android:fillColor="#1D2230"
+            android:pathData="M32,20h112a12,12 0 0,1 12,12v112a12,12 0 0,1 -12,12H32a12,12 0 0,1 -12,-12V32a12,12 0 0,1 12,-12zM32,22a10,10 0 0,0 -10,10v112a10,10 0 0,0 10,10h112a10,10 0 0,0 10,-10V32a10,10 0 0,0 -10,-10z"
+            android:fillType="evenOdd" />
+        <path
+            android:fillColor="#C8F55A"
+            android:pathData="M56,44h50v13H73v18h27v13H73v32H56z" />
+        <path
+            android:fillColor="#F5F7FA"
+            android:pathData="M89,62h43v12l-24,24h24v15H85V100l24,-23H89z" />
+        <path
+            android:fillColor="#5AF5C8"
+            android:pathData="M118,42a7,7 0 1,1 0.01,0z" />
+    </group>
+</vector>

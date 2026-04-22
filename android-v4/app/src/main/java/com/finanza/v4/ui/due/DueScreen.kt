@@ -3,14 +3,14 @@ package com.finanza.v4.ui.due
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.Icon
@@ -59,9 +59,13 @@ fun DueScreen(
     var showForm by remember { mutableStateOf(false) }
     val occurrences = remember(preferences.dueItems) { dueOccurrences(preferences.dueItems) }
     val total = occurrences.sumOf { it.item.amountCents }
+
     LazyColumn(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 112.dp)
     ) {
         item {
             PageHeader(
@@ -74,7 +78,17 @@ fun DueScreen(
             FinanzaSection(
                 title = "Proximos compromissos",
                 subtitle = "${money(total)} nos proximos 45 dias",
-                trailing = { FinanzaGhostButton(text = "+ Novo", onClick = { editing = null; showForm = true }, color = FinanzaPurple) }
+                trailing = {
+                    FinanzaGhostButton(
+                        text = "Novo",
+                        onClick = {
+                            editing = null
+                            showForm = true
+                        },
+                        icon = Icons.Rounded.Add,
+                        color = FinanzaPurple
+                    )
+                }
             ) {
                 if (occurrences.isEmpty()) {
                     Text("Nenhum vencimento cadastrado.", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -85,9 +99,14 @@ fun DueScreen(
             DueRow(
                 occurrence = occurrence,
                 account = accounts.find { it.id == occurrence.item.accountId },
-                onEdit = { editing = occurrence.item; showForm = true },
+                onEdit = {
+                    editing = occurrence.item
+                    showForm = true
+                },
                 onDelete = {
-                    onPreferencesChange { prefs -> prefs.copy(dueItems = prefs.dueItems.filterNot { it.id == occurrence.item.id }) }
+                    onPreferencesChange { prefs ->
+                        prefs.copy(dueItems = prefs.dueItems.filterNot { it.id == occurrence.item.id })
+                    }
                 },
                 onPay = { onPay(occurrence.item, occurrence.date) }
             )
@@ -102,14 +121,19 @@ fun DueScreen(
                     onSave = { item ->
                         onPreferencesChange { prefs ->
                             val exists = prefs.dueItems.any { it.id == item.id }
-                            prefs.copy(dueItems = if (exists) prefs.dueItems.map { if (it.id == item.id) item else it } else prefs.dueItems + item)
+                            prefs.copy(
+                                dueItems = if (exists) {
+                                    prefs.dueItems.map { if (it.id == item.id) item else it }
+                                } else {
+                                    prefs.dueItems + item
+                                }
+                            )
                         }
                         showForm = false
                     }
                 )
             }
         }
-        item { Spacer(Modifier.height(24.dp)) }
     }
 }
 
@@ -129,9 +153,9 @@ private fun DueRow(
         else -> FinanzaPurple
     }
     FinanzaListItem(
-        emoji = "📌",
+        emoji = "\uD83D\uDCCC",
         title = item.name,
-        subtitle = "${formatDate(occurrence.date)} • ${methodLabel(item.paymentMethod)}${item.paymentPlace.takeIf { it.isNotBlank() }?.let { " • $it" } ?: ""}${account?.let { " • ${it.icon} ${it.name}" } ?: ""}",
+        subtitle = "${formatDate(occurrence.date)} \u2022 ${methodLabel(item.paymentMethod)}${item.paymentPlace.takeIf { it.isNotBlank() }?.let { " \u2022 $it" } ?: ""}${account?.let { " \u2022 ${it.icon} ${it.name}" } ?: ""}",
         amount = money(item.amountCents),
         amountColor = color,
         badge = if (days < 0) "atrasado" else if (days == 0L) "hoje" else "em ${days}d",
@@ -140,8 +164,12 @@ private fun DueRow(
         onClick = onEdit,
         trailing = {
             Row {
-                IconButton(onClick = onPay) { Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = FinanzaGreen) }
-                IconButton(onClick = onDelete) { Icon(Icons.Rounded.Delete, contentDescription = null, tint = FinanzaRed) }
+                IconButton(onClick = onPay) {
+                    Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = FinanzaGreen)
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Rounded.Delete, contentDescription = null, tint = FinanzaRed)
+                }
             }
         }
     )
@@ -160,12 +188,24 @@ private fun DueForm(
     var date by remember(item?.id) { mutableStateOf(item?.nextDueDate ?: LocalDate.now().toString()) }
     var method by remember(item?.id) { mutableStateOf(item?.paymentMethod ?: "pix") }
     var place by remember(item?.id) { mutableStateOf(item?.paymentPlace ?: "") }
-    var category by remember(item?.id) { mutableStateOf(item?.category ?: categories.firstOrNull().orEmpty().ifBlank { "A classificar" }) }
+    var category by remember(item?.id) {
+        mutableStateOf(item?.category ?: categories.firstOrNull().orEmpty().ifBlank { "A classificar" })
+    }
     var accountId by remember(item?.id) { mutableStateOf(item?.accountId ?: "") }
     var notes by remember(item?.id) { mutableStateOf(item?.notes ?: "") }
-    FinanzaSection(title = if (item == null) "Novo vencimento" else "Editar vencimento", subtitle = "Data, forma e local de pagamento") {
+
+    FinanzaSection(
+        title = if (item == null) "Novo vencimento" else "Editar vencimento",
+        subtitle = "Data, forma e local de pagamento"
+    ) {
         FinanzaTextField(value = name, onValueChange = { name = it }, label = "Nome", placeholder = "Internet, luz, crediario...")
-        FinanzaTextField(value = amount, onValueChange = { amount = it }, label = "Valor previsto", prefix = "R$ ", keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal))
+        FinanzaTextField(
+            value = amount,
+            onValueChange = { amount = it },
+            label = "Valor previsto",
+            prefix = "R$ ",
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal)
+        )
         FinanzaTextField(value = date, onValueChange = { date = it }, label = "Proximo vencimento", placeholder = "2026-04-20")
         FinanzaTextField(value = place, onValueChange = { place = it }, label = "Onde pagar", placeholder = "App, site, loja, banco...")
         FinanzaTextField(value = notes, onValueChange = { notes = it }, label = "Observacao", placeholder = "Contrato, login, codigo...")
@@ -174,33 +214,45 @@ private fun DueForm(
         ChipRow("Conta/cartao", listOf("" to "Sem conta") + accounts.map { it.id to "${it.icon} ${it.name}" }, accountId) { accountId = it }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             FinanzaGhostButton(text = "Cancelar", onClick = onCancel, modifier = Modifier.weight(1f))
-            FinanzaPrimaryButton(text = "Salvar", onClick = {
-                val dueDate = runCatching { LocalDate.parse(date) }.getOrDefault(LocalDate.now())
-                onSave(
-                    DueItem(
-                        id = item?.id ?: UUID.randomUUID().toString(),
-                        name = name.ifBlank { "Vencimento" },
-                        amountCents = parseCents(amount),
-                        category = category.ifBlank { "A classificar" },
-                        nextDueDate = dueDate.toString(),
-                        dueDay = dueDate.dayOfMonth,
-                        paymentMethod = method,
-                        paymentPlace = place,
-                        accountId = accountId.ifBlank { null },
-                        notes = notes,
-                        paidKeys = item?.paidKeys ?: emptyList()
+            FinanzaPrimaryButton(
+                text = "Salvar",
+                onClick = {
+                    val dueDate = runCatching { LocalDate.parse(date) }.getOrDefault(LocalDate.now())
+                    onSave(
+                        DueItem(
+                            id = item?.id ?: UUID.randomUUID().toString(),
+                            name = name.ifBlank { "Vencimento" },
+                            amountCents = parseCents(amount),
+                            category = category.ifBlank { "A classificar" },
+                            nextDueDate = dueDate.toString(),
+                            dueDay = dueDate.dayOfMonth,
+                            paymentMethod = method,
+                            paymentPlace = place,
+                            accountId = accountId.ifBlank { null },
+                            notes = notes,
+                            paidKeys = item?.paidKeys ?: emptyList()
+                        )
                     )
-                )
-            }, modifier = Modifier.weight(1f))
+                },
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
 
 @Composable
-private fun ChipRow(label: String, options: List<Pair<String, String>>, selected: String, onSelect: (String) -> Unit) {
+private fun ChipRow(
+    label: String,
+    options: List<Pair<String, String>>,
+    selected: String,
+    onSelect: (String) -> Unit
+) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             options.forEach { (key, text) ->
                 MetricPill(text, if (selected == key) FinanzaGreen else Color.Gray, Modifier.clickable { onSelect(key) })
             }
@@ -217,12 +269,20 @@ private fun dueOccurrences(items: List<DueItem>): List<DueOccurrence> {
         if (item.recurrence == "once") {
             val date = runCatching { LocalDate.parse(item.nextDueDate) }.getOrDefault(today)
             val key = YearMonth.from(date).toString()
-            if (date in today..until && key !in item.paidKeys) listOf(DueOccurrence(item, date.toString())) else emptyList()
+            if (date in today..until && key !in item.paidKeys) {
+                listOf(DueOccurrence(item, date.toString()))
+            } else {
+                emptyList()
+            }
         } else {
             (0..2).mapNotNull { offset ->
                 val ym = YearMonth.from(today).plusMonths(offset.toLong())
                 val date = ym.atDay(item.dueDay.coerceAtMost(ym.lengthOfMonth()))
-                if (date in today..until && ym.toString() !in item.paidKeys) DueOccurrence(item, date.toString()) else null
+                if (date in today..until && ym.toString() !in item.paidKeys) {
+                    DueOccurrence(item, date.toString())
+                } else {
+                    null
+                }
             }
         }
     }.sortedBy { it.date }
@@ -245,7 +305,8 @@ private fun parseCents(value: String): Long {
 
 private fun centsInput(cents: Long) = String.format(Locale.US, "%.2f", cents / 100.0).replace(".", ",")
 
-private fun money(cents: Long): String = NumberFormat.getCurrencyInstance(Locale.Builder().setLanguage("pt").setRegion("BR").build()).format(cents / 100.0)
+private fun money(cents: Long): String =
+    NumberFormat.getCurrencyInstance(Locale.Builder().setLanguage("pt").setRegion("BR").build()).format(cents / 100.0)
 
 private fun formatDate(date: String): String {
     return runCatching {

@@ -1900,7 +1900,7 @@ function renderDash() {
   const wrap=(id,html)=>{
     if(!html)return '';
     const fixed=FIXED_WIDGET_SET.has(id);
-    const tools=fixed?'':`<div class="widget-tools"><button class="widget-move-btn" onclick="moveWidgetStep('${id}',-1)" title="Subir">↑</button><button class="widget-move-btn" onclick="moveWidgetStep('${id}',1)" title="Descer">↓</button><button class="widget-drag-btn" title="Arrastar">↕</button><button class="widget-remove-btn" onclick="toggleWidget('${id}')" title="Remover widget"></button></div>`;
+    const tools=fixed?'':`<div class="widget-tools"><div class="widget-stepper"><button class="widget-move-btn" onclick="moveWidgetStep('${id}',-1)" title="Mover widget para cima" aria-label="Mover widget para cima">▲</button><button class="widget-move-btn" onclick="moveWidgetStep('${id}',1)" title="Mover widget para baixo" aria-label="Mover widget para baixo">▼</button></div><button class="widget-drag-btn" title="Arrastar widget" aria-label="Arrastar widget">⋮⋮</button><button class="widget-remove-btn" onclick="toggleWidget('${id}')" title="Remover widget" aria-label="Remover widget">✕</button></div>`;
     return `<div class="dash-section-wrap ${fixed?'fixed-widget':''}" draggable="${fixed?'false':'true'}" data-widget-id="${id}">${tools}${html}</div>`;
   };
   const sections=widgetOrder.filter(id=>isWidgetOn(id)&&renderers[id]).map(id=>wrap(id,renderers[id]())).filter(Boolean);

@@ -56,14 +56,14 @@ fun BudgetFormSheet(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             FinanzaSheetHeader(
-                title = if (state.mode == FormMode.Edit) "Editar orçamento" else "Novo orçamento",
-                subtitle = "Limite mensal por categoria",
-                emoji = "🎯",
+                title = if (state.mode == FormMode.Edit) "Editar limite" else "Novo limite",
+                subtitle = "Escolha a categoria, o teto do mes e acompanhe o consumo",
+                emoji = "\uD83C\uDFAF",
                 color = FinanzaAmber
             )
             FinanzaCard(radius = 22.dp, glowColor = FinanzaAmber) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Categoria", style = MaterialTheme.typography.labelMedium, color = FinanzaAmber)
+                    Text("Categoria principal", style = MaterialTheme.typography.labelMedium, color = FinanzaAmber)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         val availableCategories = categories.ifEmpty { state.categories }
                         availableCategories.forEach { category ->
@@ -81,7 +81,7 @@ fun BudgetFormSheet(
                 modifier = Modifier.fillMaxWidth(),
                 value = state.limit,
                 onValueChange = { value -> onChange { it.copy(limit = value) } },
-                label = "Limite mensal",
+                label = "Valor maximo do mes",
                 prefix = "R$",
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
             )
@@ -89,7 +89,7 @@ fun BudgetFormSheet(
                 modifier = Modifier.fillMaxWidth(),
                 value = state.month,
                 onValueChange = { value -> onChange { it.copy(month = value) } },
-                label = "Mês",
+                label = "Mes de referencia",
                 supportingText = "Formato AAAA-MM",
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
@@ -98,7 +98,7 @@ fun BudgetFormSheet(
             }
             FinanzaPrimaryButton(
                 modifier = Modifier.fillMaxWidth(),
-                text = if (state.saving) "Salvando..." else "Salvar orçamento",
+                text = if (state.saving) "Salvando..." else "Salvar limite mensal",
                 onClick = onSave,
                 enabled = !state.saving
             )

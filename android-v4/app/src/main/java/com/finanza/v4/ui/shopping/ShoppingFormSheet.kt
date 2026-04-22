@@ -60,8 +60,8 @@ fun ShoppingFormSheet(
         ) {
             FinanzaSheetHeader(
                 title = title,
-                subtitle = if (isList) "Organize mercados, farmácia e casa" else "Quantidade, categoria e status",
-                emoji = if (isList) state.icon.ifBlank { "🛒" } else "○",
+                subtitle = if (isList) "Organize listas por rotina, lugar ou tipo de compra" else "Defina nome, quantidade e status do item",
+                emoji = if (isList) state.icon.ifBlank { "\uD83D\uDED2" } else "\u25CB",
                 color = if (isList) FinanzaGreen else FinanzaMint
             )
             if (isList) {
@@ -70,7 +70,7 @@ fun ShoppingFormSheet(
                         modifier = Modifier.weight(.42f),
                         value = state.icon,
                         onValueChange = { value -> onChange { it.copy(icon = value) } },
-                        label = "Emoji"
+                        label = "Icone"
                     )
                     FinanzaTextField(
                         modifier = Modifier.weight(1f),
@@ -102,7 +102,7 @@ fun ShoppingFormSheet(
                 }
                 FinanzaToggleRow(
                     title = "Comprado",
-                    subtitle = "Marca o item como concluído",
+                    subtitle = "Marca o item como concluido e tira da pendencia",
                     checked = state.bought,
                     onCheckedChange = { bought -> onChange { it.copy(bought = bought) } },
                     color = FinanzaGreen
@@ -111,7 +111,7 @@ fun ShoppingFormSheet(
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             FinanzaPrimaryButton(
                 modifier = Modifier.fillMaxWidth(),
-                text = if (state.saving) "Salvando..." else "Salvar",
+                text = if (state.saving) "Salvando..." else if (isList) "Salvar lista" else "Salvar item",
                 onClick = onSave,
                 enabled = !state.saving
             )

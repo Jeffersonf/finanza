@@ -167,8 +167,8 @@ class HomeViewModel(
         val category = current.category.trim()
         val error = when {
             accountId.isBlank() -> "Crie ou selecione uma conta."
-            amountCents <= 0 -> "Informe um valor vÃ¡lido."
-            description.isBlank() -> "Informe uma descriÃ§Ã£o."
+            amountCents <= 0 -> "Informe um valor valido."
+            description.isBlank() -> "Informe uma descricao."
             category.isBlank() -> "Escolha uma categoria."
             !isValidIsoDate(current.date) -> "Use uma data no formato AAAA-MM-DD."
             else -> null
@@ -222,7 +222,7 @@ class HomeViewModel(
 
     fun deleteTransaction(id: String) {
         _settingsState.update {
-            it.copy(confirm = ConfirmAction("Excluir lanÃ§amento?", "Esta aÃ§Ã£o nÃ£o pode ser desfeita.") {
+            it.copy(confirm = ConfirmAction("Excluir lancamento?", "Essa acao nao pode ser desfeita.") {
                 viewModelScope.launch {
                     repository.deleteTransaction(id)
                     autoPushLocalChange()
@@ -262,7 +262,7 @@ class HomeViewModel(
         val yieldRate = current.yieldRate.replace(",", ".").toDoubleOrNull() ?: 0.0
         val error = when {
             current.name.trim().isBlank() -> "Informe o nome da conta."
-            current.icon.trim().isBlank() -> "Escolha um Ã­cone."
+            current.icon.trim().isBlank() -> "Escolha um icone."
             current.type.isBlank() -> "Escolha o tipo da conta."
             else -> null
         }
@@ -289,7 +289,7 @@ class HomeViewModel(
 
     fun deleteAccount(id: String) {
         _settingsState.update {
-            it.copy(confirm = ConfirmAction("Excluir conta?", "SÃ³ Ã© possÃ­vel excluir contas sem lanÃ§amentos vinculados.") {
+            it.copy(confirm = ConfirmAction("Excluir conta?", "So e possivel excluir contas sem lancamentos vinculados.") {
                 viewModelScope.launch {
                     when (val result = repository.deleteAccount(id)) {
                         DeleteResult.Deleted -> autoPushLocalChange()
@@ -330,8 +330,8 @@ class HomeViewModel(
         val limitCents = parseCents(current.limit)
         val error = when {
             current.category.trim().isBlank() -> "Escolha uma categoria."
-            limitCents <= 0 -> "Informe um limite vÃ¡lido."
-            runCatching { YearMonth.parse(current.month) }.isFailure -> "Use um mÃªs no formato AAAA-MM."
+            limitCents <= 0 -> "Informe um limite valido."
+            runCatching { YearMonth.parse(current.month) }.isFailure -> "Use um mes no formato AAAA-MM."
             else -> null
         }
         if (error != null) {
@@ -355,7 +355,7 @@ class HomeViewModel(
 
     fun deleteBudget(id: String) {
         _settingsState.update {
-            it.copy(confirm = ConfirmAction("Excluir orÃ§amento?", "O limite mensal desta categoria serÃ¡ removido.") {
+            it.copy(confirm = ConfirmAction("Excluir limite?", "O limite mensal desta categoria sera removido.") {
                 viewModelScope.launch {
                     repository.deleteBudget(id)
                     autoPushLocalChange()
@@ -427,7 +427,7 @@ class HomeViewModel(
 
     fun deleteGoal(id: String) {
         _settingsState.update {
-            it.copy(confirm = ConfirmAction("Excluir meta?", "Esta meta serÃ¡ removida da v4 e do prÃ³ximo backup enviado.") {
+            it.copy(confirm = ConfirmAction("Excluir meta?", "Esta meta sera removida da v4 e do proximo backup enviado.") {
                 viewModelScope.launch {
                     repository.deleteGoal(id)
                     autoPushLocalChange()
@@ -459,7 +459,7 @@ class HomeViewModel(
     }
 
     fun openAddShoppingList() {
-        _shoppingFormState.value = ShoppingFormUiState(visible = true, mode = ShoppingFormMode.ListCreate, icon = "ðŸ›’")
+        _shoppingFormState.value = ShoppingFormUiState(visible = true, mode = ShoppingFormMode.ListCreate, icon = "\uD83D\uDED2")
     }
 
     fun openEditShoppingList(list: ShoppingList) {
@@ -537,7 +537,7 @@ class HomeViewModel(
 
     fun deleteShoppingList(id: String) {
         _settingsState.update {
-            it.copy(confirm = ConfirmAction("Excluir lista?", "A lista e seus itens serÃ£o removidos.") {
+            it.copy(confirm = ConfirmAction("Excluir lista?", "A lista e seus itens serao removidos.") {
                 viewModelScope.launch {
                     repository.deleteShoppingList(id)
                     autoPushLocalChange()
@@ -548,7 +548,7 @@ class HomeViewModel(
 
     fun importLegacyBackup(json: String) {
         _settingsState.update {
-            it.copy(confirm = ConfirmAction("Importar backup?", "Os dados locais da v4 serÃ£o substituÃ­dos pelo arquivo selecionado.") {
+            it.copy(confirm = ConfirmAction("Importar backup?", "Os dados locais da v4 serao substituidos pelo arquivo selecionado.") {
                 runImportLegacyBackup(json)
             })
         }
@@ -571,7 +571,7 @@ class HomeViewModel(
                             password = "",
                             apiKey = config.apiKey,
                             userName = config.userName,
-                            message = "Conectado como ${config.userName}. Baixado: ${imported.transactions} lanÃ§amentos, ${imported.accounts} contas, ${imported.budgets} orÃ§amentos, ${imported.goals} metas."
+                            message = "Conectado como ${config.userName}. Baixado: ${imported.transactions} lancamentos, ${imported.accounts} contas, ${imported.budgets} limites e ${imported.goals} metas."
                         )
                     },
                     onFailure = { error -> it.copy(syncing = false, message = "Falha no login: ${error.message}") }
@@ -582,7 +582,7 @@ class HomeViewModel(
 
     fun pushLocalToRemote() {
         _settingsState.update {
-            it.copy(confirm = ConfirmAction("Enviar dados locais?", "A nuvem serÃ¡ substituÃ­da pelo conteÃºdo local da v4.") {
+            it.copy(confirm = ConfirmAction("Enviar dados locais?", "A nuvem sera substituida pelo conteudo local da v4.") {
                 viewModelScope.launch {
                     val current = _settingsState.value
                     _settingsState.update { s -> s.copy(syncing = true, message = null) }
@@ -602,7 +602,7 @@ class HomeViewModel(
 
     fun pullRemoteToLocal() {
         _settingsState.update {
-            it.copy(confirm = ConfirmAction("Baixar dados da nuvem?", "Os dados locais da v4 serÃ£o substituÃ­dos pelo servidor.") {
+            it.copy(confirm = ConfirmAction("Baixar dados da nuvem?", "Os dados locais da v4 serao substituidos pelo servidor.") {
                 viewModelScope.launch {
                     val current = _settingsState.value
                     _settingsState.update { s -> s.copy(syncing = true, message = null) }
@@ -613,7 +613,7 @@ class HomeViewModel(
                         result.fold(
                             onSuccess = { imported ->
                                 if (imported.error != null) s.copy(syncing = false, message = imported.error)
-                                else s.copy(syncing = false, message = "Baixado: ${imported.transactions} lanÃ§amentos, ${imported.accounts} contas, ${imported.budgets} orÃ§amentos, ${imported.goals} metas, ${imported.shoppingItems} itens.")
+                                else s.copy(syncing = false, message = "Baixado: ${imported.transactions} lancamentos, ${imported.accounts} contas, ${imported.budgets} limites, ${imported.goals} metas e ${imported.shoppingItems} itens.")
                             },
                             onFailure = { e -> s.copy(syncing = false, message = "Falha ao baixar: ${e.message}") }
                         )
@@ -649,12 +649,12 @@ class HomeViewModel(
     private suspend fun autoPushLocalChange() {
         val config = _settingsState.value.toSyncConfig()
         if (!config.connected) return
-        _settingsState.update { it.copy(syncing = true, message = "Sincronizando alteraÃ§Ãµes...") }
+        _settingsState.update { it.copy(syncing = true, message = "Sincronizando alteracoes...") }
         val result = runCatching { repository.pushLocalToRemote(config) }
         _settingsState.update { state ->
             result.fold(
-                onSuccess = { state.copy(syncing = false, message = "AlteraÃ§Ãµes sincronizadas.") },
-                onFailure = { error -> state.copy(syncing = false, message = "AlteraÃ§Ã£o salva localmente. Sync falhou: ${error.message}") }
+                onSuccess = { state.copy(syncing = false, message = "Alteracoes sincronizadas.") },
+                onFailure = { error -> state.copy(syncing = false, message = "Alteracao salva localmente. Sync falhou: ${error.message}") }
             )
         }
     }
@@ -716,7 +716,7 @@ class HomeViewModel(
             }
             _settingsState.update {
                 if (result.error != null) it.copy(importing = false, message = result.error)
-                else it.copy(importing = false, message = "Importado: ${result.transactions} lanÃ§amentos, ${result.accounts} contas, ${result.budgets} orÃ§amentos, ${result.goals} metas, ${result.shoppingItems} itens.")
+                else it.copy(importing = false, message = "Importado: ${result.transactions} lancamentos, ${result.accounts} contas, ${result.budgets} limites, ${result.goals} metas e ${result.shoppingItems} itens.")
             }
         }
     }
@@ -766,17 +766,17 @@ class HomeViewModel(
         val amountCents = parseCents(amountMatch.value)
         if (amountCents <= 0) return null
         val lower = raw.lowercase()
-        val type = if (listOf("recebi", "receita", "salario", "salÃ¡rio", "freela", "ganhei", "entrada").any { it in lower }) {
+        val type = if (listOf("recebi", "receita", "salario", "freela", "ganhei", "entrada").any { it in lower }) {
             TransactionType.Income
         } else {
             TransactionType.Expense
         }
         val date = when {
             "ontem" in lower -> LocalDate.now().minusDays(1).toString()
-            "amanha" in lower || "amanhÃ£" in lower -> LocalDate.now().plusDays(1).toString()
+            "amanha" in lower -> LocalDate.now().plusDays(1).toString()
             else -> LocalDate.now().toString()
         }
-        val pending = type == TransactionType.Expense && listOf("vence", "venc", "pagar", "a pagar", "amanha", "amanhÃ£").any { it in lower }
+        val pending = type == TransactionType.Expense && listOf("vence", "venc", "pagar", "a pagar", "amanha").any { it in lower }
         val categories = categoryNames.value.ifEmpty {
             if (type == TransactionType.Income) listOf("Salario", "Freelance", "Investimentos", "Outros")
             else listOf("Alimentacao", "Casa", "Transporte", "Saude", "Educacao", "Lazer", "Outros")
@@ -784,7 +784,7 @@ class HomeViewModel(
         val category = inferCategory(lower, type, categories)
         val description = raw
             .replace(amountMatch.value, "")
-            .replace(Regex("""(?i)\b(gastei|paguei|comprei|recebi|hoje|ontem|amanh[Ã£a]|no|na|em|de|r\$)\b"""), " ")
+            .replace(Regex("""(?i)\b(gastei|paguei|comprei|recebi|hoje|ontem|amanha|no|na|em|de|r\$)\b"""), " ")
             .replace(Regex("""\s+"""), " ")
             .trim()
             .ifBlank { category }
@@ -801,10 +801,10 @@ class HomeViewModel(
         val fallback = categories.firstOrNull { it.lowercase().contains("outro") } ?: categories.first()
         return when {
             listOf("mercado", "ifood", "restaurante", "lanche", "padaria", "comida", "delivery").any { it in text } -> pick("aliment", "mercado", "comida")
-            listOf("uber", "99", "taxi", "gasolina", "combustivel", "Ã´nibus", "onibus").any { it in text } -> pick("transporte")
+            listOf("uber", "99", "taxi", "gasolina", "combustivel", "onibus").any { it in text } -> pick("transporte")
             listOf("aluguel", "luz", "agua", "internet", "condominio", "casa").any { it in text } -> pick("casa", "moradia")
-            listOf("farmacia", "remedio", "medico", "saude", "saÃºde").any { it in text } -> pick("saude", "saÃºde")
-            listOf("curso", "livro", "faculdade", "educacao", "educaÃ§Ã£o").any { it in text } -> pick("educ")
+            listOf("farmacia", "remedio", "medico", "saude").any { it in text } -> pick("saude")
+            listOf("curso", "livro", "faculdade", "educacao").any { it in text } -> pick("educ")
             listOf("cinema", "bar", "jogo", "show", "lazer").any { it in text } -> pick("lazer")
             else -> fallback
         } ?: fallback
@@ -827,7 +827,7 @@ data class AddTransactionUiState(
     val type: TransactionType = TransactionType.Expense,
     val amount: String = "",
     val description: String = "",
-    val category: String = "AlimentaÃ§Ã£o",
+    val category: String = "Alimentacao",
     val accountId: String = "",
     val date: String = LocalDate.now().toString(),
     val pending: Boolean = false,
@@ -836,8 +836,8 @@ data class AddTransactionUiState(
     val error: String? = null
 ) {
     val categories: List<String> = when (type) {
-        TransactionType.Income -> listOf("SalÃ¡rio", "Freelance", "Investimentos", "Outros")
-        TransactionType.Expense -> listOf("AlimentaÃ§Ã£o", "Casa", "Transporte", "SaÃºde", "EducaÃ§Ã£o", "Lazer", "Outros")
+        TransactionType.Income -> listOf("Salario", "Freelance", "Investimentos", "Outros")
+        TransactionType.Expense -> listOf("Alimentacao", "Casa", "Transporte", "Saude", "Educacao", "Lazer", "Outros")
     }
 
     fun withType(nextType: TransactionType): AddTransactionUiState {
@@ -850,8 +850,8 @@ data class AddTransactionUiState(
 
     private fun categoriesFor(type: TransactionType): List<String> {
         return when (type) {
-            TransactionType.Income -> listOf("SalÃ¡rio", "Freelance", "Investimentos", "Outros")
-            TransactionType.Expense -> listOf("AlimentaÃ§Ã£o", "Casa", "Transporte", "SaÃºde", "EducaÃ§Ã£o", "Lazer", "Outros")
+            TransactionType.Income -> listOf("Salario", "Freelance", "Investimentos", "Outros")
+            TransactionType.Expense -> listOf("Alimentacao", "Casa", "Transporte", "Saude", "Educacao", "Lazer", "Outros")
         }
     }
 }
@@ -888,7 +888,7 @@ data class AccountFormUiState(
     val mode: FormMode = FormMode.Create,
     val id: String? = null,
     val name: String = "",
-    val icon: String = "ðŸ¦",
+    val icon: String = "\uD83C\uDFE6",
     val type: String = "checking",
     val balance: String = "",
     val yieldRate: String = "",
@@ -897,7 +897,7 @@ data class AccountFormUiState(
 ) {
     val types: List<Pair<String, String>> = listOf(
         "checking" to "Corrente",
-        "savings" to "PoupanÃ§a",
+        "savings" to "Poupanca",
         "wallet" to "Carteira",
         "investment" to "Investimento"
     )
@@ -907,13 +907,13 @@ data class BudgetFormUiState(
     val visible: Boolean = false,
     val mode: FormMode = FormMode.Create,
     val id: String? = null,
-    val category: String = "AlimentaÃ§Ã£o",
+    val category: String = "Alimentacao",
     val limit: String = "",
     val month: String = YearMonth.now().toString(),
     val saving: Boolean = false,
     val error: String? = null
 ) {
-    val categories: List<String> = listOf("AlimentaÃ§Ã£o", "Casa", "Transporte", "SaÃºde", "EducaÃ§Ã£o", "Lazer", "Outros")
+    val categories: List<String> = listOf("Alimentacao", "Casa", "Transporte", "Saude", "Educacao", "Lazer", "Outros")
 }
 
 data class GoalFormUiState(
@@ -921,7 +921,7 @@ data class GoalFormUiState(
     val mode: FormMode = FormMode.Create,
     val id: String? = null,
     val name: String = "",
-    val icon: String = "ðŸŽ¯",
+    val icon: String = "\uD83C\uDFAF",
     val target: String = "",
     val current: String = "",
     val deadline: String = LocalDate.now().plusMonths(6).toString(),
@@ -944,9 +944,9 @@ data class ShoppingFormUiState(
     val id: String? = null,
     val listId: String = "",
     val name: String = "",
-    val icon: String = "ðŸ›’",
+    val icon: String = "\uD83D\uDED2",
     val qty: String = "",
-    val category: String = "ðŸ›’ Geral",
+    val category: String = "\uD83D\uDED2 Geral",
     val bought: Boolean = false,
     val position: Int = 0,
     val saving: Boolean = false,

@@ -1,7 +1,8 @@
 package com.finanza.v4.ui.shopping
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -54,35 +55,36 @@ fun ShoppingScreen(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 112.dp)
     ) {
         item {
             PageHeader(
-                title = "Lista",
-                subtitle = "Compras sincronizadas",
-                trailing = { MetricPill("$pending pendente(s)", FinanzaMint) }
+                title = "Compras",
+                subtitle = "Listas separadas por rotina, mercado e reposicao da casa",
+                trailing = { MetricPill("$pending pendentes", FinanzaMint) }
             )
         }
         if (snapshot.items.isEmpty()) {
             item {
                 EmptyStateCard(
                     title = "Lista vazia",
-                    subtitle = "Ao baixar da v3, seus itens aparecem aqui.",
+                    subtitle = "Monte listas por contexto para comprar com mais clareza.",
                     icon = Icons.Rounded.ShoppingCart
                 )
             }
         }
         orderedLists.forEach { list ->
-            val items = snapshot.items.filter { it.listId == list.id }
+            val itemsForList = snapshot.items.filter { it.listId == list.id }
             val isActive = activeListId != null && list.id == activeListId
-            if (items.isNotEmpty()) {
+            if (itemsForList.isNotEmpty()) {
                 item {
                     FinanzaSection(
                         title = "${list.icon} ${list.name}",
-                        subtitle = "${items.count { !it.bought }}/${items.size} pendentes${if (isActive) " • ativa" else ""}",
+                        subtitle = "${itemsForList.count { !it.bought }}/${itemsForList.size} itens pendentes${if (isActive) " \u2022 lista ativa" else ""}",
                         trailing = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                MetricPill("${items.count { !it.bought }}/${items.size}", FinanzaGreen)
+                                MetricPill("${itemsForList.count { !it.bought }}/${itemsForList.size}", FinanzaGreen)
                                 IconButton(onClick = { onDeleteList(list.id) }) {
                                     Icon(Icons.Rounded.Delete, contentDescription = "Excluir lista", tint = MaterialTheme.colorScheme.error)
                                 }
@@ -91,7 +93,7 @@ fun ShoppingScreen(
                         modifier = Modifier.clickable { onEditList(list) }
                     ) {}
                 }
-                items(items, key = { it.id }) { item ->
+                items(itemsForList, key = { it.id }) { item ->
                     ShoppingRow(
                         item = item,
                         onEdit = onEditItem,
@@ -99,14 +101,12 @@ fun ShoppingScreen(
                         onDelete = onDeleteItem
                     )
                 }
-                item {
-                    AddItemCard(text = "+ Item em ${list.name}", onClick = { onAddItem(list.id) })
-                }
+                item { AddItemCard(text = "Item em ${list.name}", onClick = { onAddItem(list.id) }, color = FinanzaMint) }
             } else {
                 item {
                     FinanzaSection(
                         title = "${list.icon} ${list.name}",
-                        subtitle = "Lista vazia${if (isActive) " • ativa" else ""}",
+                        subtitle = "Lista vazia${if (isActive) " \u2022 lista ativa" else ""}",
                         trailing = {
                             IconButton(onClick = { onDeleteList(list.id) }) {
                                 Icon(Icons.Rounded.Delete, contentDescription = "Excluir lista", tint = MaterialTheme.colorScheme.error)
@@ -115,21 +115,16 @@ fun ShoppingScreen(
                         modifier = Modifier.clickable { onEditList(list) }
                     ) {
                         Text(
-                            "Adicione o primeiro item.",
+                            "Adicione o primeiro item para comecar essa rotina.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }
-                item {
-                    AddItemCard(text = "+ Item em ${list.name}", onClick = { onAddItem(list.id) })
-                }
+                item { AddItemCard(text = "Item em ${list.name}", onClick = { onAddItem(list.id) }, color = FinanzaMint) }
             }
         }
-        item {
-            AddItemCard(text = "+ Nova lista", onClick = onAddList)
-        }
-        item { Spacer(Modifier.height(24.dp)) }
+        item { AddItemCard(text = "Nova lista", onClick = onAddList, color = FinanzaGreen) }
     }
 }
 
@@ -141,9 +136,9 @@ private fun ShoppingRow(
     onDelete: (String) -> Unit
 ) {
     FinanzaListItem(
-        emoji = if (item.bought) "✓" else "○",
+        emoji = if (item.bought) "\u2713" else "\u25CB",
         title = item.name,
-        subtitle = item.category,
+        subtitle = item.category.ifBlank { "Sem categoria" },
         amount = item.qty.ifBlank { null },
         amountColor = MaterialTheme.colorScheme.onSurfaceVariant,
         badge = if (item.bought) "comprado" else "pendente",
@@ -152,10 +147,12 @@ private fun ShoppingRow(
         onClick = { onEdit(item) },
         trailing = {
             Text(
-                if (item.bought) "↩" else "✓",
+                if (item.bought) "\u21A9" else "\u2713",
                 color = if (item.bought) FinanzaGreen else FinanzaMint,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.clickable { onToggle(item.id, !item.bought) }.padding(8.dp)
+                modifier = Modifier
+                    .clickable { onToggle(item.id, !item.bought) }
+                    .padding(8.dp)
             )
             IconButton(onClick = { onDelete(item.id) }) {
                 Icon(Icons.Rounded.Delete, contentDescription = "Excluir item", tint = MaterialTheme.colorScheme.error)

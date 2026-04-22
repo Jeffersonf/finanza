@@ -6,6 +6,27 @@ Este projeto usa:
 - **Banco**: PostgreSQL no Supabase.
 - **Frontend**: arquivos estaticos em `frontend/`, geralmente publicados no GitHub Pages.
 
+## Android SDK local
+
+Se voce for compilar os apps Android (`android/` v3 e `android-v4/` v4), configure o `local.properties` das duas pastas com:
+
+```powershell
+.\configure-android-sdk.ps1
+```
+
+O script tenta encontrar o SDK nesta ordem:
+
+- `ANDROID_SDK_ROOT`
+- `ANDROID_HOME`
+- `C:\Users\SEU_USUARIO\AppData\Local\Android\Sdk`
+
+Depois disso, para build local, use tambem o Java do Android Studio:
+
+```powershell
+$env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
+$env:Path="$env:JAVA_HOME\bin;$env:Path"
+```
+
 ## 1. Criar o banco no Supabase
 
 1. Acesse <https://supabase.com>.

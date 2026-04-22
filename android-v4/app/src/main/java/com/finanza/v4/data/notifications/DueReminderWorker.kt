@@ -41,7 +41,7 @@ class DueReminderWorker(
             if (ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
                 val total = pending.sumOf { it.amountCents } / 100.0
                 val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-                    .setSmallIcon(R.drawable.ic_launcher)
+                    .setSmallIcon(R.drawable.ic_notification)
                     .setContentTitle("Finanza")
                     .setContentText("${pending.size} despesa(s) pendente(s): R$ %.2f".format(total))
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -75,6 +75,7 @@ class DueReminderWorker(
                 ExistingPeriodicWorkPolicy.UPDATE,
                 request
             )
+            PersistentFinanzaNotification.show(context)
         }
     }
 }

@@ -54,8 +54,8 @@ fun GoalFormSheet(
         ) {
             FinanzaSheetHeader(
                 title = if (state.mode == FormMode.Edit) "Editar meta" else "Nova meta",
-                subtitle = "Objetivo, prazo e aporte mensal",
-                emoji = state.icon.ifBlank { "🏆" },
+                subtitle = "Defina valor alvo, prazo e o aporte que cabe no seu mes",
+                emoji = state.icon.ifBlank { "\uD83C\uDFC6" },
                 color = FinanzaPurple
             )
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -63,23 +63,23 @@ fun GoalFormSheet(
                     modifier = Modifier.weight(1f),
                     value = state.name,
                     onValueChange = { value -> onChange { it.copy(name = value) } },
-                    label = "Nome"
+                    label = "Nome da meta"
                 )
                 FinanzaTextField(
                     modifier = Modifier.weight(.42f),
                     value = state.icon,
                     onValueChange = { value -> onChange { it.copy(icon = value) } },
-                    label = "Emoji"
+                    label = "Icone"
                 )
             }
             FinanzaCard(radius = 22.dp, glowColor = FinanzaPurple) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Valores", style = MaterialTheme.typography.labelMedium, color = FinanzaPurple)
+                    Text("Planejamento financeiro", style = MaterialTheme.typography.labelMedium, color = FinanzaPurple)
                     FinanzaTextField(
                         modifier = Modifier.fillMaxWidth(),
                         value = state.target,
                         onValueChange = { value -> onChange { it.copy(target = value) } },
-                        label = "Alvo",
+                        label = "Valor alvo",
                         prefix = "R$",
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
@@ -87,7 +87,7 @@ fun GoalFormSheet(
                         modifier = Modifier.fillMaxWidth(),
                         value = state.current,
                         onValueChange = { value -> onChange { it.copy(current = value) } },
-                        label = "Já guardado",
+                        label = "Valor ja guardado",
                         prefix = "R$",
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
@@ -95,7 +95,7 @@ fun GoalFormSheet(
                         modifier = Modifier.fillMaxWidth(),
                         value = state.monthly,
                         onValueChange = { value -> onChange { it.copy(monthly = value) } },
-                        label = "Aporte mensal",
+                        label = "Aporte mensal planejado",
                         prefix = "R$",
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
@@ -105,7 +105,7 @@ fun GoalFormSheet(
                 modifier = Modifier.fillMaxWidth(),
                 value = state.deadline,
                 onValueChange = { value -> onChange { it.copy(deadline = value) } },
-                label = "Prazo",
+                label = "Prazo final",
                 supportingText = "Formato AAAA-MM-DD",
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
@@ -113,13 +113,13 @@ fun GoalFormSheet(
                 modifier = Modifier.fillMaxWidth(),
                 value = state.description,
                 onValueChange = { value -> onChange { it.copy(description = value) } },
-                label = "Descrição",
+                label = "Descricao da meta",
                 singleLine = false
             )
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             FinanzaPrimaryButton(
                 modifier = Modifier.fillMaxWidth(),
-                text = if (state.saving) "Salvando..." else "Salvar meta",
+                text = if (state.saving) "Salvando..." else "Salvar meta agora",
                 onClick = onSave,
                 enabled = !state.saving
             )

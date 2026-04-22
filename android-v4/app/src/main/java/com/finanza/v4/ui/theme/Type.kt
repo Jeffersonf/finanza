@@ -16,51 +16,59 @@ val DmSans = FontFamily(
     Font(R.font.dm_sans_800, FontWeight.ExtraBold)
 )
 
-val Syne = FontFamily(
-    Font(R.font.syne_600, FontWeight.SemiBold),
-    Font(R.font.syne_700, FontWeight.Bold),
-    Font(R.font.syne_800, FontWeight.ExtraBold)
-)
-
 val FinanzaTypography = Typography(
     displayMedium = Typography().displayMedium.copy(
         fontFamily = DmSans,
-        fontWeight = FontWeight.ExtraBold,
-        fontSize = 34.sp,
-        lineHeight = 39.sp,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 20.sp,
+        lineHeight = 24.sp,
         letterSpacing = 0.sp
     ),
     displaySmall = Typography().displaySmall.copy(
-        fontFamily = Syne,
-        fontWeight = FontWeight.ExtraBold,
-        fontSize = 28.sp,
-        lineHeight = 34.sp,
+        fontFamily = DmSans,
+        fontWeight = FontWeight.Bold,
+        fontSize = 20.sp,
+        lineHeight = 24.sp,
         letterSpacing = 0.sp
     ),
     titleLarge = Typography().titleLarge.copy(
-        fontFamily = Syne,
-        fontWeight = FontWeight.Bold,
-        fontSize = 20.sp,
+        fontFamily = DmSans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 17.sp,
+        lineHeight = 22.sp,
         letterSpacing = 0.sp
     ),
     titleMedium = Typography().titleMedium.copy(
-        fontFamily = Syne,
+        fontFamily = DmSans,
         fontWeight = FontWeight.Bold,
+        fontSize = 16.sp,
+        lineHeight = 20.sp,
         letterSpacing = 0.sp
     ),
     titleSmall = Typography().titleSmall.copy(
-        fontFamily = Syne,
-        fontWeight = FontWeight.Bold,
+        fontFamily = DmSans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 14.sp,
+        lineHeight = 18.sp,
         letterSpacing = 0.sp
     ),
-    bodyMedium = Typography().bodyMedium.copy(
+    bodyLarge = Typography().bodyLarge.copy(
         fontFamily = DmSans,
+        fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         lineHeight = 20.sp,
         letterSpacing = 0.sp
     ),
+    bodyMedium = Typography().bodyMedium.copy(
+        fontFamily = DmSans,
+        fontWeight = FontWeight.Medium,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+        letterSpacing = 0.sp
+    ),
     bodySmall = Typography().bodySmall.copy(
         fontFamily = DmSans,
+        fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
         lineHeight = 17.sp,
         letterSpacing = 0.sp
@@ -74,7 +82,7 @@ val FinanzaTypography = Typography(
     labelMedium = Typography().labelMedium.copy(
         fontFamily = DmSans,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 12.sp,
+        fontSize = 11.sp,
         letterSpacing = 0.sp
     ),
     labelSmall = Typography().labelSmall.copy(

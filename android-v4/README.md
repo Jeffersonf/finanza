@@ -30,3 +30,9 @@ Crie um `android-v4/local.properties` local apontando para o Android SDK, por ex
 ```properties
 sdk.dir=C\:\\Users\\jeffe\\AppData\\Local\\Android\\Sdk
 ```
+
+Se quiser configurar `android/` e `android-v4/` de uma vez, rode na raiz do projeto:
+
+```powershell
+.\configure-android-sdk.ps1
+```

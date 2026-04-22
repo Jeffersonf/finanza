@@ -5,3 +5,4 @@ ios/
 backup/*.sql.gz
 backup/*.log
 dados-locais.json
+.gradle-user/

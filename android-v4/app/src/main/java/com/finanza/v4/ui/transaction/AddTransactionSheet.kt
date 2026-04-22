@@ -66,26 +66,26 @@ fun AddTransactionSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             FinanzaSheetHeader(
-                title = if (state.mode == AddTransactionMode.Edit) "Editar lançamento" else "Novo lançamento",
-                subtitle = "Valor, categoria, conta e vencimento",
-                emoji = if (state.type == TransactionType.Income) "⬆" else "⬇",
+                title = if (state.mode == AddTransactionMode.Edit) "Editar lancamento" else "Novo lancamento",
+                subtitle = "Defina valor, categoria, conta e se esse gasto ainda esta pendente",
+                emoji = if (state.type == TransactionType.Income) "\u2191" else "\u2193",
                 color = accent
             )
 
             if (state.mode == AddTransactionMode.Create) {
                 FinanzaCard(radius = 22.dp, glowColor = FinanzaMint) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Lancamento rapido", style = MaterialTheme.typography.labelMedium, color = FinanzaMint)
+                        Text("Preenchimento rapido", style = MaterialTheme.typography.labelMedium, color = FinanzaMint)
                         FinanzaTextField(
                             modifier = Modifier.fillMaxWidth(),
                             value = state.quickText,
                             onValueChange = { value -> onChange { it.copy(quickText = value) } },
-                            label = "Digite como voce fala",
+                            label = "Descreva do seu jeito",
                             placeholder = "mercado 38,90 hoje"
                         )
                         FinanzaPrimaryButton(
                             modifier = Modifier.fillMaxWidth(),
-                            text = "Preencher campos",
+                            text = "Interpretar texto",
                             onClick = onParseQuickText,
                             enabled = state.quickText.isNotBlank()
                         )
@@ -96,14 +96,14 @@ fun AddTransactionSheet(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 FinanzaChip(
                     modifier = Modifier.weight(1f),
-                    text = "⬇ Despesa",
+                    text = "\u2193 Despesa",
                     selected = state.type == TransactionType.Expense,
                     onClick = { onChange { it.withType(TransactionType.Expense) } },
                     color = FinanzaRed
                 )
                 FinanzaChip(
                     modifier = Modifier.weight(1f),
-                    text = "⬆ Receita",
+                    text = "\u2191 Receita",
                     selected = state.type == TransactionType.Income,
                     onClick = { onChange { it.withType(TransactionType.Income) } },
                     color = FinanzaGreen
@@ -123,7 +123,7 @@ fun AddTransactionSheet(
                 modifier = Modifier.fillMaxWidth(),
                 value = state.description,
                 onValueChange = { description -> onChange { it.copy(description = description) } },
-                label = "Descrição"
+                label = "Descricao"
             )
 
             FieldGroup(title = "Categoria", color = accent) {
@@ -140,7 +140,7 @@ fun AddTransactionSheet(
                 }
             }
 
-            FieldGroup(title = "Conta", color = FinanzaGreen) {
+            FieldGroup(title = "Conta de origem", color = FinanzaGreen) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     accounts.forEach { account ->
                         FinanzaChip(
@@ -157,15 +157,15 @@ fun AddTransactionSheet(
                 modifier = Modifier.fillMaxWidth(),
                 value = state.date,
                 onValueChange = { date -> onChange { it.copy(date = date) } },
-                label = "Data",
+                label = "Data do lancamento",
                 supportingText = "Formato AAAA-MM-DD",
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
 
             if (state.type == TransactionType.Expense) {
                 FinanzaToggleRow(
-                    title = "A pagar",
-                    subtitle = "Entra no futuro financeiro",
+                    title = "Marcar como pendente",
+                    subtitle = "Mantem o item no planejamento ate o pagamento",
                     checked = state.pending,
                     onCheckedChange = { pending -> onChange { it.copy(pending = pending) } },
                     color = FinanzaPurple
@@ -180,8 +180,8 @@ fun AddTransactionSheet(
                 modifier = Modifier.fillMaxWidth(),
                 text = when {
                     state.saving -> "Salvando..."
-                    state.mode == AddTransactionMode.Edit -> "Salvar alterações"
-                    else -> "Salvar lançamento"
+                    state.mode == AddTransactionMode.Edit -> "Salvar mudancas"
+                    else -> "Salvar lancamento"
                 },
                 onClick = onSave,
                 enabled = !state.saving

@@ -1,14 +1,13 @@
-﻿package com.finanza.v4.ui.settings
+package com.finanza.v4.ui.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
@@ -31,9 +30,11 @@ import com.finanza.v4.data.repository.FixedDashboardWidgetIds
 import com.finanza.v4.domain.ShoppingList
 import com.finanza.v4.ui.components.FinanzaChip
 import com.finanza.v4.ui.components.FinanzaGhostButton
+import com.finanza.v4.ui.components.FinanzaListItem
 import com.finanza.v4.ui.components.FinanzaPrimaryButton
 import com.finanza.v4.ui.components.FinanzaSection
 import com.finanza.v4.ui.components.FinanzaTextField
+import com.finanza.v4.ui.components.FinanzaToggleRow
 import com.finanza.v4.ui.components.MetricPill
 import com.finanza.v4.ui.components.PageHeader
 import com.finanza.v4.ui.home.SettingsUiState
@@ -62,6 +63,7 @@ fun SettingsScreen(
     var cdiText by remember(preferences.cdi) { mutableStateOf(formatRate(preferences.cdi)) }
     var selicText by remember(preferences.selic) { mutableStateOf(formatRate(preferences.selic)) }
     var monthlyIncomeText by remember(preferences.monthlyIncomeCents) { mutableStateOf(formatMoneyInput(preferences.monthlyIncomeCents)) }
+
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             val json = context.contentResolver.openInputStream(uri)
@@ -82,21 +84,48 @@ fun SettingsScreen(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 18.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 112.dp)
     ) {
         item {
             PageHeader(
-                title = "Ajustes",
-                subtitle = "Conta, backup e sincronizacao",
+                title = "Configuracoes",
+                subtitle = "Aparencia, dashboard, conta e notificacoes",
                 trailing = { MetricPill(if (state.connected) "online" else "local", if (state.connected) FinanzaGreen else FinanzaMint) }
             )
         }
         item {
-            FinanzaSection("Preferencias da v3", "Tema, taxas, visualizacao e lista ativa sincronizados com a web.") {
+            FinanzaSection("Visao geral", "Resumo rapido do estado atual da v4 neste aparelho.") {
+                FinanzaListItem(
+                    emoji = if (state.connected) "✓" else "○",
+                    title = if (state.connected) "Sincronizacao ativa" else "Modo local",
+                    subtitle = if (state.connected) {
+                        state.userName.takeIf { it.isNotBlank() }?.let { "Conectado como $it" } ?: "API conectada"
+                    } else {
+                        "Seus dados ficam neste aparelho ate conectar"
+                    },
+                    amount = if (preferences.activeList.isNullOrBlank()) "Sem lista" else "Lista ativa",
+                    amountColor = if (state.connected) FinanzaGreen else FinanzaMint,
+                    iconColor = if (state.connected) FinanzaGreen else FinanzaMint,
+                    stripColor = if (state.connected) FinanzaGreen else FinanzaMint
+                )
+                FinanzaListItem(
+                    emoji = "¤",
+                    title = "Renda mensal base",
+                    subtitle = "Usada para ritmo diario e indicadores da dashboard",
+                    amount = formatMoney(preferences.monthlyIncomeCents),
+                    amountColor = FinanzaGreen,
+                    iconColor = FinanzaGreen,
+                    stripColor = FinanzaGreen
+                )
+            }
+        }
+        item {
+            FinanzaSection("Aparencia e comportamento", "Tema, taxas, visualizacao e lista ativa sincronizados com a web.") {
                 Text("Aparencia", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     FinanzaChip(
-                        text = "Glass escuro",
+                        text = "Escuro",
                         selected = preferences.theme == "dark",
                         onClick = { onPreferencesChange { it.copy(theme = "dark") } }
                     )
@@ -107,11 +136,18 @@ fun SettingsScreen(
                         color = FinanzaMint
                     )
                 }
+                FinanzaToggleRow(
+                    title = "Icones na dashboard",
+                    subtitle = "Mostra ou oculta os icones dos cards da tela inicial",
+                    checked = preferences.showDashboardIcons,
+                    onCheckedChange = { checked -> onPreferencesChange { it.copy(showDashboardIcons = checked) } },
+                    color = FinanzaMint
+                )
                 FinanzaTextField(
                     modifier = Modifier.fillMaxWidth(),
                     value = monthlyIncomeText,
                     onValueChange = { monthlyIncomeText = it },
-                    label = "Salario/renda mensal base",
+                    label = "Salario ou renda mensal base",
                     prefix = "R$",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
@@ -150,11 +186,7 @@ fun SettingsScreen(
                 )
                 Text("Visualizacao dos lancamentos", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        "n" to "Normal",
-                        "c" to "Compacta",
-                        "chart" to "Graficos"
-                    ).forEach { (key, label) ->
+                    listOf("n" to "Normal", "c" to "Compacta", "chart" to "Graficos").forEach { (key, label) ->
                         FinanzaChip(
                             text = label,
                             selected = preferences.txView == key,
@@ -181,7 +213,7 @@ fun SettingsScreen(
             }
         }
         item {
-            FinanzaSection("Widgets do dashboard", "Mesmos blocos configuraveis do app/site v3.") {
+            FinanzaSection("Dashboard modular", "Escolha quais blocos aparecem e ajuste a ordem deles.") {
                 val orderedWidgets = orderedWidgets(preferences)
                 orderedWidgets.forEachIndexed { index, widget ->
                     val fixed = widget.id in FixedDashboardWidgetIds
@@ -202,13 +234,13 @@ fun SettingsScreen(
                         FinanzaGhostButton(
                             modifier = Modifier.weight(.34f),
                             text = "Subir",
-                            onClick = { onPreferencesChange { it.copy(widgetOrder = moveWidget(orderedWidgets.map { widget -> widget.id }, index, -1)) } },
+                            onClick = { onPreferencesChange { it.copy(widgetOrder = moveWidget(orderedWidgets.map { w -> w.id }, index, -1)) } },
                             enabled = !fixed && index > FixedDashboardWidgetIds.lastIndex
                         )
                         FinanzaGhostButton(
                             modifier = Modifier.weight(.38f),
                             text = "Descer",
-                            onClick = { onPreferencesChange { it.copy(widgetOrder = moveWidget(orderedWidgets.map { widget -> widget.id }, index, 1)) } },
+                            onClick = { onPreferencesChange { it.copy(widgetOrder = moveWidget(orderedWidgets.map { w -> w.id }, index, 1)) } },
                             enabled = !fixed && index < orderedWidgets.lastIndex
                         )
                     }
@@ -216,7 +248,7 @@ fun SettingsScreen(
             }
         }
         item {
-            FinanzaSection("Sincronizacao", "Conecte com a API existente do Finanza para enviar ou baixar dados.") {
+            FinanzaSection("Sincronizacao", "Conecte a API do Finanza para enviar ou baixar seus dados.") {
                 FinanzaTextField(
                     modifier = Modifier.fillMaxWidth(),
                     value = state.baseUrl,
@@ -252,7 +284,7 @@ fun SettingsScreen(
             }
         }
         item {
-            FinanzaSection("Backup local", "Exporte um JSON da v4 ou importe o backup gerado pela versao 3.9.1.") {
+            FinanzaSection("Backup local", "Exporte um JSON da v4 ou importe um backup antigo para migracao.") {
                 FinanzaGhostButton(
                     modifier = Modifier.fillMaxWidth(),
                     text = "Exportar backup v4",
@@ -276,11 +308,10 @@ fun SettingsScreen(
             }
         }
         item {
-            FinanzaSection("Notificacoes", "Ative um lembrete diario para despesas pendentes e proximas do vencimento.") {
-                FinanzaGhostButton(modifier = Modifier.fillMaxWidth(), text = "Ativar lembretes", onClick = onEnableReminders)
+            FinanzaSection("Notificacoes", "Ative o lembrete diario e mantenha os atalhos persistentes visiveis.") {
+                FinanzaGhostButton(modifier = Modifier.fillMaxWidth(), text = "Ativar lembretes e atalhos", onClick = onEnableReminders)
             }
         }
-        item { Spacer(Modifier.height(24.dp)) }
     }
 }
 
@@ -306,8 +337,7 @@ private fun parseMoneyToCents(value: String): Long {
     return normalized.toBigDecimalOrNull()
         ?.movePointRight(2)
         ?.setScale(0, java.math.RoundingMode.HALF_UP)
-        ?.toLong()
-        ?: 0L
+        ?.toLong() ?: 0L
 }
 
 private fun formatMoneyInput(cents: Long): String {
@@ -315,10 +345,17 @@ private fun formatMoneyInput(cents: Long): String {
     return String.format(Locale.US, "%.2f", cents / 100.0).replace(".", ",")
 }
 
+private fun formatMoney(cents: Long): String {
+    return String.format(Locale("pt", "BR"), "R$ %,.2f", cents / 100.0)
+}
+
 private fun orderedWidgets(preferences: AppPreferences) = preferences.widgetOrder
     .mapNotNull { id -> DashboardWidgets.firstOrNull { it.id == id } }
     .plus(DashboardWidgets.filter { widget -> widget.id !in preferences.widgetOrder })
-    .let { widgets -> FixedDashboardWidgetIds.mapNotNull { id -> widgets.firstOrNull { it.id == id } } + widgets.filterNot { it.id in FixedDashboardWidgetIds } }
+    .let { widgets ->
+        FixedDashboardWidgetIds.mapNotNull { id -> widgets.firstOrNull { it.id == id } } +
+            widgets.filterNot { it.id in FixedDashboardWidgetIds }
+    }
 
 private fun moveWidget(order: List<String>, index: Int, delta: Int): List<String> {
     if (index <= FixedDashboardWidgetIds.lastIndex) return order
@@ -330,4 +367,3 @@ private fun moveWidget(order: List<String>, index: Int, delta: Int): List<String
         list.add(target, item)
     }
 }
-

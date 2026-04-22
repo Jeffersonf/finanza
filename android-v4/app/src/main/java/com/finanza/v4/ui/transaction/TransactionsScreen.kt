@@ -1,4 +1,4 @@
-﻿package com.finanza.v4.ui.transaction
+package com.finanza.v4.ui.transaction
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -71,24 +72,25 @@ fun TransactionsScreen(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 112.dp)
     ) {
         item {
             PageHeader(
-                title = "Lancamentos",
+                title = "Transacoes",
                 subtitle = viewLabel(txView),
                 trailing = { MetricPill("${transactions.size}", FinanzaGreen) }
             )
         }
         item {
-            FinanzaSection(title = "Filtros", subtitle = "Mes, tipo e categoria") {
+            FinanzaSection(title = "Filtros", subtitle = "Periodo, tipo e categoria") {
                 PeriodPillBar(content = {
-                    FinanzaChip(text = "☰", selected = txView == "n", onClick = { onTxViewChange("n") }, color = FinanzaGreen)
-                    FinanzaChip(text = "≡", selected = txView == "c", onClick = { onTxViewChange("c") }, color = FinanzaMint)
-                    FinanzaChip(text = "📊", selected = txView == "chart", onClick = { onTxViewChange("chart") }, color = FinanzaAmber)
+                    FinanzaChip(text = "Normal", selected = txView == "n", onClick = { onTxViewChange("n") }, color = FinanzaGreen)
+                    FinanzaChip(text = "Compacto", selected = txView == "c", onClick = { onTxViewChange("c") }, color = FinanzaMint)
+                    FinanzaChip(text = "Graficos", selected = txView == "chart", onClick = { onTxViewChange("chart") }, color = FinanzaAmber)
                 })
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    FinanzaChip(text = "<", selected = false, onClick = { onMonthChange(filters.month.minusMonths(1)) })
+                    FinanzaChip(text = "\u2039", selected = false, onClick = { onMonthChange(filters.month.minusMonths(1)) })
                     Text(
                         text = filters.month.month.getDisplayName(
                             TextStyle.FULL,
@@ -97,12 +99,12 @@ fun TransactionsScreen(
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.titleMedium
                     )
-                    FinanzaChip(text = ">", selected = false, onClick = { onMonthChange(filters.month.plusMonths(1)) })
+                    FinanzaChip(text = "\u203A", selected = false, onClick = { onMonthChange(filters.month.plusMonths(1)) })
                 }
                 PeriodPillBar(content = {
                     FinanzaChip(text = "Tudo", selected = filters.type == null, onClick = { onTypeChange(null) })
                     FinanzaChip(text = "Despesas", selected = filters.type == TransactionType.Expense, onClick = { onTypeChange(TransactionType.Expense) }, color = FinanzaRed)
-                    FinanzaChip(text = "Receitas", selected = filters.type == TransactionType.Income, onClick = { onTypeChange(TransactionType.Income) })
+                    FinanzaChip(text = "Receitas", selected = filters.type == TransactionType.Income, onClick = { onTypeChange(TransactionType.Income) }, color = FinanzaGreen)
                 })
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     val filterCategories = listOf<String?>(null) + categories.ifEmpty { defaultCategories() }
@@ -116,21 +118,11 @@ fun TransactionsScreen(
                 }
             }
         }
-        item {
-            TransactionSummary(transactions)
-        }
-        item {
-            FinanzaSection(title = "Transacoes", subtitle = "${transactions.size} item(ns)") {
-                if (transactions.isEmpty()) {
-                    EmptyStateCard(
-                        title = "Nada encontrado",
-                        subtitle = "Ajuste os filtros ou adicione um novo lancamento.",
-                        icon = Icons.Rounded.SearchOff
-                    )
-                }
-            }
-        }
+        item { TransactionSummary(transactions) }
         if (transactions.isNotEmpty()) {
+            item {
+                FinanzaSection(title = "Historico", subtitle = "${transactions.size} item(ns)") {}
+            }
             when (txView) {
                 "chart" -> item { CategoryChart(transactions) }
                 "c" -> items(transactions, key = { it.id }) { tx ->
@@ -141,9 +133,14 @@ fun TransactionsScreen(
                 }
             }
         } else {
-            item { Spacer(Modifier.height(1.dp)) }
+            item {
+                EmptyStateCard(
+                    title = "Nada encontrado",
+                    subtitle = "Ajuste os filtros ou adicione um novo lancamento.",
+                    icon = Icons.Rounded.SearchOff
+                )
+            }
         }
-        item { Spacer(Modifier.height(24.dp)) }
     }
 }
 
@@ -178,9 +175,9 @@ private fun EditableTransactionRow(
         else -> accent
     }
     FinanzaListItem(
-        emoji = if (transaction.type == TransactionType.Income) "+" else "-",
+        emoji = if (transaction.type == TransactionType.Income) "\u2B06" else "\u2B07",
         title = transaction.description,
-        subtitle = "${transaction.date}${if (transaction.pending) " • a pagar" else ""}${if (transaction.paid) " • pago" else ""}",
+        subtitle = "${transaction.date}${if (transaction.pending) " \u2022 a pagar" else ""}${if (transaction.paid) " \u2022 pago" else ""}",
         amount = "${if (transaction.type == TransactionType.Income) "+" else "-"}${money(transaction.amountCents)}",
         amountColor = accent,
         badge = transaction.category,
@@ -202,7 +199,7 @@ private fun EditableTransactionRow(
                 }
             }
             IconButton(onClick = { onDelete(transaction.id) }) {
-                Icon(Icons.Rounded.Delete, contentDescription = "Excluir", tint = Color(0xFFF5705A))
+                Icon(Icons.Rounded.Delete, contentDescription = "Excluir", tint = FinanzaRed)
             }
         }
     )
@@ -217,9 +214,9 @@ private fun CompactTransactionRow(
 ) {
     val accent = if (transaction.type == TransactionType.Income) FinanzaGreen else FinanzaRed
     FinanzaListItem(
-        emoji = if (transaction.type == TransactionType.Income) "+" else "-",
+        emoji = if (transaction.type == TransactionType.Income) "\u2B06" else "\u2B07",
         title = transaction.description,
-        subtitle = "${transaction.category} • ${transaction.date}",
+        subtitle = "${transaction.category} \u2022 ${transaction.date}",
         amount = "${if (transaction.type == TransactionType.Income) "+" else "-"}${money(transaction.amountCents)}",
         amountColor = accent,
         iconColor = accent,
@@ -231,11 +228,13 @@ private fun CompactTransactionRow(
                     if (transaction.paid) "pago" else "pagar",
                     color = if (transaction.paid) FinanzaGreen else FinanzaPurple,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clickable { onPaidChange(transaction.id, !transaction.paid) }.padding(8.dp)
+                    modifier = Modifier
+                        .clickable { onPaidChange(transaction.id, !transaction.paid) }
+                        .padding(8.dp)
                 )
             }
             IconButton(onClick = { onDelete(transaction.id) }) {
-                Icon(Icons.Rounded.Delete, contentDescription = "Excluir", tint = Color(0xFFF5705A))
+                Icon(Icons.Rounded.Delete, contentDescription = "Excluir", tint = FinanzaRed)
             }
         }
     )
@@ -301,4 +300,3 @@ private fun money(cents: Long): String {
         Locale.Builder().setLanguage("pt").setRegion("BR").build()
     ).format(cents / 100.0)
 }
-

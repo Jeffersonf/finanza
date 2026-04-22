@@ -6,7 +6,7 @@
     "sync": "npx cap sync",
     "android": "npx cap open android",
     "ios": "npx cap open ios",
-    "build:apk": "cd android && ./gradlew assembleDebug",
+    "build:apk": "npx cap sync android && cd android && gradlew.bat assembleDebug",
     "migrate": "node migrate-local-to-db.js"
   },
   "dependencies": {

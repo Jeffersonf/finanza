@@ -3,6 +3,7 @@ package com.finanza.v4.ui.theme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
@@ -19,6 +20,11 @@ val FinanzaBorder = Color(0x17FFFFFF)
 val FinanzaText = Color(0xFFF0F3FF)
 val FinanzaText2 = Color(0xC7F0F3FF)
 val FinanzaMuted = Color(0x7AF0F3FF)
+val FinanzaLightBg = Color(0xFFF4F7F2)
+val FinanzaLightSurface = Color(0xDDFDFEF8)
+val FinanzaLightSurface2 = Color(0xFFE9F0E4)
+val FinanzaLightText = Color(0xFF182016)
+val FinanzaLightMuted = Color(0xA3182016)
 
 private val FinanzaDarkColors: ColorScheme = darkColorScheme(
     primary = FinanzaGreen,
@@ -43,9 +49,33 @@ private val FinanzaDarkColors: ColorScheme = darkColorScheme(
 )
 
 @Composable
-fun FinanzaTheme(content: @Composable () -> Unit) {
+fun FinanzaTheme(
+    darkTheme: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    val lightColors = lightColorScheme(
+        primary = Color(0xFF4F7D00),
+        secondary = Color(0xFF007B62),
+        tertiary = Color(0xFF6D55B7),
+        background = FinanzaLightBg,
+        surface = FinanzaLightSurface,
+        surfaceVariant = FinanzaLightSurface2,
+        surfaceContainer = FinanzaLightSurface,
+        surfaceContainerHigh = Color(0xFFFDFEF8),
+        surfaceContainerHighest = Color(0xFFFFFFFF),
+        outline = Color(0x24273322),
+        outlineVariant = Color(0x18273322),
+        onPrimary = Color.White,
+        onSecondary = Color.White,
+        onTertiary = Color.White,
+        onBackground = FinanzaLightText,
+        onSurface = FinanzaLightText,
+        onSurfaceVariant = FinanzaLightMuted,
+        error = Color(0xFFB82E1D),
+        onError = Color.White
+    )
     MaterialTheme(
-        colorScheme = FinanzaDarkColors,
+        colorScheme = if (darkTheme) FinanzaDarkColors else lightColors,
         typography = FinanzaTypography,
         content = content
     )

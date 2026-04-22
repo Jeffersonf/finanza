@@ -161,7 +161,7 @@ class FinanzaRepository(
             AccountEntity(
                 id = draft.id ?: UUID.randomUUID().toString(),
                 name = draft.name.trim(),
-                icon = draft.icon.trim().ifBlank { "ðŸ¦" },
+                icon = draft.icon.trim().ifBlank { "\uD83C\uDFE6" },
                 type = draft.type,
                 balanceCents = draft.balanceCents,
                 yieldRate = draft.yieldRate.takeIf { draft.type == "investment" } ?: existing?.yieldRate ?: 0.0
@@ -171,7 +171,7 @@ class FinanzaRepository(
 
     suspend fun deleteAccount(id: String): DeleteResult {
         if (transactionDao.countByAccount(id) > 0) {
-            return DeleteResult.Blocked("Esta conta possui lanÃ§amentos vinculados.")
+            return DeleteResult.Blocked("Esta conta possui lancamentos vinculados.")
         }
         accountDao.deleteById(id)
         return DeleteResult.Deleted
@@ -197,7 +197,7 @@ class FinanzaRepository(
             GoalEntity(
                 id = draft.id ?: UUID.randomUUID().toString(),
                 name = draft.name.trim(),
-                icon = draft.icon.trim().ifBlank { "ðŸŽ¯" },
+                icon = draft.icon.trim().ifBlank { "\uD83C\uDFAF" },
                 targetCents = draft.targetCents,
                 currentCents = draft.currentCents,
                 deadline = draft.deadline,
@@ -216,7 +216,7 @@ class FinanzaRepository(
             ShoppingListEntity(
                 id = draft.id ?: UUID.randomUUID().toString(),
                 name = draft.name.trim(),
-                icon = draft.icon.trim().ifBlank { "ðŸ›’" },
+                icon = draft.icon.trim().ifBlank { "\uD83D\uDED2" },
                 position = draft.position
             )
         )
@@ -234,7 +234,7 @@ class FinanzaRepository(
                 listId = draft.listId,
                 name = draft.name.trim(),
                 qty = draft.qty.trim(),
-                category = draft.category.trim().ifBlank { "ðŸ›’ Geral" },
+                category = draft.category.trim().ifBlank { "\uD83D\uDED2 Geral" },
                 bought = draft.bought
             )
         )
@@ -251,7 +251,7 @@ class FinanzaRepository(
     suspend fun importLegacyBackup(json: String): ImportResult {
         val root = JSONObject(json)
         val transactions = root.optJSONArray("transactions")
-            ?: return ImportResult.Failed("Arquivo invÃ¡lido: transaÃ§Ãµes nÃ£o encontradas.")
+            ?: return ImportResult.Failed("Arquivo invalido: transacoes nao encontradas.")
         val accounts = root.optJSONArray("accounts") ?: JSONArray()
         val budgets = root.optJSONArray("budgets") ?: JSONArray()
         val goals = root.optJSONArray("goals") ?: JSONArray()
@@ -264,7 +264,7 @@ class FinanzaRepository(
         val importedAccounts = parseAccounts(accounts)
         val fallbackAccountId = importedAccounts.firstOrNull()?.id ?: UUID.randomUUID().toString()
         val safeAccounts = importedAccounts.ifEmpty {
-            listOf(AccountEntity(fallbackAccountId, "Principal", "ðŸ¦", "checking", 0))
+            listOf(AccountEntity(fallbackAccountId, "Principal", "\uD83C\uDFE6", "checking", 0))
         }
         val importedTransactions = parseTransactions(transactions, fallbackAccountId)
         val importedBudgets = parseBudgets(budgets)
@@ -343,14 +343,14 @@ class FinanzaRepository(
         val savingsId = UUID.randomUUID().toString()
         accountDao.upsertAll(
             listOf(
-                AccountEntity(accountId, "Principal", "ðŸ¦", "checking", 150_000),
-                AccountEntity(savingsId, "Reserva", "ðŸ’Ž", "savings", 820_000, yieldRate = 0.55)
+                AccountEntity(accountId, "Principal", "\uD83C\uDFE6", "checking", 150_000),
+                AccountEntity(savingsId, "Reserva", "\uD83D\uDC8E", "savings", 820_000, yieldRate = 0.55)
             )
         )
         listOf(
-            TransactionEntity(UUID.randomUUID().toString(), accountId, "income", "SalÃ¡rio", "SalÃ¡rio", 520_000, "2026-04-05"),
-            TransactionEntity(UUID.randomUUID().toString(), accountId, "expense", "Mercado", "AlimentaÃ§Ã£o", 86_900, "2026-04-08"),
-            TransactionEntity(UUID.randomUUID().toString(), accountId, "expense", "Academia", "SaÃºde", 12_990, "2026-04-10"),
+            TransactionEntity(UUID.randomUUID().toString(), accountId, "income", "Salario", "Salario", 520_000, "2026-04-05"),
+            TransactionEntity(UUID.randomUUID().toString(), accountId, "expense", "Mercado", "Alimentacao", 86_900, "2026-04-08"),
+            TransactionEntity(UUID.randomUUID().toString(), accountId, "expense", "Academia", "Saude", 12_990, "2026-04-10"),
             TransactionEntity(UUID.randomUUID().toString(), savingsId, "income", "Rendimento", "Investimentos", 4_500, "2026-04-15"),
             TransactionEntity(UUID.randomUUID().toString(), accountId, "expense", "Internet", "Casa", 11_990, "2026-04-20", pending = true)
         ).forEach { transaction ->
@@ -359,8 +359,8 @@ class FinanzaRepository(
         }
         budgetDao.upsertAll(
             listOf(
-                BudgetEntity(UUID.randomUUID().toString(), "AlimentaÃ§Ã£o", 120_000, "2026-04"),
-                BudgetEntity(UUID.randomUUID().toString(), "SaÃºde", 35_000, "2026-04"),
+                BudgetEntity(UUID.randomUUID().toString(), "Alimentacao", 120_000, "2026-04"),
+                BudgetEntity(UUID.randomUUID().toString(), "Saude", 35_000, "2026-04"),
                 BudgetEntity(UUID.randomUUID().toString(), "Casa", 80_000, "2026-04")
             )
         )
@@ -591,6 +591,7 @@ data class AppPreferences(
     val dueItems: List<DueItem> = emptyList(),
     val txView: String = "n",
     val activeList: String? = null,
+    val showDashboardIcons: Boolean = true,
     val widgetPrefs: Map<String, Boolean> = defaultWidgetPrefs(),
     val widgetOrder: List<String> = defaultWidgetOrder()
 )
@@ -619,24 +620,19 @@ data class DashboardWidget(
 )
 
 val DashboardWidgets = listOf(
-    DashboardWidget("cards", "💳", "Resumo do dia a dia", true),
-    DashboardWidget("charts", "ðŸ“Š", "GrÃ¡ficos", true),
-    DashboardWidget("compare", "ðŸ“…", "Comparativo mensal", true),
-    DashboardWidget("projection", "🔭", "Dica de projeção", true),
-    DashboardWidget("weekly", "📆", "Dica da semana", true),
-    DashboardWidget("anomaly", "💡", "Dica fora da curva", true),
-    DashboardWidget("budalerts", "âš ï¸", "Alertas de orÃ§amento", true),
-    DashboardWidget("goals", "ðŸ†", "Metas rÃ¡pidas", true),
-    DashboardWidget("budgets", "ðŸŽ¯", "OrÃ§amentos rÃ¡pidos", false),
-    DashboardWidget("recent", "ðŸ’¸", "Ãšltimas transaÃ§Ãµes", true),
-    DashboardWidget("ministats", "ðŸ“ˆ", "Mini estatÃ­sticas", false),
-    DashboardWidget("accounts", "ðŸ¦", "Saldos das contas", false),
-    DashboardWidget("shopping", "ðŸ›’", "Lista de compras", true),
-    DashboardWidget("barcats", "ðŸ“‰", "Ranking de gastos", false),
-    DashboardWidget("saverate", "ðŸ’¹", "Taxa de economia", false)
+    DashboardWidget("hero", "✨", "Resumo principal", true),
+    DashboardWidget("quickadd", "➕", "Atalhos rapidos", true),
+    DashboardWidget("cards", "💳", "Resumo financeiro", true),
+    DashboardWidget("insights", "\uD83D\uDCC8", "Indicadores do mes", true),
+    DashboardWidget("budalerts", "\u26A0\uFE0F", "Alertas de limite", true),
+    DashboardWidget("goals", "\uD83C\uDFC6", "Metas rapidas", true),
+    DashboardWidget("shopping", "\uD83D\uDED2", "Lista de compras", true),
+    DashboardWidget("accounts", "\uD83C\uDFE6", "Saldos das contas", false),
+    DashboardWidget("budgets", "\uD83C\uDFAF", "Limites rapidos", false),
+    DashboardWidget("recent", "\uD83D\uDCB8", "Ultimos lancamentos", true)
 )
 
-val FixedDashboardWidgetIds = listOf("cards", "projection", "weekly", "anomaly")
+val FixedDashboardWidgetIds = listOf("hero", "quickadd")
 
 sealed interface DeleteResult {
     data object Deleted : DeleteResult
@@ -714,7 +710,7 @@ private fun parseAccounts(accounts: JSONArray): List<AccountEntity> {
         AccountEntity(
             id = id,
             name = name,
-            icon = item.optString("icon").ifBlank { "ðŸ¦" },
+            icon = item.optString("icon").ifBlank { "\uD83C\uDFE6" },
             type = item.optString("type").ifBlank { "checking" },
             balanceCents = moneyToCents(item, "balance"),
             yieldRate = item.optDouble("yieldRate", item.optDouble("yield_rate", 0.0))
@@ -733,7 +729,7 @@ private fun parseTransactions(transactions: JSONArray, fallbackAccountId: String
             id = item.optString("id").ifBlank { UUID.randomUUID().toString() },
             accountId = item.optString("accountId").ifBlank { item.optString("account_id").ifBlank { fallbackAccountId } },
             type = if (type == "income") "income" else "expense",
-            description = item.optString("desc").ifBlank { item.optString("description").ifBlank { "LanÃ§amento" } },
+            description = item.optString("desc").ifBlank { item.optString("description").ifBlank { "Lancamento" } },
             category = item.optString("category").ifBlank { "Outros" },
             amountCents = amountCents,
             date = date,
@@ -771,7 +767,7 @@ private fun parseGoals(goals: JSONArray): List<GoalEntity> {
         GoalEntity(
             id = item.optString("id").ifBlank { UUID.randomUUID().toString() },
             name = name,
-            icon = item.optString("icon").ifBlank { "ðŸŽ¯" },
+            icon = item.optString("icon").ifBlank { "\uD83C\uDFAF" },
             targetCents = target,
             currentCents = moneyToCents(item, "current"),
             deadline = deadline,
@@ -788,7 +784,7 @@ private fun parseCategories(categories: JSONArray): List<CategoryEntity> {
         if (name.isBlank()) return@mapNotNull null
         CategoryEntity(
             id = item.optString("id").ifBlank { UUID.randomUUID().toString() },
-            icon = item.optString("icon").ifBlank { item.optString("ico").ifBlank { "ðŸ·ï¸" } },
+            icon = item.optString("icon").ifBlank { item.optString("ico").ifBlank { "\uD83C\uDFF7\uFE0F" } },
             name = name,
             color = item.optString("color").ifBlank { item.optString("col").ifBlank { "#888" } }
         )
@@ -803,7 +799,7 @@ private fun parseShoppingLists(lists: JSONArray): List<ShoppingListEntity> {
         ShoppingListEntity(
             id = item.optString("id").ifBlank { UUID.randomUUID().toString() },
             name = name,
-            icon = item.optString("icon").ifBlank { item.optString("ico").ifBlank { "ðŸ›’" } },
+            icon = item.optString("icon").ifBlank { item.optString("ico").ifBlank { "\uD83D\uDED2" } },
             position = item.optInt("position", index)
         )
     }
@@ -842,7 +838,7 @@ private fun defaultShoppingList(): ShoppingListEntity {
     return ShoppingListEntity(
         id = UUID.randomUUID().toString(),
         name = "Mercado",
-        icon = "ðŸ›’",
+        icon = "\uD83D\uDED2",
         position = 0
     )
 }
@@ -870,7 +866,7 @@ private fun AppSettingsEntity.toPreferences(): AppPreferences {
         if (widgetPrefsJson.has(widget.id)) prefs[widget.id] = widgetPrefsJson.optBoolean(widget.id, widget.enabled)
     }
     val order = (0 until widgetOrderJson.length()).mapNotNull { index ->
-        widgetOrderJson.optString(index).takeIf { it.isNotBlank() }
+        widgetOrderJson.optString(index).takeIf { it.isNotBlank() }?.let(::normalizeWidgetId)
     }.ifEmpty { defaultWidgetOrder() }
     return AppPreferences(
         theme = theme.ifBlank { "dark" },
@@ -880,6 +876,7 @@ private fun AppSettingsEntity.toPreferences(): AppPreferences {
         dueItems = parseDueItems(rates.optJSONArray("dueItems") ?: rates.optJSONArray("due_items") ?: JSONArray()),
         txView = normalizeTxView(txView),
         activeList = activeList?.takeIf { it.isNotBlank() },
+        showDashboardIcons = rates.optBoolean("showDashboardIcons", rates.optBoolean("show_dashboard_icons", true)),
         widgetPrefs = prefs,
         widgetOrder = order
     )
@@ -891,6 +888,8 @@ private fun AppPreferences.toEntity(): AppSettingsEntity {
         .put("selic", selic)
         .put("monthlyIncomeCents", monthlyIncomeCents)
         .put("monthly_income_cents", monthlyIncomeCents)
+        .put("showDashboardIcons", showDashboardIcons)
+        .put("show_dashboard_icons", showDashboardIcons)
         .put("dueItems", dueItemsToJson(dueItems))
         .put("due_items", dueItemsToJson(dueItems))
     val prefs = JSONObject()
@@ -984,6 +983,13 @@ private fun defaultWidgetPrefs(): Map<String, Boolean> {
 
 private fun defaultWidgetOrder(): List<String> {
     return FixedDashboardWidgetIds + DashboardWidgets.map { it.id }.filterNot { it in FixedDashboardWidgetIds }
+}
+
+private fun normalizeWidgetId(id: String): String {
+    return when (id) {
+        "projection", "weekly", "anomaly", "ministats", "saverate", "charts", "compare", "barcats" -> "insights"
+        else -> id
+    }
 }
 
 private fun defaultCategories(): List<String> {
