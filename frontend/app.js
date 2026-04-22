@@ -1716,6 +1716,24 @@ function carImportStatus(message,type='info'){
   el.textContent=message||'';
   el.className=`car-import-status ${type}`;
 }
+function roundCarImportNum(v,dec=3){
+  const n=Number(v)||0,base=10**dec;
+  return Math.round(n*base)/base;
+}
+function carEventFingerprint(e={}){
+  return [
+    String(e.vehicleId||''),
+    String(e.type||''),
+    String(e.date||'').substring(0,10),
+    roundCarImportNum(e.odometer,0),
+    roundCarImportNum(e.amount,2),
+    roundCarImportNum(e.liters,3),
+    roundCarImportNum(e.pricePerLiter,3),
+    keyCsvHeader(e.fuelType||''),
+    keyCsvHeader(e.title||''),
+    keyCsvHeader(e.category||'')
+  ].join('|');
+}
 function mapDrivvoCsvEvent(row, headers, vehicleId, section=''){
   const rowText=row.join(' ');
   const date=parseCsvDate(pickCsv(row,headers,['data','date','dia']));
@@ -1753,7 +1771,8 @@ async function importCarCsv(inp){
     loadCar();
     const v=activeCarVehicle();
     const createTransactions=!!document.getElementById('carImportTxChk')?.checked;
-    let imported=0,fuels=0,expenses=0,section='',headers=null,vehicleName=false;
+    const existing=new Set(carState.events.filter(e=>e.vehicleId===v.id).map(carEventFingerprint));
+    let imported=0,skipped=0,fuels=0,expenses=0,section='',headers=null,vehicleName=false;
     for(let idx=0;idx<rows.length;idx++){
       const row=rows[idx];
       const nextSection=csvSectionName(row);
@@ -1770,6 +1789,9 @@ async function importCarCsv(inp){
       if(event){
         const csvVehicle=vehicleName?pickCsv(row,headers,['veiculo','vehicle','carro','car']):'';
         if(csvVehicle&&!v.name)v.name=csvVehicle;
+        const fingerprint=carEventFingerprint(event);
+        if(existing.has(fingerprint)){skipped++;continue;}
+        existing.add(fingerprint);
         if(createTransactions)event.txId=await createCarTransaction(event);
         carState.events.unshift(event);
         v.odometer=Math.max(v.odometer||0,event.odometer||0);
@@ -1778,11 +1800,14 @@ async function importCarCsv(inp){
         if(imported%25===0)carImportStatus(`Importando... ${imported} registros lidos`,'info');
       }
     }
-    if(!imported)throw new Error('Nao encontrei abastecimentos ou despesas reconheciveis nesse CSV.');
+    if(!imported){
+      if(skipped)throw new Error('Esse CSV parece ja ter sido importado para este veiculo.');
+      throw new Error('Nao encontrei abastecimentos ou despesas reconheciveis nesse CSV.');
+    }
     saveCar();
     renderCar();
     refreshAll();
-    const msg=`Importado: ${imported} registros (${fuels} abastecimentos, ${expenses} despesas)${createTransactions?' + transações':' sem transações'}`;
+    const msg=`Importado: ${imported} registros (${fuels} abastecimentos, ${expenses} despesas)${createTransactions?' + transações':' sem transações'}${skipped?` • ${skipped} duplicados ignorados`:''}`;
     carImportStatus(msg,'success');
     toast(msg,'success');
   }catch(e){
