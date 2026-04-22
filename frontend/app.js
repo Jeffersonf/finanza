@@ -877,18 +877,168 @@ async function qaSave(){
 }
 function openSrch(q=''){document.getElementById('srchOv').classList.add('open');const i=document.getElementById('srchInp');i.value=q;i.focus();if(q)doSrch(q);}
 function closeSrch(){document.getElementById('srchOv').classList.remove('open');}
+function searchScore(texts=[],query=''){
+  const hay=texts.map(normalizeTxText).join(' ');
+  const q=normalizeTxText(query);
+  if(!hay||!q)return 0;
+  if(hay===q)return 120;
+  if(hay.startsWith(q))return 90;
+  if(hay.includes(q))return 70;
+  const parts=q.split(/\s+/).filter(Boolean);
+  const matched=parts.filter(p=>hay.includes(p)).length;
+  return matched?matched*18:0;
+}
+function searchItem(meta){
+  return {...meta,score:searchScore(meta.texts,meta.query)};
+}
+function openSearchTarget(kind,id,aux=''){
+  closeSrch();
+  if(kind==='transaction'){
+    showPage('transactions');
+    setTimeout(()=>hlTx(id),300);
+    return;
+  }
+  if(kind==='goal'){showPage('goals');return;}
+  if(kind==='budget'){showPage('budget');return;}
+  if(kind==='due'){
+    showPage('future');
+    setTimeout(()=>openDueModal(id),260);
+    return;
+  }
+  if(kind==='shopping'){
+    loadSL();
+    if(id&&sl.lists.some(l=>l.id===id))slActiveList=id;
+    showPage('shopping');
+    return;
+  }
+  if(kind==='account'){showPage('accounts');return;}
+  if(kind==='vehicle'){
+    loadCar();
+    if(id&&carState.vehicles.some(v=>v.id===id)){
+      carFilters.vehicle=id;
+      carState.activeVehicleId=id;
+      saveCar();
+    }
+    showPage('car');
+    return;
+  }
+  if(kind==='car-event'){
+    loadCar();
+    const ev=carState.events.find(e=>e.id===id);
+    if(ev){
+      carFilters.vehicle=ev.vehicleId||'all';
+      carState.activeVehicleId=ev.vehicleId||carState.activeVehicleId;
+      carFilters.query=ev.title||ev.note||ev.fuelType||'';
+      saveCar();
+    }
+    showPage('car');
+    return;
+  }
+  showPage(aux||'dashboard');
+}
 function doSrch(q){
   const el=document.getElementById('srchRes');
   if(!q||q.length<2){el.innerHTML='<div class="srch-empty">Digite para buscar...</div>';return;}
-  const ql=q.toLowerCase();
-  const txs=S.transactions.filter(t=>t.desc.toLowerCase().includes(ql)||t.category.toLowerCase().includes(ql)).slice(0,8);
-  const goals=S.goals.filter(g=>g.name.toLowerCase().includes(ql)).slice(0,3);
-  const buds=S.budgets.filter(b=>b.category.toLowerCase().includes(ql)).slice(0,3);
-  if(!txs.length&&!goals.length&&!buds.length){el.innerHTML='<div class="srch-empty">Nenhum resultado.</div>';return;}
+  loadSL();loadCar();
+  const txs=S.transactions.map(t=>searchItem({
+    query:q,
+    kind:'transaction',
+    id:t.id,
+    texts:[t.desc,t.category,t.note,S.accounts.find(a=>a.id===t.accountId)?.name],
+    title:t.desc,
+    meta:[fmtD(t.date),t.category,t.note].filter(Boolean).join(' • '),
+    amount:`${t.type==='income'?'+':'-'}${fmt(t.amount)}`,
+    tone:t.type==='income'?'var(--ac)':'var(--dan)',
+    icon:getCat(t.category).ico,
+    action:"openSearchTarget('transaction','"+t.id+"')"
+  })).filter(x=>x.score>0).sort((a,b)=>b.score-a.score||String(b.meta).localeCompare(String(a.meta))).slice(0,8);
+  const goals=S.goals.map(g=>searchItem({
+    query:q,
+    kind:'goal',
+    id:g.id,
+    texts:[g.name,g.desc,g.deadline],
+    title:g.name,
+    meta:[fmt(g.current)+' de '+fmt(g.target),g.deadline?`vence ${fmtD(g.deadline)}`:''].filter(Boolean).join(' • '),
+    icon:g.icon||'🎯',
+    action:"openSearchTarget('goal','"+g.id+"')"
+  })).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,4);
+  const buds=S.budgets.map(b=>searchItem({
+    query:q,
+    kind:'budget',
+    id:b.id,
+    texts:[b.category],
+    title:b.category,
+    meta:`Limite ${fmt(b.limit)}`,
+    icon:getCat(b.category).ico,
+    action:"openSearchTarget('budget','"+b.id+"')"
+  })).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,4);
+  const dues=dueItems.map(d=>searchItem({
+    query:q,
+    kind:'due',
+    id:d.id,
+    texts:[d.name,d.category,d.paymentPlace,d.notes,methodLabel(d.paymentMethod)],
+    title:d.name,
+    meta:[fmt(d.amount),d.category,d.nextDueDate?fmtD(d.nextDueDate):'',d.paymentPlace].filter(Boolean).join(' • '),
+    icon:getCat(d.category).ico,
+    action:"openSearchTarget('due','"+d.id+"')"
+  })).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,5);
+  const shopItems=sl.items.map(item=>{
+    const list=sl.lists.find(l=>l.id===item.listId);
+    return searchItem({
+      query:q,
+      kind:'shopping',
+      id:item.listId,
+      texts:[item.name,item.qty,item.cat,list?.name],
+      title:item.name,
+      meta:[list?.name,item.cat,item.qty,item.bought?'comprado':'pendente'].filter(Boolean).join(' • '),
+      icon:list?.ico||'🛒',
+      action:"openSearchTarget('shopping','"+item.listId+"')"
+    });
+  }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,5);
+  const vehicles=carState.vehicles.map(v=>searchItem({
+    query:q,
+    kind:'vehicle',
+    id:v.id,
+    texts:[v.name,v.model,v.plate,String(v.odometer||'')],
+    title:v.name,
+    meta:[v.model,v.plate,v.odometer?`${Math.round(v.odometer).toLocaleString('pt-BR')} km`:'' ].filter(Boolean).join(' • '),
+    icon:'🚗',
+    action:"openSearchTarget('vehicle','"+v.id+"')"
+  })).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,4);
+  const carEvents=carState.events.map(e=>searchItem({
+    query:q,
+    kind:'car-event',
+    id:e.id,
+    texts:[e.title,e.note,e.fuelType,e.category,vehicleName(e.vehicleId)],
+    title:e.type==='fuel'?(e.fuelType||'Combustível'):(e.title||carExpenseLabel(e.category)),
+    meta:[vehicleName(e.vehicleId),fmtD(e.date),fmt(e.amount),e.note].filter(Boolean).join(' • '),
+    icon:e.type==='fuel'?'⛽':'🔧',
+    action:"openSearchTarget('car-event','"+e.id+"')"
+  })).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,5);
+  const accounts=S.accounts.map(a=>searchItem({
+    query:q,
+    kind:'account',
+    id:a.id,
+    texts:[a.name,a.bank,a.type],
+    title:a.name,
+    meta:[a.bank,a.type,a.icon].filter(Boolean).join(' • '),
+    icon:a.icon||'💳',
+    action:"openSearchTarget('account','"+a.id+"')"
+  })).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,4);
+  const groups=[
+    {label:'Transações',items:txs},
+    {label:'Vencimentos',items:dues},
+    {label:'Carro',items:[...vehicles,...carEvents].sort((a,b)=>b.score-a.score).slice(0,6)},
+    {label:'Lista de compras',items:shopItems},
+    {label:'Metas',items:goals},
+    {label:'Orçamentos',items:buds},
+    {label:'Contas',items:accounts}
+  ].filter(g=>g.items.length);
+  if(!groups.length){el.innerHTML='<div class="srch-empty">Nenhum resultado.</div>';return;}
+  const total=groups.reduce((s,g)=>s+g.items.length,0);
   let html='';
-  if(txs.length){html+='<div class="srch-lbl">Transações</div>';html+=txs.map(t=>{const c=getCat(t.category);return`<div class="srch-row" onclick="closeSrch();showPage('transactions');setTimeout(()=>hlTx('${t.id}'),300)"><div style="width:30px;height:30px;border-radius:8px;background:${c.col}20;display:flex;align-items:center;justify-content:center;font-size:13px">${c.ico}</div><div style="flex:1"><div style="font-size:12px;font-weight:500">${t.desc}</div><div style="font-size:10px;color:var(--mt)">${fmtD(t.date)}  ${t.category}</div></div><div style="font-family:var(--font-money);font-size:12px;font-weight:700;color:${t.type==='income'?'var(--ac)':'var(--dan)'}">${t.type==='income'?'+':'-'}${fmt(t.amount)}</div></div>`;}).join('');}
-  if(goals.length){html+='<div class="srch-lbl">Metas</div>';html+=goals.map(g=>`<div class="srch-row" onclick="closeSrch();showPage('goals')"><span style="font-size:18px">${g.icon}</span><div style="flex:1"><div style="font-size:12px;font-weight:500">${g.name}</div><div style="font-size:10px;color:var(--mt)">${fmt(g.current)} de ${fmt(g.target)}</div></div></div>`).join('');}
-  if(buds.length){html+='<div class="srch-lbl">Orçamentos</div>';html+=buds.map(b=>{const c=getCat(b.category);return`<div class="srch-row" onclick="closeSrch();showPage('budget')"><span style="font-size:18px">${c.ico}</span><div style="flex:1"><div style="font-size:12px;font-weight:500">${b.category}</div><div style="font-size:10px;color:var(--mt)">Limite: ${fmt(b.limit)}</div></div></div>`;}).join('');}
+  html+=`<div class="srch-summary">${total} resultado${total!==1?'s':''} em ${groups.length} área${groups.length!==1?'s':''}</div>`;
+  html+=groups.map(group=>`<div class="srch-group"><div class="srch-lbl">${group.label}</div>${group.items.map(item=>`<div class="srch-row" onclick="${item.action}"><div class="srch-ico">${item.icon||'•'}</div><div style="flex:1;min-width:0"><div class="srch-title">${esc(item.title)}</div><div class="srch-meta">${esc(item.meta||'')}</div></div>${item.amount?`<div class="srch-amt" style="${item.tone?`color:${item.tone}`:''}">${esc(item.amount)}</div>`:''}</div>`).join('')}</div>`).join('');
   el.innerHTML=html;
 }
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();openSrch();}if(e.key==='Escape'){closeSrch();document.querySelectorAll('.ov.open').forEach(o=>o.classList.remove('open'));}});
@@ -1674,6 +1824,9 @@ function carMaintenanceInsights(events=carFilteredEvents()){
   const nextOilKm=latestOil?.odometer?latestOil.odometer+5000:null;
   const kmLeft=nextOilKm?Math.max(0,nextOilKm-highestOdo):null;
   const nextOilDate=latestOil?.date?offD(new Date(latestOil.date+'T12:00:00'),180):null;
+  const kmSinceService=latestOil?.odometer&&highestOdo?Math.max(0,highestOdo-latestOil.odometer):null;
+  const daysSinceService=latestOil?.date?Math.max(0,Math.floor((Date.now()-new Date(latestOil.date+'T12:00:00').getTime())/86400000)):null;
+  const maintenanceSpend=maintenance.reduce((s,e)=>s+e.amount,0);
   const vendors=new Map();
   baseEvents.forEach(e=>{
     const vendor=extractCarVendor(e.note);
@@ -1688,7 +1841,24 @@ function carMaintenanceInsights(events=carFilteredEvents()){
   const recurringCats={};
   maintenance.forEach(e=>{const label=carExpenseLabel(e.category);recurringCats[label]=(recurringCats[label]||0)+e.amount;});
   const topMaintenance=Object.entries(recurringCats).sort((a,b)=>b[1]-a[1])[0]||null;
-  return {latestOil,nextOilKm,kmLeft,nextOilDate,topVendors,topMaintenance,highestOdo};
+  const upcomingStatus=kmLeft!==null&&kmLeft<=500?'urgent':daysSinceService!==null&&daysSinceService>=170?'warn':'ok';
+  const latestMaintenance=[...maintenance].sort((a,b)=>b.date.localeCompare(a.date)||b.amount-a.amount).slice(0,4);
+  return {latestOil,nextOilKm,kmLeft,nextOilDate,kmSinceService,daysSinceService,maintenanceSpend,topVendors,topMaintenance,highestOdo,upcomingStatus,latestMaintenance};
+}
+function openCarMaintenanceEntry(type='oil'){
+  openCarEntry('expense');
+  const category=document.getElementById('carCategory');
+  const title=document.getElementById('carTitle');
+  const note=document.getElementById('carNote');
+  if(category)category.value='Maintenance';
+  const presets={
+    oil:{title:'Troca de óleo',note:'Revisão preventiva'},
+    review:{title:'Revisão geral',note:'Checklist oficina'},
+    tire:{title:'Alinhamento / pneus',note:'Manutenção preventiva'}
+  };
+  const preset=presets[type]||presets.review;
+  if(title)title.value=preset.title;
+  if(note&&!note.value)note.value=preset.note;
 }
 function popCarAccSel(){
   const el=document.getElementById('carAcc');if(!el)return;
@@ -2170,7 +2340,7 @@ function renderCar(){
   const maintEl=document.getElementById('carMaintenancePanel');
   if(maintEl)maintEl.innerHTML=`
     <div class="car-maint-grid">
-      <div class="car-maint-card">
+      <div class="car-maint-card ${maint.upcomingStatus==='urgent'?'urgent':maint.upcomingStatus==='warn'?'warn':''}">
         <div class="car-maint-k">Próxima revisão</div>
         <div class="car-maint-v">${maint.nextOilKm?`${Math.round(maint.nextOilKm).toLocaleString('pt-BR')} km`:'—'}</div>
         <div class="cc">${maint.kmLeft!==null?`${Math.round(maint.kmLeft).toLocaleString('pt-BR')} km restantes`:'cadastre troca de óleo ou revisão'}</div>
@@ -2185,10 +2355,34 @@ function renderCar(){
         <div class="car-maint-v">${maint.topMaintenance?esc(maint.topMaintenance[0]):'—'}</div>
         <div class="cc">${maint.topMaintenance?fmt(maint.topMaintenance[1]):'sem despesas suficientes'}</div>
       </div>
+      <div class="car-maint-card">
+        <div class="car-maint-k">Rodado desde a revisão</div>
+        <div class="car-maint-v">${maint.kmSinceService!==null?`${Math.round(maint.kmSinceService).toLocaleString('pt-BR')} km`:'—'}</div>
+        <div class="cc">${maint.daysSinceService!==null?`${maint.daysSinceService} dias desde o último serviço`:'sem histórico suficiente'}</div>
+      </div>
+      <div class="car-maint-card">
+        <div class="car-maint-k">Gasto de manutenção</div>
+        <div class="car-maint-v">${fmt(maint.maintenanceSpend||0)}</div>
+        <div class="cc">${maint.latestMaintenance.length} lançamento${maint.latestMaintenance.length!==1?'s':''} no filtro</div>
+      </div>
+      <div class="car-maint-card car-maint-actions">
+        <div class="car-maint-k">Ações rápidas</div>
+        <div class="car-maint-btns">
+          <button class="btn btn-p" onclick="openCarMaintenanceEntry('oil')">Troca de óleo</button>
+          <button class="btn btn-g" onclick="openCarMaintenanceEntry('review')">Revisão</button>
+        </div>
+        <div class="cc">Abre o lançamento já preenchido para você só confirmar.</div>
+      </div>
     </div>
-    <div class="car-vendor-box">
-      <div class="bh"><div><div class="ct">Postos e oficinas</div><div class="cs">Quem mais pesa no período filtrado</div></div></div>
-      <div class="car-vendor-list">${maint.topVendors.length?maint.topVendors.map(vendor=>`<div class="car-vendor-row"><div><div class="car-vendor-name">${esc(vendor.name)}</div><div class="car-vendor-meta">${vendor.count} registro${vendor.count!==1?'s':''} • combustível ${fmt(vendor.fuel)} • despesas ${fmt(vendor.expense)}</div></div><div class="car-vendor-amt">${fmt(vendor.total)}</div></div>`).join(''):'<div class="sync-empty">Adicione observações com posto ou oficina para ver o ranking.</div>'}</div>
+    <div class="car-maint-lower">
+      <div class="car-vendor-box">
+        <div class="bh"><div><div class="ct">Postos e oficinas</div><div class="cs">Quem mais pesa no período filtrado</div></div></div>
+        <div class="car-vendor-list">${maint.topVendors.length?maint.topVendors.map(vendor=>`<div class="car-vendor-row"><div><div class="car-vendor-name">${esc(vendor.name)}</div><div class="car-vendor-meta">${vendor.count} registro${vendor.count!==1?'s':''} • combustível ${fmt(vendor.fuel)} • despesas ${fmt(vendor.expense)}</div></div><div class="car-vendor-amt">${fmt(vendor.total)}</div></div>`).join(''):'<div class="sync-empty">Adicione observações com posto ou oficina para ver o ranking.</div>'}</div>
+      </div>
+      <div class="car-vendor-box">
+        <div class="bh"><div><div class="ct">Histórico recente de manutenção</div><div class="cs">Últimos serviços dentro do filtro atual</div></div></div>
+        <div class="car-vendor-list">${maint.latestMaintenance.length?maint.latestMaintenance.map(item=>`<div class="car-vendor-row"><div><div class="car-vendor-name">${esc(item.title||carExpenseLabel(item.category))}</div><div class="car-vendor-meta">${[fmtD(item.date),vehicleName(item.vehicleId),item.odometer?`${Math.round(item.odometer).toLocaleString('pt-BR')} km`:'',item.note].filter(Boolean).join(' • ')}</div></div><div class="car-vendor-amt">${fmt(item.amount)}</div></div>`).join(''):'<div class="sync-empty">As próximas manutenções salvas aparecem aqui.</div>'}</div>
+      </div>
     </div>`;
   const list=document.getElementById('carList');
   if(list)list.innerHTML=st.events.length?st.events.map(e=>{
@@ -2480,6 +2674,18 @@ function renderMonthCompare(){
   const cInc=sum(txCur,'income'),cExp=sum(txCur,'expense');
   const pInc=sum(txPrev,'income'),pExp=sum(txPrev,'expense');
   const cSav=cInc-cExp, pSav=pInc-pExp;
+  const cCount=txCur.filter(t=>t.type==='expense').length;
+  const pCount=txPrev.filter(t=>t.type==='expense').length;
+  const cAvg=cCount?cExp/cCount:0;
+  const pAvg=pCount?pExp/pCount:0;
+  const cDaily=cExp/(monthBounds(cur).days||1);
+  const pDaily=pExp/(monthBounds(prev).days||1);
+  const curCatMap=new Map();
+  txCur.filter(t=>t.type==='expense').forEach(t=>curCatMap.set(t.category,(curCatMap.get(t.category)||0)+t.amount));
+  const prevCatMap=new Map();
+  txPrev.filter(t=>t.type==='expense').forEach(t=>prevCatMap.set(t.category,(prevCatMap.get(t.category)||0)+t.amount));
+  const topCur=[...curCatMap.entries()].sort((a,b)=>b[1]-a[1])[0]||null;
+  const topPrev=[...prevCatMap.entries()].sort((a,b)=>b[1]-a[1])[0]||null;
   const delta=(cur,prev)=>{
     if(!prev)return{pct:null,cls:'neu'};
     const pct=Math.round(((cur-prev)/prev)*100);
@@ -2488,8 +2694,10 @@ function renderMonthCompare(){
   const dExp=delta(cExp,pExp);
   const dInc=delta(cInc,pInc);
   const dSav=delta(cSav,pSav);
+  const dAvg=delta(cAvg,pAvg);
+  const dDaily=delta(cDaily,pDaily);
   el.innerHTML=`
-    <div class="month-compare">
+    <div class="month-compare month-compare-dense">
       <div class="mc-card">
         <div class="mc-label">Receitas</div>
         <div class="mc-val" style="color:var(--ac)">${fmt(cInc)}</div>
@@ -2500,17 +2708,30 @@ function renderMonthCompare(){
         <div class="mc-val" style="color:var(--dan)">${fmt(cExp)}</div>
         <div class="mc-delta ${dExp.cls==='up'?'up':'dn'}">${dExp.pct!==null?dExp.str+' vs mês ant.':'primeiro mês'}</div>
       </div>
-    </div>
-    <div class="month-compare" style="margin-bottom:0">
       <div class="mc-card">
         <div class="mc-label">Economizado</div>
         <div class="mc-val" style="color:${cSav>=0?'var(--ac2)':'var(--dan)'}">${fmt(cSav)}</div>
         <div class="mc-delta ${dSav.cls}">${dSav.pct!==null?dSav.str+' vs mês ant.':''}</div>
       </div>
       <div class="mc-card">
-        <div class="mc-label">Ms anterior</div>
-        <div class="mc-val" style="color:var(--mt);font-size:14px">${fmt(pExp)}</div>
-        <div class="mc-delta neu">total gasto</div>
+        <div class="mc-label">Ticket médio</div>
+        <div class="mc-val">${cAvg?fmt(cAvg):'—'}</div>
+        <div class="mc-delta ${dAvg.cls}">${dAvg.pct!==null?dAvg.str+' por despesa':'sem base anterior'}</div>
+      </div>
+      <div class="mc-card">
+        <div class="mc-label">Ritmo diário</div>
+        <div class="mc-val">${fmt(cDaily)}</div>
+        <div class="mc-delta ${dDaily.cls==='up'?'up':'dn'}">${dDaily.pct!==null?dDaily.str+' por dia':'sem base anterior'}</div>
+      </div>
+      <div class="mc-card">
+        <div class="mc-label">Categoria dominante</div>
+        <div class="mc-val mc-text">${topCur?esc(topCur[0]):'—'}</div>
+        <div class="mc-delta neu">${topCur?`${fmt(topCur[1])} no mês atual`:'sem despesas'}</div>
+      </div>
+      <div class="mc-card">
+        <div class="mc-label">Mês anterior</div>
+        <div class="mc-val">${fmt(pExp)}</div>
+        <div class="mc-delta neu">${topPrev?`${esc(topPrev[0])} liderou com ${fmt(topPrev[1])}`:'sem histórico'}</div>
       </div>
     </div>`;
 }
