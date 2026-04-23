@@ -276,10 +276,11 @@
       </div>
     </div>
     <div class="ss-r"><div><div class="ss-l">Modo</div><div class="ss-s" id="setMod">—</div></div></div>
-    <div class="ss-r"><div><div class="ss-l">Servidor</div><div class="ss-s" id="setUrl">—</div></div><button class="btn btn-g btn-sm" onclick="openConnModal()">Editar</button></div>
+    <div class="ss-r" data-admin-only><div><div class="ss-l">Servidor</div><div class="ss-s" id="setUrl">—</div></div><button class="btn btn-g btn-sm" onclick="openConnModal()">Editar</button></div>
     <div class="ss-r"><div><div class="ss-l" style="color:var(--dan)">Sair / Trocar conta</div></div><button class="btn btn-d btn-sm" onclick="logout()">Sair</button></div>
   </div>
-  <div class="ss" id="adminUsersBox" style="display:none"><div class="ss-t">Administração</div>
+  <div class="ss" id="adminUsersBox" style="display:none"><div class="ss-t">Painel admin</div>
+    <div class="admin-panel-note">Dados de bastidor e controles sensíveis ficam visíveis só para admin.</div>
     <div class="ss-r"><div><div class="ss-l">Usuários e papéis</div><div class="ss-s">Crie acessos para família, leitura ou convidados</div></div><button class="btn btn-g btn-sm" onclick="loadAdminUsers()">Atualizar</button></div>
     <div class="admin-user-form">
       <input type="text" class="fi" id="adminNewName" placeholder="Nome">
@@ -333,27 +334,27 @@
     <div class="ss-r" id="setMigRow" style="display:none"><div><div class="ss-l">Migrar para online</div><div class="ss-s">Envia dados para o servidor</div></div><button class="btn btn-g btn-sm" onclick="migrateToOnline()">☁️ Migrar</button></div>
     <div class="ss-r"><div><div class="ss-l">Transações</div></div><span style="font-family:var(--font-money);font-weight:700;font-size:13px" id="setTxCt">—</span></div>
   </div>
-  <div class="ss"><div class="ss-t">Saúde dos dados</div>
+  <div class="ss" data-admin-only><div class="ss-t">Saúde dos dados</div>
     <div class="ss-r"><div><div class="ss-l">Estado atual</div><div class="ss-s" id="dataStateTxt">—</div></div><span class="state-pill local" id="dataStatePill">Local</span></div>
     <div class="ss-r"><div><div class="ss-l">Última atividade</div><div class="ss-s" id="dataStateMeta">—</div></div><button class="btn btn-g btn-sm" onclick="syncQueue()">Sincronizar</button></div>
     <div class="ss-r"><div><div class="ss-l">Fila offline</div><div class="ss-s" id="syncQueueTxt">—</div></div></div>
     <div class="sync-history" id="syncHistoryList"></div>
   </div>
-  <div class="ss"><div class="ss-t">Atividade importante</div>
+  <div class="ss" data-admin-only><div class="ss-t">Atividade importante</div>
     <div class="ss-r"><div><div class="ss-l">Auditoria</div><div class="ss-s">No online, usa a trilha persistente do servidor; no local, mostra o histórico deste dispositivo</div></div></div>
     <div class="sync-history" id="activityHistoryList"></div>
   </div>
-  <div class="ss"><div class="ss-t">Changelog</div>
+  <div class="ss" data-admin-only><div class="ss-t">Changelog</div>
     <div class="ss-r changelog-head">
       <div><div class="ss-l">Finanza 4.0.0</div><div class="ss-s">Resumo das entregas já consolidadas no app</div></div>
       <button class="btn btn-g btn-sm" onclick="copyChangelog()">Copiar</button>
     </div>
     <div class="changelog-list" id="settingsChangelog"></div>
   </div>
-  <div class="ss"><div class="ss-t">Avançado</div>
+  <div class="ss" data-admin-only><div class="ss-t">Avançado</div>
     <div class="ss-r"><div><div class="ss-l" style="color:var(--dan)">Limpar cache</div><div class="ss-s">Remove dados locais (banco OK)</div></div><button class="btn btn-d btn-sm" onclick="clearCache()">Limpar</button></div>
   </div>
-  <div class="ss"><div class="ss-t">Sobre / diagnóstico</div>
+  <div class="ss" data-admin-only><div class="ss-t">Sobre / diagnóstico</div>
     <div class="ss-r"><div><div class="ss-l">Versão</div><div class="ss-s">Build atual do app</div></div><span class="diag-pill" id="diagVersion">—</span></div>
     <div class="ss-r"><div><div class="ss-l">Modo</div><div class="ss-s" id="diagMode">—</div></div></div>
     <div class="ss-r"><div><div class="ss-l">Sincronização</div><div class="ss-s" id="diagSync">—</div></div></div>

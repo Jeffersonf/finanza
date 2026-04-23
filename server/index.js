@@ -9,6 +9,7 @@ const { Pool } = require('pg');
 const crypto  = require('crypto');
 const fs      = require('fs');
 const path    = require('path');
+const { cleanText, normalizeRole, userRole, canWrite, publicUser } = require('./permissions');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -62,10 +63,6 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '1mb' }));
 
-function cleanText(v, fallback = '') {
-  return typeof v === 'string' ? v : fallback;
-}
-
 function toJsonb(value, fallback) {
   try {
     return JSON.stringify(value ?? fallback);
@@ -88,34 +85,9 @@ function normalizeUsername(v) {
   return cleanText(v).trim().toLowerCase();
 }
 
-function normalizeRole(role, isAdmin = false) {
-  if (isAdmin) return 'admin';
-  const value = cleanText(role, 'editor').trim().toLowerCase();
-  return ['admin', 'editor', 'read', 'guest'].includes(value) ? value : 'editor';
-}
-
-function userRole(user) {
-  return normalizeRole(user?.role, !!user?.is_admin);
-}
-
-function canWrite(user) {
-  return ['admin', 'editor'].includes(userRole(user));
-}
-
 function requireWrite(req, res, next) {
   if (!canWrite(req.user)) return res.status(403).json({ error: 'Perfil sem permissao de edicao' });
   next();
-}
-
-function publicUser(user) {
-  return {
-    id: user.id,
-    name: user.name,
-    username: user.username,
-    role: userRole(user),
-    is_admin: !!user.is_admin,
-    created_at: user.created_at
-  };
 }
 
 async function auditEvent(db, user, action, entity, entityId = null, detail = '', metadata = {}) {

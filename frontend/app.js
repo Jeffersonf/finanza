@@ -235,6 +235,12 @@ async function resetPassword(){
   }catch(e){err.textContent='Erro: '+e.message;err.classList.add('show');}
 }
 function canManageUsers(){return cfg.mode==='api'&&cfg.role==='admin';}
+function canSeeAdminPanel(){return cfg.mode!=='api'||cfg.role==='admin';}
+function applyAdminPanelVisibility(){
+  document.querySelectorAll('[data-admin-only]').forEach(el=>{
+    el.style.display=canSeeAdminPanel()?'':'none';
+  });
+}
 function roleLabel(role){
   return {admin:'Admin',editor:'Editor',read:'Leitura',guest:'Convidado'}[role]||role||'Editor';
 }
@@ -2797,6 +2803,7 @@ async function copyChangelog(){
 }
 function renderSet(){
   const isDark=document.documentElement.dataset.theme==='dark';
+  applyAdminPanelVisibility();
   renderWidgetToggles();
   const cdi=document.getElementById('setCDI');if(cdi)cdi.value=RATES.cdi;
   const selic=document.getElementById('setSelic');if(selic)selic.value=RATES.selic;
