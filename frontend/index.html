@@ -156,11 +156,9 @@
       <button class="btn btn-p" onclick="openModal()">+ Nova</button>
     </div>
   </div>
+  <div class="dash-manager" id="dashManager"></div>
   <div class="dash-widgets" id="dashWidgets">
     <!-- widgets renderizados via JS com base nas preferências -->
-  </div>
-  <div class="dash-reset-footer">
-    <button class="btn btn-g btn-sm" onclick="resetDashboardWidgets()">Voltar widgets aos padrões</button>
   </div>
 </div>
 <div class="page" id="page-accounts">
@@ -302,16 +300,6 @@
     <div class="ss-r"><div><div class="ss-l">Salário / renda mensal base</div><div class="ss-s">Base principal para comparar seus gastos do dia a dia</div></div><input type="text" class="fi" id="setIncome" style="width:120px;padding:6px 10px;font-size:12px" placeholder="0,00" onchange="updateRates()"></div>
     <div class="ss-r"><div><div class="ss-l">CDI atual (% a.a.)</div><div class="ss-s">Usado nos cálculos de investimento</div></div><input type="number" class="fi" id="setCDI" style="width:90px;padding:6px 10px;font-size:12px" step="0.01" onchange="updateRates()"></div>
     <div class="ss-r"><div><div class="ss-l">Selic atual (% a.a.)</div></div><input type="number" class="fi" id="setSelic" style="width:90px;padding:6px 10px;font-size:12px" step="0.01" onchange="updateRates()"></div>
-  </div>
-  <div class="ss">
-    <div class="ss-t">Dashboard — widgets visíveis</div>
-    <div class="ss-r" style="flex-direction:column;align-items:stretch;gap:10px;padding-top:14px;">
-      <div class="widget-grid" id="widgetToggles"></div>
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap">
-        <div style="font-size:11px;color:var(--mt);padding:0 2px;">Toque para mostrar/ocultar. Arraste os blocos no Dashboard para reorganizar.</div>
-        <button class="btn btn-g btn-sm" onclick="resetWidgetOrder()">Restaurar ordem</button>
-      </div>
-    </div>
   </div>
   <div class="ss"><div class="ss-t">Categorias personalizadas</div>
     <div class="ss-r" style="flex-direction:column;align-items:flex-start;gap:9px;">

@@ -2871,7 +2871,6 @@ async function copyChangelog(){
 function renderSet(){
   const isDark=document.documentElement.dataset.theme==='dark';
   applyAdminPanelVisibility();
-  renderWidgetToggles();
   const cdi=document.getElementById('setCDI');if(cdi)cdi.value=RATES.cdi;
   const selic=document.getElementById('setSelic');if(selic)selic.value=RATES.selic;
   const income=document.getElementById('setIncome');if(income)income.value=formatCentsInput(monthlyIncomeCents);
@@ -3647,6 +3646,8 @@ const WIDGET_DEFS = [
 let widgetPrefs = {};
 let widgetOrder = [];
 let widgetFilters = {};
+let dashboardManagerOpen = false;
+let activeWidgetMenuId = '';
 
 function loadWidgetPrefs() {
   try {
@@ -3676,6 +3677,13 @@ function isWidgetOn(id) {
 function activeWidgetCount(){
   return WIDGET_DEFS.filter(w=>isWidgetOn(w.id)).length;
 }
+function widgetById(id){
+  return WIDGET_DEFS.find(w=>w.id===id)||null;
+}
+function getWidgetFilter(widget,key,fallback){
+  const current=asObj(widgetFilters[widget]);
+  return current[key] ?? fallback;
+}
 function ensureAtLeastOneWidget(){
   if(activeWidgetCount()>=MIN_DASH_WIDGETS)return;
   WIDGET_DEFS.filter(w=>w.default||w.id==='cards').some(w=>{
@@ -3696,22 +3704,39 @@ function toggleWidget(id) {
     return;
   }
   widgetPrefs[id] = !willDisable;
+  if(willDisable&&activeWidgetMenuId===id)activeWidgetMenuId='';
   saveWidgetPrefs();
-  renderWidgetToggles();
   renderDash();
 }
-function resetWidgetOrder(){widgetOrder=WIDGET_DEFS.map(w=>w.id);saveWidgetOrder();renderDash();toast('Ordem do dashboard restaurada','info');}
+function toggleDashboardManager(){
+  dashboardManagerOpen=!dashboardManagerOpen;
+  renderDashboardManager();
+}
+function moveWidgetOrder(id,dir){
+  const idx=widgetOrder.indexOf(id);
+  const next=idx+dir;
+  if(idx<0||next<0||next>=widgetOrder.length)return;
+  [widgetOrder[idx],widgetOrder[next]]=[widgetOrder[next],widgetOrder[idx]];
+  saveWidgetOrder();
+  renderDash();
+}
+function resetWidgetOrder(){
+  widgetOrder=WIDGET_DEFS.map(w=>w.id);
+  saveWidgetOrder();
+  renderDash();
+  toast('Ordem do dashboard restaurada','info');
+}
 function resetDashboardWidgets(){
   widgetPrefs={};
   WIDGET_DEFS.forEach(w=>widgetPrefs[w.id]=w.default);
   widgetOrder=WIDGET_DEFS.map(w=>w.id);
   widgetFilters={};
+  activeWidgetMenuId='';
   ensureAtLeastOneWidget();
   localStorage.setItem(WIDGETS_KEY,JSON.stringify(widgetPrefs));
   localStorage.setItem(WIDGET_ORDER_KEY,JSON.stringify(widgetOrder));
   localStorage.setItem(WIDGET_FILTER_KEY,JSON.stringify(widgetFilters));
   if(cfg.mode==='api')saveRemoteState().catch(()=>{});
-  renderWidgetToggles();
   renderDash();
   toast('Dashboard voltou aos padrões','success');
 }
@@ -3721,20 +3746,58 @@ function setWidgetFilter(widget,key,value){
   saveWidgetFilters();
   renderDash();
 }
-
-function renderWidgetToggles() {
-  const el = document.getElementById('widgetToggles');
-  if (!el) return;
-  el.innerHTML = WIDGET_DEFS.map(w => `
-    <div class="widget-chip ${isWidgetOn(w.id) ? 'on' : ''}" onclick="toggleWidget('${w.id}')">
-      <span class="wc-dot"></span>
-      <span class="wc-ico">${w.ico}</span>
-      <div class="wc-info">
-        <div class="wc-name">${w.name}</div>
-        <div class="wc-desc">${w.desc}</div>
-      </div>
-    </div>
-  `).join('');
+function toggleWidgetMenu(id){
+  activeWidgetMenuId=activeWidgetMenuId===id?'':id;
+  renderDash();
+}
+function widgetSelectControl(widget,key,label,options,fallback){
+  const current=String(getWidgetFilter(widget,key,fallback));
+  return `<label class="widget-menu-field"><span>${label}</span><select class="widget-filter" onchange="setWidgetFilter('${widget}','${key}',this.value)">${options.map(opt=>`<option value="${esc(opt.value)}" ${current===String(opt.value)?'selected':''}>${esc(opt.label)}</option>`).join('')}</select></label>`;
+}
+function renderWidgetMenuPanel(id){
+  const sections=[];
+  switch(id){
+    case 'quickactions':
+      sections.push(widgetSelectControl('quickactions','limit','Atalhos',[{value:'4',label:'4 atalhos'},{value:'6',label:'6 atalhos'}],'6'));
+      break;
+    case 'accounts':
+      sections.push(widgetSelectControl('accounts','limit','Contas',[{value:'3',label:'3 contas'},{value:'5',label:'5 contas'},{value:'all',label:'Todas'}],'5'));
+      break;
+    case 'goals':
+      sections.push(widgetSelectControl('goals','limit','Metas',[{value:'3',label:'3 metas'},{value:'4',label:'4 metas'},{value:'6',label:'6 metas'}],'4'));
+      break;
+    case 'budgets':
+      sections.push(widgetSelectControl('budgets','limit','Orçamentos',[{value:'3',label:'3 categorias'},{value:'6',label:'6 categorias'},{value:'8',label:'8 categorias'}],'6'));
+      break;
+    case 'recent':
+      sections.push(widgetSelectControl('recent','type','Tipo',[{value:'all',label:'Tudo'},{value:'expense',label:'Só despesas'},{value:'income',label:'Só receitas'}],'all'));
+      sections.push(widgetSelectControl('recent','limit','Linhas',[{value:'4',label:'4 linhas'},{value:'6',label:'6 linhas'},{value:'10',label:'10 linhas'}],'6'));
+      break;
+    case 'vehicles':
+      sections.push(widgetSelectControl('vehicles','period','Período',[{value:'30d',label:'30 dias'},{value:'90d',label:'90 dias'},{value:'year',label:'Ano'},{value:'all',label:'Tudo'}],'90d'));
+      sections.push(widgetSelectControl('vehicles','limit','Histórico',[{value:'3',label:'3 eventos'},{value:'5',label:'5 eventos'}],'3'));
+      break;
+    case 'shopping':
+      sections.push(widgetSelectControl('shopping','limit','Itens',[{value:'3',label:'3 itens'},{value:'5',label:'5 itens'},{value:'8',label:'8 itens'}],'5'));
+      break;
+    case 'saverate':
+      sections.push(widgetSelectControl('saverate','months','Meses',[{value:'3',label:'3 meses'},{value:'6',label:'6 meses'},{value:'12',label:'12 meses'}],'3'));
+      break;
+    case 'barcats':
+      sections.push(widgetSelectControl('barcats','limit','Categorias',[{value:'4',label:'Top 4'},{value:'6',label:'Top 6'},{value:'8',label:'Top 8'}],'6'));
+      break;
+    default:
+      sections.push('<div class="widget-menu-empty">Esse widget segue a visão principal da dashboard por enquanto.</div>');
+      break;
+  }
+  sections.push(`<div class="widget-inline-actions"><button class="btn btn-g btn-sm" onclick="moveWidgetOrder('${id}',-1)">Subir</button><button class="btn btn-g btn-sm" onclick="moveWidgetOrder('${id}',1)">Descer</button><button class="btn btn-d btn-sm" onclick="toggleWidget('${id}')">Remover</button></div>`);
+  return sections.join('');
+}
+function renderDashboardManager(){
+  const el=document.getElementById('dashManager');
+  if(!el)return;
+  const visible=activeWidgetCount();
+  el.innerHTML=`<div class="dash-manager-head"><div><div class="dash-manager-title">Widgets da dashboard</div><div class="dash-manager-sub">${visible} visíveis de ${WIDGET_DEFS.length} disponíveis</div></div><button class="btn btn-g btn-sm" onclick="toggleDashboardManager()">${dashboardManagerOpen?'Fechar editor':'Editar widgets'}</button></div>${dashboardManagerOpen?`<div class="dash-manager-panel"><div class="dash-manager-actions"><button class="btn btn-g btn-sm" onclick="resetWidgetOrder()">Restaurar ordem</button><button class="btn btn-g btn-sm" onclick="resetDashboardWidgets()">Voltar ao padrão</button></div><div class="dash-manager-list">${widgetOrder.map((id,idx)=>{const w=widgetById(id);if(!w)return'';const on=isWidgetOn(id);return `<div class="dash-manager-row ${on?'is-on':'is-off'}"><div class="dash-manager-info"><span class="dash-manager-ico">${w.ico}</span><div><strong>${esc(w.name)}</strong><small>${esc(w.desc)}</small></div></div><div class="dash-manager-controls"><button class="btn btn-g btn-sm" ${idx===0?'disabled':''} onclick="moveWidgetOrder('${id}',-1)">↑</button><button class="btn btn-g btn-sm" ${idx===widgetOrder.length-1?'disabled':''} onclick="moveWidgetOrder('${id}',1)">↓</button><button class="btn ${on?'btn-d':'btn-g'} btn-sm" onclick="toggleWidget('${id}')">${on?'Remover':'Adicionar'}</button></div></div>`;}).join('')}</div></div>`:''}`;
 }
 
 // ─── RENDER WIDGETS INDIVIDUAIS ──────────────────────────────
@@ -3760,14 +3823,15 @@ function renderDash() {
   };
   const wrap=(id,html)=>{
     if(!html)return '';
-    const tools=`<div class="widget-tools"><div class="widget-stepper"><button class="widget-move-btn" onclick="moveWidgetStep('${id}',-1)" title="Mover widget para cima" aria-label="Mover widget para cima">▲</button><button class="widget-move-btn" onclick="moveWidgetStep('${id}',1)" title="Mover widget para baixo" aria-label="Mover widget para baixo">▼</button></div><button class="widget-drag-btn" title="Arrastar widget" aria-label="Arrastar widget">⋮⋮</button><button class="widget-remove-btn" onclick="toggleWidget('${id}')" title="Remover widget" aria-label="Remover widget">✕</button></div>`;
-    return `<div class="dash-section-wrap" draggable="true" data-widget-id="${id}">${tools}${html}</div>`;
+    const menuOpen=activeWidgetMenuId===id;
+    const menu=`<div class="widget-menu-shell"><button class="widget-menu-btn" onclick="event.stopPropagation();toggleWidgetMenu('${id}')" aria-label="Abrir menu do widget" title="Ajustar widget">•••</button>${menuOpen?`<div class="widget-menu-panel" onclick="event.stopPropagation()">${renderWidgetMenuPanel(id)}</div>`:''}</div>`;
+    return `<div class="dash-section-wrap" data-widget-id="${id}">${menu}${html}</div>`;
   };
   const sections=widgetOrder.filter(id=>isWidgetOn(id)&&renderers[id]).map(id=>wrap(id,renderers[id]())).filter(Boolean);
 
   const container = document.getElementById('dashWidgets');
   if (container) container.innerHTML = sections.join('');
-  initWidgetDrag();
+  renderDashboardManager();
 
   // Render sub-widgets que precisam de DOM pronto
   if (isWidgetOn('compare'))    renderMonthCompare();
@@ -3775,119 +3839,6 @@ function renderDash() {
   if (isWidgetOn('weekly') || isWidgetOn('anomaly')) renderWeekly();
   if (isWidgetOn('budalerts'))  renderBudAlerts();
   if (isWidgetOn('charts'))     renderCharts(isDark);
-}
-
-function getDashWidgetItems(container){
-  return [...container.querySelectorAll('.dash-section-wrap')];
-}
-function captureDashWidgetRects(container){
-  return new Map(getDashWidgetItems(container).map(el=>[el.dataset.widgetId,el.getBoundingClientRect()]));
-}
-function animateDashWidgetsFrom(container,first){
-  getDashWidgetItems(container).forEach(el=>{
-    const old=first.get(el.dataset.widgetId);
-    if(!old)return;
-    const now=el.getBoundingClientRect();
-    const dx=old.left-now.left,dy=old.top-now.top;
-    if(!dx&&!dy)return;
-    el.animate([
-      {transform:`translate(${dx}px, ${dy}px)`},
-      {transform:'translate(0, 0)'}
-    ],{duration:280,easing:'cubic-bezier(.22,1,.36,1)'});
-  });
-}
-function persistWidgetOrderFromDom(container){
-  const visible=getDashWidgetItems(container).map(el=>el.dataset.widgetId);
-  const hidden=widgetOrder.filter(id=>!visible.includes(id));
-  widgetOrder=[...visible,...hidden];
-  saveWidgetOrder();
-}
-function settleWidget(item){
-  item.classList.add('drop-settle');
-  setTimeout(()=>item.classList.remove('drop-settle'),320);
-}
-function moveWidgetStep(id,dir){
-  const container=document.getElementById('dashWidgets');
-  const item=container?.querySelector(`.dash-section-wrap[data-widget-id="${id}"]`);
-  if(!container||!item)return;
-  const target=dir<0?item.previousElementSibling:item.nextElementSibling;
-  if(!target||!target.classList.contains('dash-section-wrap'))return;
-  const first=captureDashWidgetRects(container);
-  if(dir<0)container.insertBefore(item,target);
-  else container.insertBefore(target,item);
-  animateDashWidgetsFrom(container,first);
-  persistWidgetOrderFromDom(container);
-  settleWidget(item);
-}
-
-function initWidgetDrag(){
-  const container=document.getElementById('dashWidgets');if(!container)return;
-  let dragged=null;
-  const widgetItems=()=>[...container.querySelectorAll('.dash-section-wrap')];
-  const captureRects=()=>new Map(widgetItems().map(el=>[el.dataset.widgetId,el.getBoundingClientRect()]));
-  const animateFrom=(first)=>{
-    widgetItems().forEach(el=>{
-      const old=first.get(el.dataset.widgetId);
-      if(!old)return;
-      const now=el.getBoundingClientRect();
-      const dx=old.left-now.left,dy=old.top-now.top;
-      if(!dx&&!dy)return;
-      el.animate([
-        {transform:`translate(${dx}px, ${dy}px)`},
-        {transform:'translate(0, 0)'}
-      ],{duration:280,easing:'cubic-bezier(.22,1,.36,1)'});
-    });
-  };
-  const moveDragged=(target,e)=>{
-    if(!dragged||!target||dragged===target)return;
-    const rect=target.getBoundingClientRect();
-    const after=e.clientY>rect.top+rect.height/2;
-    const next=after?target.nextSibling:target;
-    if(next===dragged||target.nextSibling===dragged&&after)return;
-    const first=captureRects();
-    container.insertBefore(dragged,next);
-    animateFrom(first);
-  };
-  const persistOrder=()=>{
-    const visible=widgetItems().map(el=>el.dataset.widgetId);
-    const hidden=widgetOrder.filter(id=>!visible.includes(id));
-    widgetOrder=[...visible,...hidden];
-    saveWidgetOrder();
-  };
-  container.querySelectorAll('.dash-section-wrap').forEach(item=>{
-    item.addEventListener('dragstart',e=>{
-      dragged=item;
-      container.classList.add('is-reordering');
-      item.classList.add('dragging');
-      e.dataTransfer.effectAllowed='move';
-      e.dataTransfer.setData('text/plain',item.dataset.widgetId);
-    });
-    item.addEventListener('dragend',()=>{
-      if(dragged){
-        const settled=dragged;
-        settled.classList.remove('dragging');
-        settleWidget(settled);
-      }
-      container.classList.remove('is-reordering');
-      container.querySelectorAll('.drag-over').forEach(x=>x.classList.remove('drag-over'));
-      persistOrder();
-      dragged=null;
-    });
-    item.addEventListener('dragover',e=>{
-      e.preventDefault();
-      if(item!==dragged){
-        container.querySelectorAll('.drag-over').forEach(x=>{if(x!==item)x.classList.remove('drag-over');});
-        item.classList.add('drag-over');
-        moveDragged(item,e);
-      }
-    });
-    item.addEventListener('dragleave',()=>item.classList.remove('drag-over'));
-    item.addEventListener('drop',e=>{
-      e.preventDefault();item.classList.remove('drag-over');
-      moveDragged(item,e);
-      persistOrder();
-    });
-  });
 }
 
 const SL_KEY = 'fz_shopping';
