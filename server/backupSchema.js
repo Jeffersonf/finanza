@@ -1,5 +1,7 @@
 'use strict';
 
+const { CURRENT_BACKUP_VERSION, migrateBackupPayload } = require('./backupMigrations');
+
 function asObject(value, fallback = {}) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : fallback;
 }
@@ -11,8 +13,9 @@ function asArray(value, fieldName) {
 }
 
 function normalizeBackupPayload(payload = {}) {
-  const data = asObject(payload, null);
-  if (!data) throw new Error('Backup JSON deve ser um objeto');
+  const input = asObject(payload, null);
+  if (!input) throw new Error('Backup JSON deve ser um objeto');
+  const data = migrateBackupPayload(input);
 
   const transactions = asArray(data.transactions, 'transactions');
   const budgets = asArray(data.budgets, 'budgets');
@@ -33,7 +36,7 @@ function normalizeBackupPayload(payload = {}) {
 
   return {
     app: data.app || 'Finanza',
-    version: data.version || '',
+    version: data.version || CURRENT_BACKUP_VERSION,
     transactions,
     budgets,
     goals,

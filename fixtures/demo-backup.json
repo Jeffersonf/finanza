@@ -1,0 +1,113 @@
+{
+  "app": "Finanza",
+  "version": "4.0.0",
+  "user": "Demo",
+  "accounts": [
+    {
+      "id": "demo-conta-principal",
+      "name": "Conta principal",
+      "icon": "BR",
+      "type": "checking",
+      "balance": 2450.75,
+      "yieldRate": 0,
+      "note": "Fixture de demonstracao"
+    }
+  ],
+  "transactions": [
+    {
+      "id": "demo-tx-mercado",
+      "type": "expense",
+      "desc": "Mercado",
+      "description": "Mercado",
+      "amount": 187.9,
+      "category": "Alimentacao",
+      "date": "2026-04-22",
+      "note": "Compra demo",
+      "accountId": "demo-conta-principal",
+      "paid": false,
+      "pending": false
+    },
+    {
+      "id": "demo-tx-salario",
+      "type": "income",
+      "desc": "Salario",
+      "description": "Salario",
+      "amount": 4200,
+      "category": "Salario",
+      "date": "2026-04-20",
+      "note": "Receita demo",
+      "accountId": "demo-conta-principal",
+      "paid": false,
+      "pending": false
+    }
+  ],
+  "budgets": [
+    {
+      "category": "Alimentacao",
+      "limit": 900
+    }
+  ],
+  "goals": [
+    {
+      "id": "demo-meta-reserva",
+      "name": "Reserva",
+      "icon": "RS",
+      "target": 10000,
+      "current": 2500,
+      "deadline": "2026-12-31",
+      "desc": "Reserva demo",
+      "monthly": 750
+    }
+  ],
+  "categories": [
+    {
+      "id": "demo-cat-alimentacao",
+      "ico": "AL",
+      "name": "Alimentacao",
+      "col": "#f5c85a"
+    }
+  ],
+  "shopping": {
+    "lists": [
+      {
+        "id": "demo-lista-mercado",
+        "name": "Mercado",
+        "ico": "ML",
+        "position": 0
+      }
+    ],
+    "items": [
+      {
+        "id": "demo-item-arroz",
+        "listId": "demo-lista-mercado",
+        "name": "Arroz",
+        "qty": "1 pacote",
+        "cat": "Basico",
+        "bought": false,
+        "createdAt": 1776816000000
+      }
+    ]
+  },
+  "dueItems": [
+    {
+      "id": "demo-due-internet",
+      "name": "Internet",
+      "amount": 120,
+      "nextDueDate": "2026-05-10",
+      "recurrence": "monthly",
+      "category": "Moradia"
+    }
+  ],
+  "settings": {
+    "theme": "dark",
+    "rates": {
+      "cdi": 10.4,
+      "selic": 10.5,
+      "dueItems": []
+    },
+    "widgetPrefs": {},
+    "widgetOrder": [],
+    "txView": "n",
+    "activeList": "demo-lista-mercado"
+  }
+}

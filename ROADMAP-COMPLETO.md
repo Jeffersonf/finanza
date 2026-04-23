@@ -239,8 +239,11 @@ Itens puxados para este ciclo:
 - Criar suite de testes para parser de transacao.
 - Criar testes para importacao JSON.
 - Formalizar schema de backup.
+- Criar migracoes de backup por versao.
+- Criar fixtures de dados demo.
 - Adicionar CI para testes.
 - Adicionar validacao de deploy.
+- Padronizar comandos `npm run check` e `npm test`.
 
 ## 5.0 - Android nativo premium
 

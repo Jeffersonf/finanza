@@ -28,12 +28,7 @@ jobs:
         run: npm ci
 
       - name: Syntax checks
-        run: |
-          node --check server/index.js
-          node --check server/permissions.js
-          node --check server/transactionParser.js
-          node --check server/backupSchema.js
-          node --check frontend/app.js
+        run: npm run check
 
       - name: Unit tests
-        run: node --test tests/*.test.js
+        run: npm test
