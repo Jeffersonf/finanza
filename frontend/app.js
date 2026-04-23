@@ -20,6 +20,10 @@ let auditHistory=[];
 let adminUsers=[];
 let undoState=null;
 let importPreviewState=null;
+const IMPORT_CENTER_KEY='fz_import_center';
+const IMPORT_BATCH_PREFIX='imp_';
+let importCenterState={profiles:{csv:{}},rules:{categories:[],subscriptions:[]},snapshots:[],txMeta:{}};
+let importDraft={source:'csv',files:[],rows:[],headers:[],mapping:{},dedupe:'exact',profileName:'',text:'',batchId:'',balanceDivergence:null};
 let srchScope='all';
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2);
 const rawFmt=n=>'R$ '+Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -347,6 +351,7 @@ function normalizeBackupData(d){
   const shopping=data.shopping||{lists:data.shoppingLists||[],items:data.shoppingItems||[]};
   data.shopping={lists:(shopping.lists||[]).map(nShopList),items:(shopping.items||[]).map(nShopItem)};
   data.settings=data.settings||{};
+  data.settings.importCenter=normalizeImportCenterState(data.settings.import_center||data.settings.importCenter||{});
   data.car=normalizeCarState(data.car||data.vehicle||data.vehicles||data.settings?.rates?.car||{});
   data.dueItems=(data.dueItems||data.settings?.rates?.dueItems||data.settings?.rates?.due_items||[]).map(nDue).filter(Boolean);
   data.avatarData=(data.settings?.rates?.avatarData??data.settings?.rates?.avatar_data)||'';
@@ -359,11 +364,13 @@ function applyBackupData(data){
   carState=normalizeCarState(data.car||{});
   dueItems=data.dueItems||[];
   slActiveList=data.settings?.activeList||data.settings?.active_list||sl.lists[0]?.id||null;
+  importCenterState=normalizeImportCenterState(data.settings?.import_center||data.settings?.importCenter||importCenterState);
   localStorage.setItem(LK,JSON.stringify(S));
   localStorage.setItem(CCK,JSON.stringify(custCats));
   localStorage.setItem(SL_KEY,JSON.stringify(sl));
   localStorage.setItem(CAR_KEY,JSON.stringify(carState));
   localStorage.setItem(DUE_KEY,JSON.stringify(dueItems));
+  localStorage.setItem(IMPORT_CENTER_KEY,JSON.stringify(importCenterState));
   if(typeof data.avatarData==='string'){
     if(data.avatarData)localStorage.setItem(AVK,data.avatarData);
     else localStorage.removeItem(AVK);
@@ -616,6 +623,472 @@ function importBackupFile(inp){
   };
   r.readAsText(f,'UTF-8');
 }
+function openImportCenter(){
+  if(!importDraft.batchId)clearImportDraft();
+  renderImportCenter();
+  document.getElementById('importCenterModal')?.classList.add('open');
+}
+function importSourceLabel(src){return({csv:'CSV',ofx:'OFX',text:'Texto',folder:'Pasta'})[src]||src;}
+function renderImportCenter(){
+  renderImportToolbar();
+  renderImportSourceTabs();
+  renderImportSourceBody();
+  renderImportSnapshots();
+  renderImportMapping();
+  renderImportReview();
+}
+function renderImportToolbar(){
+  const rows=importDraft.rows||[];
+  const pendingInbox=S.transactions.filter(t=>t.category==='A classificar'&&(getTxImportMeta(t.id).imported||t.pending)).length;
+  const duplicates=rows.filter(r=>r.status==='duplicate').length;
+  const recon=rows.filter(r=>r.status==='match').length;
+  const el=document.getElementById('importCenterToolbar');if(!el)return;
+  el.innerHTML=`<div class="insight-grid">
+    <div class="insight-card"><div class="insight-k">Fonte</div><div class="insight-v">${importSourceLabel(importDraft.source)}</div></div>
+    <div class="insight-card"><div class="insight-k">Linhas preparadas</div><div class="insight-v">${rows.length}</div></div>
+    <div class="insight-card"><div class="insight-k">Duplicadas</div><div class="insight-v" style="color:var(--warn)">${duplicates}</div></div>
+    <div class="insight-card"><div class="insight-k">Reconciliação</div><div class="insight-v" style="color:var(--ac2)">${recon}</div></div>
+    <div class="insight-card"><div class="insight-k">Caixa de entrada</div><div class="insight-v" style="color:var(--dan)">${pendingInbox}</div></div>
+  </div>`;
+}
+function renderImportSourceTabs(){
+  const el=document.getElementById('importSourceTabs');if(!el)return;
+  const tabs=[['csv','CSV'],['ofx','OFX'],['text','Texto colado'],['folder','Pasta local']];
+  el.innerHTML=tabs.map(([id,label])=>`<button class="cat-filter-chip ${importDraft.source===id?'active':''}" onclick="setImportSource('${id}')">${label}</button>`).join('');
+}
+function setImportSource(src){
+  importDraft.source=src;
+  importDraft.files=[];
+  importDraft.headers=[];
+  importDraft.rows=[];
+  importDraft.balanceDivergence=null;
+  renderImportCenter();
+}
+function renderImportSourceBody(){
+  const el=document.getElementById('importSourceBody');if(!el)return;
+  const profileOptions=['<option value="">Perfil salvo</option>',...Object.keys(importCenterState.profiles.csv).sort().map(name=>`<option value="${esc(name)}" ${importDraft.profileName===name?'selected':''}>${esc(name)}</option>`)].join('');
+  const ruleSummary=`${importCenterState.rules.categories.length} regra(s) de categoria • ${importCenterState.rules.subscriptions.length} regra(s) de assinatura`;
+  const sourceBody={
+    csv:`<div class="import-source-panel"><label class="fl">Arquivo CSV</label><input type="file" class="fi" accept=".csv,text/csv,.txt" onchange="handleImportFiles(this.files)"><div class="import-inline-grid"><label><span>Perfil</span><select class="fi sel" onchange="applyImportProfile(this.value)">${profileOptions}</select></label><label><span>Deduplicação</span><select class="fi sel" id="importDedupe" onchange="importDraft.dedupe=this.value"><option value="exact" ${importDraft.dedupe==='exact'?'selected':''}>Exata</option><option value="soft" ${importDraft.dedupe==='soft'?'selected':''}>Descrição + valor</option><option value="off" ${importDraft.dedupe==='off'?'selected':''}>Não ignorar</option></select></label></div><div class="ss-s">${ruleSummary}</div></div>`,
+    ofx:`<div class="import-source-panel"><label class="fl">Arquivo OFX</label><input type="file" class="fi" accept=".ofx,.qfx,.txt" onchange="handleImportFiles(this.files)"><div class="ss-s">${ruleSummary}</div></div>`,
+    text:`<div class="import-source-panel"><label class="fl">Texto extraído</label><textarea class="ta" id="importTextArea" placeholder="Cole aqui texto de extrato, PDF copiado, OCR, comprovante Pix, NFC-e ou QR em texto." oninput="importDraft.text=this.value">${esc(importDraft.text||'')}</textarea><div class="ss-s">Aceita várias linhas. Cada linha pode virar um lançamento.</div></div>`,
+    folder:`<div class="import-source-panel"><label class="fl">Pasta ou múltiplos arquivos</label><input type="file" class="fi" multiple webkitdirectory directory accept=".csv,.txt,.ofx,.qfx" onchange="handleImportFiles(this.files)"><div class="ss-s">Importa lotes de CSV, OFX e textos extraídos de uma pasta local.</div></div>`
+  };
+  el.innerHTML=sourceBody[importDraft.source]||'';
+}
+async function handleImportFiles(fileList){
+  importDraft.files=asArr([...fileList]);
+  if(!importDraft.files.length)return;
+  const first=importDraft.files[0];
+  if(importDraft.source==='csv'){
+    const text=await first.text();
+    const parsed=parseCsvMatrix(text);
+    importDraft.headers=parsed.headers;
+    importDraft.mapping=detectImportMapping(parsed.headers);
+  }
+  renderImportCenter();
+}
+function parseCsvMatrix(text=''){
+  const lines=String(text).replace(/\r/g,'').split('\n').filter(Boolean);
+  if(!lines.length)return{headers:[],rows:[]};
+  const delimiter=(lines[0].match(/;/g)||[]).length>=(lines[0].match(/,/g)||[]).length?';':',';
+  const matrix=lines.map(line=>{
+    const out=[];let cur='';let quoted=false;
+    for(let i=0;i<line.length;i++){
+      const ch=line[i];
+      if(ch==='"'){quoted=!quoted;continue;}
+      if(ch===delimiter&&!quoted){out.push(cur.trim());cur='';continue;}
+      cur+=ch;
+    }
+    out.push(cur.trim());
+    return out;
+  });
+  const [headers,...rows]=matrix;
+  return {headers,rows};
+}
+function importFieldOptions(){
+  return [
+    ['ignore','Ignorar'],['date','Data'],['description','Descrição'],['amount','Valor'],['type','Tipo'],['category','Categoria'],['account','Conta'],['note','Observação'],['balance','Saldo']
+  ];
+}
+function keyImportHeader(v=''){return normalizeTxText(String(v).replace(/[^\p{L}\p{N}]+/gu,' '));}
+function detectImportMapping(headers=[]){
+  const aliases={
+    date:['data','date','posted','lancamento','lançamento'],
+    description:['descricao','descrição','historico','histórico','memo','description','titulo','title'],
+    amount:['valor','amount','valor rs','amount rs','total','saida','saída','entrada'],
+    type:['tipo','type','natureza','dc','debito credito','d/c'],
+    category:['categoria','category'],
+    account:['conta','account','cartao','cartão','bank'],
+    note:['obs','observacao','observação','note','notes'],
+    balance:['saldo','balance']
+  };
+  const used={};
+  const mapping={};
+  headers.forEach((head,idx)=>{
+    const key=keyImportHeader(head);
+    let found='ignore';
+    Object.entries(aliases).some(([field,list])=>{
+      if(list.some(alias=>key.includes(keyImportHeader(alias)))&&!used[field]){
+        found=field;used[field]=true;return true;
+      }
+      return false;
+    });
+    mapping[idx]=found;
+  });
+  return mapping;
+}
+function renderImportMapping(){
+  const el=document.getElementById('importMapping');if(!el)return;
+  if(importDraft.source!=='csv'||!importDraft.headers?.length){el.innerHTML='';return;}
+  el.innerHTML=`<div class="ss-l" style="margin-bottom:8px">Mapeamento assistido</div><div class="import-inline-grid">${importDraft.headers.map((head,idx)=>`<label><span>${esc(head||`Coluna ${idx+1}`)}</span><select class="fi sel" onchange="setImportMapping(${idx},this.value)">${importFieldOptions().map(([value,label])=>`<option value="${value}" ${importDraft.mapping[idx]===value?'selected':''}>${label}</option>`).join('')}</select></label>`).join('')}</div>`;
+}
+function setImportMapping(idx,value){
+  importDraft.mapping[idx]=value;
+}
+function parseImportDate(raw=''){
+  const v=String(raw||'').trim();
+  if(!v)return today();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(v))return v;
+  const m=v.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
+  if(m){
+    const year=String(m[3]).length===2?`20${m[3]}`:m[3];
+    return `${year}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
+  }
+  return today();
+}
+function parseImportAmount(raw=''){
+  const clean=String(raw||'').replace(/[^\d,.-]/g,'').trim();
+  if(!clean)return 0;
+  const pt=clean.includes(',')?clean.replace(/\./g,'').replace(',','.'):clean;
+  return Math.abs(Number(pt)||0);
+}
+function inferImportType(typeRaw, amountRaw, description=''){
+  const t=normalizeTxText(typeRaw||'');
+  const desc=normalizeTxText(description);
+  if(/credit|credito|crédito|income|entrada|receb/i.test(t))return'income';
+  if(/debit|debito|débito|expense|saida|saída/i.test(t))return'expense';
+  if(/^[-]/.test(String(amountRaw||'')))return'expense';
+  if(desc.includes('pix recebido')||desc.includes('salario')||desc.includes('salário')||desc.includes('receb'))return'income';
+  return'expense';
+}
+function applyImportRules(row){
+  const lower=normalizeTxText(`${row.description} ${row.note}`);
+  const catRule=importCenterState.rules.categories.find(rule=>lower.includes(normalizeTxText(rule.match)));
+  if(catRule)row.category=catRule.category;
+  const day=parseInt(String(row.date).slice(8,10),10);
+  const subRule=importCenterState.rules.subscriptions.find(rule=>rule.day===day&&Math.abs(rule.amount-row.amount)<0.01);
+  if(subRule){
+    row.category=subRule.category;
+    if(!row.description)row.description=subRule.description||row.category;
+    row.subscriptionHint=true;
+  }
+  return row;
+}
+function buildImportRowsFromCsv(text,fileName=''){
+  const parsed=parseCsvMatrix(text);
+  if(!importDraft.headers.length){importDraft.headers=parsed.headers;importDraft.mapping=detectImportMapping(parsed.headers);}
+  return parsed.rows.map((cols,idx)=>{
+    const mapped={source:fileName,rowNumber:idx+2};
+    cols.forEach((val,colIdx)=>mapped[importDraft.mapping[colIdx]||'ignore']=val);
+    const description=(mapped.description||mapped.note||'Importado').trim();
+    const type=inferImportType(mapped.type,mapped.amount,description);
+    const amount=parseImportAmount(mapped.amount);
+    const category=mapped.category?normCatName(mapped.category):inferTxCategory(description,type);
+    return applyImportRules({
+      id:uid(),
+      date:parseImportDate(mapped.date),
+      description,
+      amount,
+      type,
+      category:category||'A classificar',
+      accountId:findImportAccount(mapped.account,description),
+      note:String(mapped.note||'').trim(),
+      balance:mapped.balance?parseImportAmount(mapped.balance):0,
+      raw:mapped
+    });
+  }).filter(row=>row.amount>0&&row.description);
+}
+function findImportAccount(raw='',description=''){
+  const source=normalizeTxText(`${raw} ${description}`);
+  return S.accounts.find(acc=>source.includes(normalizeTxText(acc.name)))?.id||S.accounts[0]?.id||null;
+}
+function parseOfxRows(text,fileName=''){
+  return String(text).split(/<STMTTRN>/i).slice(1).map(block=>{
+    const take=tag=>block.match(new RegExp(`<${tag}>([^<\\r\\n]+)`,'i'))?.[1]?.trim()||'';
+    const amountRaw=take('TRNAMT');
+    const amount=Math.abs(Number(amountRaw.replace(',','.'))||0);
+    const description=take('MEMO')||take('NAME')||'OFX';
+    const type=(amountRaw||'').trim().startsWith('-')?'expense':'income';
+    return applyImportRules({
+      id:uid(),
+      source:fileName,
+      date:parseImportDate(take('DTPOSTED').slice(0,8).replace(/^(\d{4})(\d{2})(\d{2}).*$/,'$1-$2-$3')),
+      description,
+      amount,
+      type,
+      category:inferTxCategory(description,type)||'A classificar',
+      accountId:findImportAccount('',description),
+      note:take('FITID'),
+      balance:0,
+      raw:{}
+    });
+  }).filter(row=>row.amount>0&&row.description);
+}
+function parseTextImportRows(text=''){
+  return String(text).split(/\n+/).map(line=>line.trim()).filter(Boolean).map(line=>{
+    const parsed=parseTxText(line);
+    if(parsed){
+      return applyImportRules({
+        id:uid(),
+        date:parsed.date,
+        description:parsed.desc,
+        amount:parsed.amount,
+        type:parsed.type,
+        category:parsed.category||'A classificar',
+        accountId:parsed.accountId||S.accounts[0]?.id||null,
+        note:'Importado de texto',
+        balance:0,
+        raw:{text:line}
+      });
+    }
+    const amountMatch=line.match(/(?:r\$)?\s*(-?\d[\d.,]*)/i);
+    const amount=parseImportAmount(amountMatch?.[1]||'');
+    if(!amount)return null;
+    const type=inferImportType('',amountMatch?.[1]||'',line);
+    return applyImportRules({
+      id:uid(),
+      date:parseImportDate(line.match(/\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}/)?.[0]||today()),
+      description:line.replace(amountMatch?.[0]||'','').trim()||'Importado de texto',
+      amount,
+      type,
+      category:inferTxCategory(line,type)||'A classificar',
+      accountId:S.accounts[0]?.id||null,
+      note:'Importado de texto',
+      balance:0,
+      raw:{text:line}
+    });
+  }).filter(Boolean);
+}
+function findExactDuplicate(row){
+  if(importDraft.dedupe==='off')return null;
+  const fp=txFingerprint({type:row.type,date:row.date,amount:row.amount,description:row.description,category:row.category,note:row.note,accountId:row.accountId});
+  return S.transactions.find(tx=>txFingerprint(tx)===fp)||null;
+}
+function findSoftMatch(row){
+  return S.transactions.find(tx=>
+    Math.abs(Number(tx.amount)-Number(row.amount))<0.01 &&
+    normalizeTxText(tx.desc)===normalizeTxText(row.description) &&
+    Math.abs(new Date(tx.date+'T12:00:00')-new Date(row.date+'T12:00:00'))<=86400000*3
+  )||null;
+}
+function prepareImportRows(rows){
+  const batchId=`${IMPORT_BATCH_PREFIX}${Date.now()}`;
+  importDraft.batchId=batchId;
+  importDraft.rows=rows.map(row=>{
+    const duplicate=findExactDuplicate(row);
+    const matched=!duplicate&&importDraft.dedupe!=='exact'?findSoftMatch(row):null;
+    const status=duplicate?'duplicate':matched?'match':'new';
+    return {
+      ...row,
+      duplicateId:duplicate?.id||'',
+      matchId:(duplicate||matched)?.id||'',
+      status,
+      decision:status==='duplicate'?'skip':status==='match'?'reconcile':'create'
+    };
+  });
+  const balanceRows=importDraft.rows.filter(r=>r.balance>0);
+  if(balanceRows.length){
+    const last=balanceRows[balanceRows.length-1];
+    const current=last.accountId?getAccBal(last.accountId):0;
+    importDraft.balanceDivergence=Math.round((last.balance-current)*100)/100;
+  }else importDraft.balanceDivergence=null;
+}
+async function parseImportDraft(){
+  try{
+    let rows=[];
+    if(importDraft.source==='csv'){
+      if(!importDraft.files.length)throw new Error('Escolha um CSV primeiro');
+      for(const file of importDraft.files)rows.push(...buildImportRowsFromCsv(await file.text(),file.name));
+    }else if(importDraft.source==='ofx'){
+      if(!importDraft.files.length)throw new Error('Escolha um OFX primeiro');
+      for(const file of importDraft.files)rows.push(...parseOfxRows(await file.text(),file.name));
+    }else if(importDraft.source==='text'){
+      if(!String(importDraft.text||'').trim())throw new Error('Cole um texto para importar');
+      rows=parseTextImportRows(importDraft.text);
+    }else if(importDraft.source==='folder'){
+      if(!importDraft.files.length)throw new Error('Escolha uma pasta ou arquivos');
+      for(const file of importDraft.files){
+        const content=await file.text();
+        if(/\.(ofx|qfx)$/i.test(file.name))rows.push(...parseOfxRows(content,file.name));
+        else rows.push(...buildImportRowsFromCsv(content,file.name));
+      }
+    }
+    if(!rows.length)throw new Error('Nada reconhecido para importar');
+    prepareImportRows(rows);
+    renderImportCenter();
+    toast(`${rows.length} linha(s) preparadas para revisão`,'success');
+  }catch(err){toast(err.message,'error');}
+}
+function renderImportReview(){
+  const head=document.getElementById('importReviewHead');
+  const list=document.getElementById('importReviewList');
+  if(!head||!list)return;
+  const rows=importDraft.rows||[];
+  if(!rows.length){
+    head.innerHTML='<div class="ss-l">Revisão em lote</div><div class="ss-s">Quando você preparar uma importação, ela aparece aqui.</div>';
+    list.innerHTML='';
+    return;
+  }
+  const counts={
+    create:rows.filter(r=>r.decision==='create').length,
+    reconcile:rows.filter(r=>r.decision==='reconcile').length,
+    replace:rows.filter(r=>r.decision==='replace').length,
+    merge:rows.filter(r=>r.decision==='merge').length,
+    skip:rows.filter(r=>r.decision==='skip').length
+  };
+  head.innerHTML=`<div class="ss-l">Revisão em lote</div><div class="ss-s">${rows.length} itens • criar ${counts.create} • reconciliar ${counts.reconcile} • substituir ${counts.replace} • mesclar ${counts.merge} • ignorar ${counts.skip}${importDraft.balanceDivergence!==null?` • divergência ${fmt(importDraft.balanceDivergence)}`:''}</div>`;
+  list.innerHTML=rows.map((row,idx)=>{
+    const match=row.matchId?S.transactions.find(t=>t.id===row.matchId):null;
+    return `<div class="import-review-row ${row.status}">
+      <div class="import-review-main">
+        <div><strong>${esc(row.description)}</strong><small>${fmtD(row.date)} • ${row.type==='income'?'Receita':'Despesa'} • ${fmt(row.amount)} • ${esc(row.category)}</small></div>
+        <span class="state-pill ${row.status==='duplicate'?'error':row.status==='match'?'syncing':'synced'}">${row.status==='duplicate'?'Duplicada':row.status==='match'?'Conciliar':'Nova'}</span>
+      </div>
+      ${match?`<div class="import-review-match">Atual: ${esc(match.desc)} • ${fmt(match.amount)} • ${fmtD(match.date)}</div>`:''}
+      <div class="import-inline-grid">
+        <label><span>Decisão</span><select class="fi sel" onchange="setImportRowField(${idx},'decision',this.value)"><option value="create" ${row.decision==='create'?'selected':''}>Criar novo</option><option value="reconcile" ${row.decision==='reconcile'?'selected':''}>Conciliar</option><option value="replace" ${row.decision==='replace'?'selected':''}>Usar importado</option><option value="merge" ${row.decision==='merge'?'selected':''}>Mesclar manual</option><option value="skip" ${row.decision==='skip'?'selected':''}>Ignorar</option></select></label>
+        <label><span>Categoria</span><select class="fi sel" onchange="setImportRowField(${idx},'category',this.value)">${allCats().map(cat=>`<option value="${esc(cat.name)}" ${cat.name===row.category?'selected':''}>${cat.ico} ${esc(cat.name)}</option>`).join('')}</select></label>
+        <label><span>Conta</span><select class="fi sel" onchange="setImportRowField(${idx},'accountId',this.value)">${S.accounts.map(acc=>`<option value="${esc(acc.id)}" ${acc.id===row.accountId?'selected':''}>${acc.icon} ${esc(acc.name)}</option>`).join('')}</select></label>
+      </div>
+      <div class="import-inline-actions"><button class="btn btn-g btn-sm" onclick="saveImportCategoryRule(${idx})">Salvar regra</button><button class="btn btn-g btn-sm" onclick="saveImportSubscriptionRule(${idx})">Salvar assinatura</button></div>
+    </div>`;
+  }).join('');
+}
+function setImportRowField(idx,key,value){
+  if(!importDraft.rows[idx])return;
+  importDraft.rows[idx][key]=value;
+}
+function saveImportCategoryRule(idx){
+  const row=importDraft.rows[idx];if(!row)return;
+  importCenterState.rules.categories.unshift({id:uid(),match:row.description,category:row.category});
+  importCenterState.rules.categories=dedupeBy(importCenterState.rules.categories,r=>`${normalizeTxText(r.match)}|${r.category}`);
+  saveImportCenterState(false);
+  renderImportCenter();
+  toast('Regra de categoria salva','success');
+}
+function saveImportSubscriptionRule(idx){
+  const row=importDraft.rows[idx];if(!row)return;
+  importCenterState.rules.subscriptions.unshift({id:uid(),day:Number(String(row.date).slice(8,10)),amount:row.amount,description:row.description,category:row.category});
+  importCenterState.rules.subscriptions=dedupeBy(importCenterState.rules.subscriptions,r=>`${r.day}|${roundCarImportNum(r.amount,2)}|${normalizeTxText(r.description)}`);
+  saveImportCenterState(false);
+  renderImportCenter();
+  toast('Regra de assinatura salva','success');
+}
+function applyImportProfile(name){
+  importDraft.profileName=name;
+  if(!name)return;
+  const profile=asObj(importCenterState.profiles.csv[name]);
+  importDraft.mapping=asObj(profile.mapping);
+  importDraft.dedupe=profile.dedupe||'exact';
+  renderImportCenter();
+}
+function saveCurrentImportProfile(){
+  if(importDraft.source!=='csv'||!importDraft.headers.length){toast('Abra um CSV primeiro para salvar perfil','info');return;}
+  const name=prompt('Nome do perfil de importação:',importDraft.profileName||'Banco principal');
+  if(!name)return;
+  importCenterState.profiles.csv[name]={mapping:importDraft.mapping,dedupe:importDraft.dedupe};
+  importDraft.profileName=name;
+  saveImportCenterState(false);
+  renderImportCenter();
+  toast('Perfil salvo','success');
+}
+function buildCompactImportSnapshot(){
+  const backup=buildBackupData();
+  return {
+    id:uid(),
+    at:Date.now(),
+    label:`${backup.stats.transactions} tx • ${fmtDateTime(Date.now())}`,
+    data:{transactions:backup.transactions,budgets:backup.budgets,goals:backup.goals,accounts:backup.accounts,categories:backup.categories,shopping:backup.shopping,car:backup.car,dueItems:backup.dueItems,settings:{...backup.settings,importCenter:importCenterState},avatarData:localStorage.getItem(AVK)||''}
+  };
+}
+function createImportSnapshot(){
+  importCenterState.snapshots.unshift(buildCompactImportSnapshot());
+  importCenterState.snapshots=importCenterState.snapshots.slice(0,5);
+  saveImportCenterState(false);
+}
+function renderImportSnapshots(){
+  const el=document.getElementById('importSnapshots');if(!el)return;
+  const items=importCenterState.snapshots||[];
+  el.innerHTML=`<div class="ss-l" style="margin:12px 0 8px">Snapshots rápidos</div>${items.length?items.map(item=>`<div class="sync-item"><div><div class="sync-title">${esc(item.label)}</div><div class="sync-meta">${fmtDateTime(item.at)}</div></div><button class="btn btn-g btn-sm" onclick="restoreImportSnapshot('${item.id}')">Restaurar</button></div>`).join(''):'<div class="sync-empty">O próximo import salva um snapshot de restauração rápida.</div>'}`;
+}
+function restoreImportSnapshot(id){
+  const item=(importCenterState.snapshots||[]).find(s=>s.id===id);
+  if(!item)return;
+  applyBackupData(normalizeBackupData({app:'Finanza',version:APP_VERSION,...item.data}));
+  refreshAll();
+  toast('Snapshot restaurado','success');
+}
+async function confirmImportTransactions(){
+  const rows=importDraft.rows||[];
+  if(!rows.length){toast('Nada preparado para importar','info');return;}
+  createImportSnapshot();
+  let created=0,reconciled=0,replaced=0,merged=0,skipped=0;
+  for(const row of rows){
+    const match=row.matchId?S.transactions.find(t=>t.id===row.matchId):null;
+    if(row.decision==='skip'){skipped++;continue;}
+    if(row.decision==='reconcile'&&match){
+      setTxImportMeta(match.id,{reconciled:true,reconciledAt:Date.now(),imported:true,source:importSourceLabel(importDraft.source),batchId:importDraft.batchId});
+      if(match.category==='A classificar'&&row.category!=='A classificar')match.category=row.category;
+      if(cfg.mode==='api')await api('PUT',`/api/transactions/${match.id}`,{type:match.type,description:match.desc,amount:match.amount,category:match.category,date:match.date,note:match.note||'',account_id:match.accountId,paid:match.paid,pending:match.pending});
+      else saveLocal();
+      reconciled++;
+      continue;
+    }
+    if((row.decision==='replace'||row.decision==='merge')&&match){
+      const payload={
+        type:row.type||match.type,
+        description:row.description||match.desc,
+        amount:row.amount||match.amount,
+        category:row.category||match.category,
+        date:row.date||match.date,
+        note:row.decision==='merge'?[match.note,row.note].filter(Boolean).join(' • '):(row.note||match.note||''),
+        account_id:row.accountId||match.accountId,
+        paid:match.paid,
+        pending:match.pending
+      };
+      if(cfg.mode==='api')await api('PUT',`/api/transactions/${match.id}`,payload);
+      Object.assign(match,{type:payload.type,desc:payload.description,amount:payload.amount,category:payload.category,date:payload.date,note:payload.note,accountId:payload.account_id||null});
+      setTxImportMeta(match.id,{reconciled:true,reconciledAt:Date.now(),imported:true,source:importSourceLabel(importDraft.source),batchId:importDraft.batchId});
+      if(cfg.mode==='local')saveLocal();
+      row.decision==='merge'?merged++:replaced++;
+      continue;
+    }
+    const tx={id:uid(),type:row.type,desc:row.description,amount:row.amount,category:row.category||'A classificar',date:row.date,note:row.note||'',accountId:row.accountId||null,installmentGroup:null,installmentNum:null,installmentTotal:null,recurGroup:null,paid:false,pending:row.category==='A classificar'};
+    if(cfg.mode==='api'){
+      const saved=await api('POST','/api/transactions',{type:tx.type,description:tx.desc,amount:tx.amount,category:tx.category,date:tx.date,note:tx.note,account_id:tx.accountId,paid:false,pending:tx.pending});
+      S.transactions.unshift(nTx({...saved,accountId:tx.accountId,pending:tx.pending}));
+      setTxImportMeta(saved.id,{imported:true,importedAt:Date.now(),source:importSourceLabel(importDraft.source),batchId:importDraft.batchId});
+    }else{
+      S.transactions.unshift(tx);
+      saveLocal();
+      setTxImportMeta(tx.id,{imported:true,importedAt:Date.now(),source:importSourceLabel(importDraft.source),batchId:importDraft.batchId});
+    }
+    created++;
+  }
+  refreshAll();
+  renderImportCenter();
+  toast(`Importação concluída: ${created} novos • ${reconciled} conciliados • ${replaced} substituídos • ${merged} mesclados • ${skipped} ignorados`,'success');
+}
+function openImportInbox(){
+  showPage('transactions');
+  setTimeout(()=>{
+    document.getElementById('fCat').value='A classificar';
+    document.getElementById('fTyp').value='all';
+    document.getElementById('txSrch').value='';
+    renderTx();
+  },120);
+}
 function logout(){if(!confirm('Sair da conta?'))return;localStorage.removeItem(CK);localStorage.removeItem(LK);location.reload();}
 function setConn(s){
   const dot=document.getElementById('connDot');if(dot)dot.className='conn-dot '+s;
@@ -648,6 +1121,34 @@ function defAccs(){return[{id:uid(),name:'Principal',icon:'\u{1F3E6}',type:'chec
 function asObj(v){return v&&typeof v==='object'&&!Array.isArray(v)?v:{};}
 function asArr(v){return Array.isArray(v)?v:[];}
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function normalizeImportCenterState(raw={}){
+  const base=asObj(raw);
+  return {
+    profiles:{csv:asObj(base.profiles?.csv)},
+    rules:{
+      categories:asArr(base.rules?.categories).map(r=>({id:String(r.id||uid()),match:String(r.match||''),category:normCatName(r.category||'A classificar')})).filter(r=>r.match),
+      subscriptions:asArr(base.rules?.subscriptions).map(r=>({id:String(r.id||uid()),day:Number(r.day)||0,amount:Number(r.amount)||0,description:String(r.description||''),category:normCatName(r.category||'Assinaturas')})).filter(r=>r.day&&r.amount>0)
+    },
+    snapshots:asArr(base.snapshots).slice(0,5),
+    txMeta:asObj(base.txMeta)
+  };
+}
+function loadImportCenterState(){
+  try{importCenterState=normalizeImportCenterState(JSON.parse(localStorage.getItem(IMPORT_CENTER_KEY)||'{}'));}catch{importCenterState=normalizeImportCenterState();}
+}
+function saveImportCenterState(persistRemote=true){
+  importCenterState=normalizeImportCenterState(importCenterState);
+  localStorage.setItem(IMPORT_CENTER_KEY,JSON.stringify(importCenterState));
+  if(persistRemote&&cfg.mode==='api')saveRemoteState().catch(()=>{});
+}
+function getTxImportMeta(id){return asObj(importCenterState.txMeta[id]);}
+function setTxImportMeta(id,patch){
+  importCenterState.txMeta[id]={...getTxImportMeta(id),...patch};
+  saveImportCenterState();
+}
+function clearImportDraft(){
+  importDraft={source:'csv',files:[],rows:[],headers:[],mapping:{},dedupe:'exact',profileName:'',text:'',batchId:'',balanceDivergence:null};
+}
 function nCarVehicle(v={}){
   return {
     id:String(v.id||uid()),
@@ -700,7 +1201,7 @@ function saveCar(){
 }
 function getAppSettings(){
   const avatarData=localStorage.getItem(AVK)||'';
-  return {theme:document.documentElement.dataset.theme||localStorage.getItem('fz_t')||'dark',rates:{cdi:RATES.cdi,selic:RATES.selic,monthlyIncomeCents,monthly_income_cents:monthlyIncomeCents,dueItems,car:carState?.vehicles?.length?carState:normalizeCarState(),avatarData,avatar_data:avatarData},widgetPrefs,widgetOrder,widgetFilters,txView:curView,activeList:slActiveList};
+  return {theme:document.documentElement.dataset.theme||localStorage.getItem('fz_t')||'dark',rates:{cdi:RATES.cdi,selic:RATES.selic,monthlyIncomeCents,monthly_income_cents:monthlyIncomeCents,dueItems,car:carState?.vehicles?.length?carState:normalizeCarState(),avatarData,avatar_data:avatarData},widgetPrefs,widgetOrder,widgetFilters,txView:curView,activeList:slActiveList,importCenter:importCenterState};
 }
 function applyRemoteSettings(settings={}){
   if(settings.theme)applyTheme(settings.theme);
@@ -727,6 +1228,8 @@ function applyRemoteSettings(settings={}){
   widgetPrefs=asObj(settings.widget_prefs||settings.widgetPrefs||widgetPrefs);
   widgetOrder=asArr(settings.widget_order||settings.widgetOrder||widgetOrder);
   widgetFilters=asObj(settings.widget_filters||settings.widgetFilters||widgetFilters);
+  importCenterState=normalizeImportCenterState(settings.import_center||settings.importCenter||importCenterState);
+  localStorage.setItem(IMPORT_CENTER_KEY,JSON.stringify(importCenterState));
   if(settings.tx_view||settings.txView)localStorage.setItem(VK,settings.tx_view||settings.txView);
   if(settings.active_list||settings.activeList)slActiveList=settings.active_list||settings.activeList;
 }
@@ -1722,12 +2225,15 @@ document.querySelectorAll('.nav-item,.fn-item,[data-page]').forEach(n=>{n.onclic
 function refreshAll(){renderDash();const id=currentPageId();if(id&&id!=='dashboard')showPage(id);}
 function txHTML(tx){
   const cat=getCat(tx.category);const fut=isFut(tx.date);const dl=dDiff(tx.date);
+  const meta=getTxImportMeta(tx.id);
   let cls='ti';if(tx.paid)cls+=' paid-tx';else if(tx.pending)cls+=' pnd-tx';else if(fut)cls+=' fut-tx';
   const amtCls=fut&&!tx.paid?'fut-c':tx.type==='income'?'income':'expense';
   const acc=S.accounts.find(a=>a.id===tx.accountId);
   let bdgs='';
   if(tx.paid)bdgs+='<span class="bdg bdg-ok">✓ pago</span>';
   else if(tx.pending)bdgs+='<span class="bdg bdg-p">❓ pendente</span>';
+  if(meta.imported)bdgs+='<span class="bdg">📥 importado</span>';
+  if(meta.reconciled)bdgs+='<span class="bdg">🔗 conciliado</span>';
   if(tx.installmentNum)bdgs+=`<span class="bdg bdg-i">💳 ${tx.installmentNum}/${tx.installmentTotal}</span>`;
   if(tx.recurGroup)bdgs+='<span class="bdg bdg-r">🔄</span>';
   if(fut&&!tx.paid)bdgs+=`<span class="bdg bdg-f">🔮 ${dl>0?dl+'d':'hoje'}</span>`;
@@ -1798,7 +2304,8 @@ function renderTx(){
   const tE=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   const fE=txs.filter(t=>t.type==='expense'&&isFut(t.date)).reduce((s,t)=>s+t.amount,0);
   const pnd=txs.filter(t=>t.pending).length;
-  document.getElementById('txSum').innerHTML=`<span style="color:var(--ac)">⬆ ${fmt(tI)}</span><span style="color:var(--dan)">⬇ ${fmt(tE)}</span>${fE>0?`<span style="color:var(--fut)">🔮 ${fmt(fE)}</span>`:''}${pnd>0?`<span style="color:var(--warn)">❓ ${pnd} pendente${pnd>1?'s':''}</span>`:''}<span style="color:var(--mt)">${txs.length} lançamento${txs.length!==1?'s':''}</span>`;
+  const inboxCt=txs.filter(t=>t.category==='A classificar'&&(getTxImportMeta(t.id).imported||t.pending)).length;
+  document.getElementById('txSum').innerHTML=`<span style="color:var(--ac)">⬆ ${fmt(tI)}</span><span style="color:var(--dan)">⬇ ${fmt(tE)}</span>${fE>0?`<span style="color:var(--fut)">🔮 ${fmt(fE)}</span>`:''}${pnd>0?`<span style="color:var(--warn)">❓ ${pnd} pendente${pnd>1?'s':''}</span>`:''}${inboxCt>0?`<button class="btn btn-g btn-sm" onclick="openImportInbox()">📥 Caixa de entrada ${inboxCt}</button>`:''}<span style="color:var(--mt)">${txs.length} lançamento${txs.length!==1?'s':''}</span>`;
   renderTxInsights(txs);
   const el=document.getElementById('txView');
   const renderLimit=curView==='c'?400:250;
@@ -2883,7 +3390,7 @@ function renderSet(){
   const jRow=document.getElementById('setJsonRow');if(jRow)jRow.style.display=loc?'flex':'none';
   const mRow=document.getElementById('setMigRow');if(mRow)mRow.style.display=loc?'flex':'none';
   renderAdminUsers();
-  if(canManageUsers()&&!adminUsers.length)loadAdminUsers();
+  if(canManageUsers())loadAdminUsers().catch(()=>{});
   renderCatChips();
   const pJ=document.getElementById('popJsonExp');if(pJ)pJ.style.display=loc?'':'none';
   const pM=document.getElementById('popMig');if(pM)pM.style.display=loc?'':'none';
@@ -2994,6 +3501,7 @@ function seedDemo(){
 }
 // INIT
 async function initApp(){
+  loadImportCenterState();
   loadWidgetPrefs();
   loadRates();
   loadDueItems();

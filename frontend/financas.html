@@ -126,7 +126,6 @@
   </nav>
   <div class="sb-bottom">
     <div class="conn-wrap">
-      <button class="reload-wide" onclick="doReload()" id="rlBtn" title="Atualizar dados"><span class="ri">🔄</span><span>Atualizar dados</span></button>
     </div>
     <div class="made-by">feito com carinho por <span>jeffef.dev</span></div>
     <div class="acct-area">
@@ -137,11 +136,6 @@
       </div>
       <div class="acct-pop" id="acctPop">
         <div class="pop-item" onclick="showPage('settings');closePop()">⚙️ Configurações</div>
-        <div class="pop-item" onclick="exportBackupFull();closePop()">💾 Backup completo</div>
-        <div class="pop-item" onclick="exportCSV();closePop()">📊 Exportar CSV</div>
-        <div class="pop-item" id="popJsonExp" style="display:none" onclick="exportJson();closePop()">💾 Backup JSON</div>
-        <div class="pop-item" id="popMig" style="display:none" onclick="migrateToOnline();closePop()">☁️ Migrar para online</div>
-        <div class="pop-div"></div>
         <div class="pop-item danger" onclick="logout();closePop()">🚪 Sair / Trocar conta</div>
       </div>
     </div>
@@ -175,7 +169,7 @@
   </div>
 </div>
 <div class="page" id="page-transactions">
-  <div class="ph"><div><div class="pt">Transações</div><div class="ps">Histórico completo</div></div><div style="display:flex;gap:6px;"><button class="btn btn-g btn-sm" onclick="exportCSV()">📤 CSV</button><button class="btn btn-p" onclick="openModal()">+ Nova</button></div></div>
+  <div class="ph"><div><div class="pt">Transações</div><div class="ps">Histórico completo</div></div><div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="btn btn-g btn-sm" onclick="openImportCenter()">Importar</button><button class="btn btn-p" onclick="openModal()">+ Nova</button></div></div>
   <div class="pbar" id="txPbar">
     <button class="pb" data-p="7d-p">7 dias</button>
     <button class="pb active" data-p="1m-p">1 mês</button>
@@ -261,8 +255,9 @@
 <div class="page" id="page-settings">
   <div class="ph"><div><div class="pt">Configurações</div><div class="ps">App e preferências</div></div>
   </div>
-  <div class="ss"><div class="ss-t">Dados do app</div>
-    <div class="ss-r"><div><div class="ss-l">Sincronizar dados</div><div class="ss-s">Recarrega do servidor</div></div><button class="btn btn-g btn-sm reload-btn" id="rlBtnS" onclick="doReload()"><span class="ri">🔄</span></button></div>
+  <div class="ss"><div class="ss-t">Central de dados</div>
+    <div class="ss-r"><div><div class="ss-l">Atualizar agora</div><div class="ss-s">Recarrega os dados da conta online quando você quiser conferir tudo de novo</div></div><button class="btn btn-g btn-sm reload-btn" id="rlBtnS" onclick="doReload()"><span class="ri">🔄</span> Atualizar</button></div>
+    <div class="ss-r"><div><div class="ss-l">Atalhos centralizados</div><div class="ss-s">Exportar, importar, backup e migração ficam só aqui para evitar botões repetidos no app</div></div></div>
   </div>
   <div class="ss"><div class="ss-t">Conta</div>
     <div class="ss-r"><div><div class="ss-l">Usuário</div><div class="ss-s" id="setUsr">—</div></div></div>
@@ -279,7 +274,7 @@
   </div>
   <div class="ss" id="adminUsersBox" style="display:none"><div class="ss-t">Painel admin</div>
     <div class="admin-panel-note">Dados de bastidor e controles sensíveis ficam visíveis só para admin.</div>
-    <div class="ss-r"><div><div class="ss-l">Usuários e papéis</div><div class="ss-s">Crie acessos para família, leitura ou convidados</div></div><button class="btn btn-g btn-sm" onclick="loadAdminUsers()">Atualizar</button></div>
+    <div class="ss-r"><div><div class="ss-l">Usuários e papéis</div><div class="ss-s">Crie acessos para família, leitura ou convidados</div></div></div>
     <div class="admin-user-form">
       <input type="text" class="fi" id="adminNewName" placeholder="Nome">
       <input type="text" class="fi" id="adminNewUser" placeholder="usuario">
@@ -596,6 +591,36 @@
   </div>
   <div class="import-preview-notes" id="importPreviewNotes"></div>
   <div class="ma"><button class="btn btn-p" style="flex:1" onclick="confirmImportBackup('merge')">Mesclar</button><button class="btn btn-g" onclick="confirmImportBackup('replace')">Substituir</button><button class="btn btn-g" onclick="closeM('importPreviewModal')">Cancelar</button></div>
+</div></div>
+<div class="ov" id="importCenterModal"><div class="modal import-center-modal">
+  <button class="mc" onclick="closeM('importCenterModal')">✕</button>
+  <div class="mt">Centro de Importação 4.3</div>
+  <div class="ms">CSV, OFX, pasta local e texto extraído de comprovantes. Revise, reconcilie e importe em lote.</div>
+  <div class="import-center-toolbar" id="importCenterToolbar"></div>
+  <div class="import-center-grid">
+    <div class="import-center-pane">
+      <div class="ss-r" style="padding:0 0 12px;border:0;">
+        <div><div class="ss-l">Fonte</div><div class="ss-s">Escolha o formato ou cole texto do extrato/comprovante</div></div>
+      </div>
+      <div class="import-source-tabs" id="importSourceTabs"></div>
+      <div id="importSourceBody"></div>
+      <div class="import-source-actions">
+        <button class="btn btn-g btn-sm" onclick="parseImportDraft()">Preparar revisão</button>
+        <button class="btn btn-g btn-sm" onclick="openImportInbox()">Caixa de entrada</button>
+      </div>
+      <div class="import-snapshots" id="importSnapshots"></div>
+    </div>
+    <div class="import-center-pane">
+      <div class="import-review-head" id="importReviewHead"></div>
+      <div class="import-mapping" id="importMapping"></div>
+      <div class="import-review-list" id="importReviewList"></div>
+    </div>
+  </div>
+  <div class="ma">
+    <button class="btn btn-p" style="flex:1" onclick="confirmImportTransactions()">Importar revisão</button>
+    <button class="btn btn-g" onclick="saveCurrentImportProfile()">Salvar perfil</button>
+    <button class="btn btn-g" onclick="closeM('importCenterModal')">Fechar</button>
+  </div>
 </div></div>
 <div class="twrap" id="twrap"></div>
 <div class="undo-bar" id="undoBar"><span id="undoLabel">Ação removida</span><div class="undo-actions"><button class="btn btn-g btn-sm" onclick="undoLastAction()">Desfazer</button><button class="btn btn-g btn-sm" onclick="dismissUndo()">Fechar</button></div></div>
