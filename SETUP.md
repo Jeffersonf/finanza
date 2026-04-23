@@ -89,7 +89,7 @@ curl -X POST https://SEU-APP.onrender.com/api/users \
   -d '{"name": "Joao", "username": "joao", "password": "senha-forte", "role": "editor"}'
 ```
 
-A resposta inclui a `api_key` do usuario. Os papeis aceitos pela API sao `admin`, `editor`, `read` e `guest`; perfis `read` e `guest` consultam dados, mas nao editam transacoes, metas, orcamentos, importacao ou estado remoto.
+A resposta inclui a `api_key` do usuario. Os papeis aceitos pela API sao `admin`, `editor`, `read` e `guest`; perfis `read` e `guest` consultam dados, mas nao editam transacoes, metas, orcamentos, importacao ou estado remoto. Contas com papel `admin` tambem podem listar, criar e remover usuarios pelo app, sem precisar digitar a `API_SECRET`.
 
 ## 6. Entrar no app
 

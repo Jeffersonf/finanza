@@ -277,6 +277,28 @@ if (isProd && !process.env.API_SECRET) {
 const ADMIN_KEY = process.env.API_SECRET || 'admin-key-troque-isso';
 
 function adminAuth(req, res, next) {
+  const key = req.headers['x-api-key'];
+  if (!key) return res.status(401).json({ error: 'Chave admin nao informada' });
+
+  if (key === ADMIN_KEY) {
+    return pool.query('SELECT * FROM users WHERE is_admin = TRUE LIMIT 1')
+      .then(({ rows }) => {
+        req.adminActor = rows[0] || { name: 'admin-key', role: 'admin', is_admin: true };
+        next();
+      })
+      .catch(e => res.status(500).json({ error: e.message }));
+  }
+
+  return pool.query('SELECT * FROM users WHERE api_key = $1', [key])
+    .then(({ rows }) => {
+      if (!rows.length) return res.status(401).json({ error: 'Chave invalida' });
+      if (userRole(rows[0]) !== 'admin') return res.status(403).json({ error: 'Apenas admin pode gerenciar usuarios' });
+      req.user = rows[0];
+      req.adminActor = rows[0];
+      next();
+    })
+    .catch(e => res.status(500).json({ error: e.message }));
+
   if (req.headers['x-api-key'] !== ADMIN_KEY)
     return res.status(401).json({ error: 'Admin key inválida' });
   next();
@@ -358,7 +380,7 @@ app.post('/api/password-reset', adminAuth, async (req, res) => {
       [hashPassword(password), username]
     );
     if (!rows.length) return res.status(404).json({ error: 'Usuário não encontrado' });
-    await auditEvent(pool, { name: 'admin-key', role: 'admin', is_admin: true }, 'senha_redefinida', 'user', rows[0].id, rows[0].username || rows[0].name);
+    await auditEvent(pool, req.adminActor, 'senha_redefinida', 'user', rows[0].id, rows[0].username || rows[0].name);
     res.json({ success: true, user: publicUser(rows[0]) });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -402,7 +424,7 @@ app.post('/api/users', adminAuth, async (req, res) => {
       'INSERT INTO users (name, username, password_hash, api_key, role, is_admin) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, username, api_key, role, is_admin, created_at',
       [name, username, hashPassword(password), api_key, role, role === 'admin']
     );
-    await auditEvent(pool, { name: 'admin-key', role: 'admin', is_admin: true }, 'usuario_criado', 'user', rows[0].id, `${rows[0].username || rows[0].name} (${userRole(rows[0])})`);
+    await auditEvent(pool, req.adminActor, 'usuario_criado', 'user', rows[0].id, `${rows[0].username || rows[0].name} (${userRole(rows[0])})`);
     res.status(201).json(rows[0]);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -446,7 +468,7 @@ app.get('/api/users', adminAuth, async (req, res) => {
 app.delete('/api/users/:id', adminAuth, async (req, res) => {
   try {
     const { rows } = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id, name, username, role, is_admin', [req.params.id]);
-    if (rows.length) await auditEvent(pool, { name: 'admin-key', role: 'admin', is_admin: true }, 'usuario_removido', 'user', rows[0].id, rows[0].username || rows[0].name);
+    if (rows.length) await auditEvent(pool, req.adminActor, 'usuario_removido', 'user', rows[0].id, rows[0].username || rows[0].name);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });

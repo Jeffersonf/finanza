@@ -17,6 +17,7 @@ let editId=null,accEditId=null,qaTyp='expense',qaVal='',qaSelCat='';
 let privacyMode=false;
 let syncHistory=[];
 let auditHistory=[];
+let adminUsers=[];
 let undoState=null;
 let importPreviewState=null;
 let srchScope='all';
@@ -232,6 +233,66 @@ async function resetPassword(){
     toast('Senha redefinida. Entrando...','success');
     doSetup();
   }catch(e){err.textContent='Erro: '+e.message;err.classList.add('show');}
+}
+function canManageUsers(){return cfg.mode==='api'&&cfg.role==='admin';}
+function roleLabel(role){
+  return {admin:'Admin',editor:'Editor',read:'Leitura',guest:'Convidado'}[role]||role||'Editor';
+}
+async function loadAdminUsers(){
+  const box=document.getElementById('adminUsersBox');
+  if(!canManageUsers()){if(box)box.style.display='none';return;}
+  if(box)box.style.display='block';
+  const list=document.getElementById('adminUsersList');
+  if(list)list.innerHTML='<div class="sync-empty">Carregando usuários...</div>';
+  try{
+    adminUsers=await api('GET','/api/users');
+    renderAdminUsers();
+  }catch(err){
+    if(list)list.innerHTML=`<div class="sync-empty">Não foi possível carregar usuários: ${esc(err.message)}</div>`;
+  }
+}
+function renderAdminUsers(){
+  const box=document.getElementById('adminUsersBox');
+  if(box)box.style.display=canManageUsers()?'block':'none';
+  const list=document.getElementById('adminUsersList');if(!list)return;
+  if(!canManageUsers()){list.innerHTML='';return;}
+  list.innerHTML=adminUsers.length?adminUsers.map(u=>`
+    <div class="admin-user-row">
+      <div class="admin-user-main">
+        <div class="sync-title">${esc(u.name||u.username||'Usuário')}</div>
+        <div class="sync-meta">${esc(u.username||'sem login')} • ${roleLabel(u.role)}${u.is_admin?' • admin':''}</div>
+      </div>
+      <button class="btn btn-d btn-sm" onclick="deleteAdminUser('${u.id}')" ${u.id===cfg.userId?'disabled title="Você não pode remover sua própria conta aqui"':''}>Remover</button>
+    </div>
+  `).join(''):'<div class="sync-empty">Nenhum usuário encontrado.</div>';
+}
+async function createAdminUser(){
+  if(!canManageUsers()){toast('Apenas admin online pode criar usuários','error');return;}
+  const name=document.getElementById('adminNewName')?.value.trim()||'Usuário';
+  const username=document.getElementById('adminNewUser')?.value.trim();
+  const password=document.getElementById('adminNewPass')?.value||'';
+  const role=document.getElementById('adminNewRole')?.value||'editor';
+  if(!username||!password){toast('Preencha usuário e senha','error');return;}
+  try{
+    await api('POST','/api/users',{name,username,password,role});
+    ['adminNewName','adminNewUser','adminNewPass'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    toast('Usuário criado','success');
+    await loadAdminUsers();
+    await loadPersistentAuditHistory();
+    updateTrustPanel();
+  }catch(err){toast('Erro: '+err.message,'error');}
+}
+async function deleteAdminUser(id){
+  if(!canManageUsers())return;
+  if(id===cfg.userId){toast('Use outra conta admin para remover esta conta','error');return;}
+  if(!confirm('Remover este usuário?'))return;
+  try{
+    await api('DELETE',`/api/users/${id}`);
+    toast('Usuário removido','success');
+    await loadAdminUsers();
+    await loadPersistentAuditHistory();
+    updateTrustPanel();
+  }catch(err){toast('Erro: '+err.message,'error');}
 }
 function startLocal(){cfg={url:'',key:'',mode:'local',userName:'Eu',userId:'',role:''};localStorage.setItem(CK,JSON.stringify(cfg));hideSetup();initApp();}
 function normalizeBackupData(d){
@@ -2721,6 +2782,8 @@ function renderSet(){
   const loc=cfg.mode==='local';
   const jRow=document.getElementById('setJsonRow');if(jRow)jRow.style.display=loc?'flex':'none';
   const mRow=document.getElementById('setMigRow');if(mRow)mRow.style.display=loc?'flex':'none';
+  renderAdminUsers();
+  if(canManageUsers()&&!adminUsers.length)loadAdminUsers();
   renderCatChips();
   const pJ=document.getElementById('popJsonExp');if(pJ)pJ.style.display=loc?'':'none';
   const pM=document.getElementById('popMig');if(pM)pM.style.display=loc?'':'none';
