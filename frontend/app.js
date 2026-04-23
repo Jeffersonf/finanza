@@ -3344,6 +3344,117 @@ function renderBudAlerts(){
 }
 
 // ════════════════════════════════════════════════════════════
+// CENTRO DE INTELIGÊNCIA 4.2
+// ════════════════════════════════════════════════════════════
+function monthStatsFor(date){
+  const txs=getMonthTx(date).filter(t=>!isFut(t.date)&&!t.paid);
+  const income=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const expense=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const catMap=new Map();
+  txs.filter(t=>t.type==='expense').forEach(t=>catMap.set(t.category,(catMap.get(t.category)||0)+t.amount));
+  return {date,txs,income,expense,balance:income-expense,cats:[...catMap.entries()].sort((a,b)=>b[1]-a[1])};
+}
+function recentMonthStats(count=12,offset=0){
+  return Array.from({length:count},(_,i)=>monthStatsFor(new Date(curDt.getFullYear(),curDt.getMonth()-i-offset,1))).filter(m=>m.income||m.expense);
+}
+function average(values){
+  return values.length?values.reduce((s,v)=>s+v,0)/values.length:0;
+}
+function detectSubscriptions(months){
+  const map=new Map();
+  months.flatMap(m=>m.txs).filter(t=>t.type==='expense').forEach(t=>{
+    const key=normalizeTxText(t.desc).replace(/\s+\(\d+\/\d+\)$/,'').slice(0,28)+'|'+t.category;
+    const cur=map.get(key)||{desc:t.desc.replace(/\s+\(\d+\/\d+\)$/,''),category:t.category,amounts:[],months:new Set(),last:t.date,recur:!!t.recurGroup};
+    cur.amounts.push(t.amount);
+    cur.months.add(t.date.slice(0,7));
+    if(t.date>cur.last)cur.last=t.date;
+    cur.recur=cur.recur||!!t.recurGroup||normalizeTxText(t.category).includes('assin');
+    map.set(key,cur);
+  });
+  return [...map.values()]
+    .map(x=>({...x,avg:average(x.amounts),count:x.months.size}))
+    .filter(x=>x.count>=2||x.recur)
+    .sort((a,b)=>b.avg-a.avg)
+    .slice(0,6);
+}
+function renderIntelligencePanel(){
+  const months=recentMonthStats(12);
+  const cur=monthStatsFor(curDt);
+  const prev=recentMonthStats(6,1);
+  const avgExp=average(prev.map(m=>m.expense));
+  const avgInc=average(prev.map(m=>m.income));
+  const avgSav=avgInc-avgExp;
+  const curBal=S.accounts.reduce((s,a)=>s+getAccBal(a.id),0);
+  const currentDaily=cur.expense/Math.max(1,new Date().getDate());
+  const projectedMonthExpense=currentDaily*monthBounds(curDt).days;
+  const atypical=avgExp&&cur.expense>avgExp*1.25;
+  const subscriptions=detectSubscriptions(months);
+  const currentMonthKey=today().slice(0,7);
+  const forgotten=subscriptions.filter(s=>s.last.slice(0,7)!==currentMonthKey).slice(0,3);
+  const futureDue=dueOccurrences(offD(new Date(),180)).filter(o=>o.date>=today());
+  const due30=futureDue.filter(o=>o.date<=offD(new Date(),30)).reduce((s,o)=>s+o.item.amount,0);
+  const risk30=curBal+avgSav-due30;
+  const horizons=[30,60,90,180].map(days=>{
+    const monthsAhead=days/30;
+    const base=curBal+(avgSav*monthsAhead);
+    return {
+      days,
+      conservative:base-(avgExp*.15*monthsAhead)-due30*(days<=30?1:.25),
+      base,
+      optimistic:base+(Math.max(avgSav,0)*.2*monthsAhead)
+    };
+  });
+  const best=[...months].sort((a,b)=>b.balance-a.balance)[0];
+  const worst=[...months].sort((a,b)=>a.balance-b.balance)[0];
+  const topCats=cur.cats.slice(0,5);
+  const budgetRisks=S.budgets.map(b=>{
+    const spent=cur.cats.find(([cat])=>cat===b.category)?.[1]||0;
+    return {...b,spent,pct:b.limit?spent/b.limit*100:0};
+  }).filter(b=>b.pct>=75).sort((a,b)=>b.pct-a.pct).slice(0,3);
+  const calendar=[
+    ...S.transactions.filter(t=>t.date>=today()&&t.date<=offD(new Date(),35)).map(t=>({date:t.date,title:t.desc,meta:t.type==='income'?'entrada':'saída',amount:t.amount,tone:t.type==='income'?'pos':'neg'})),
+    ...futureDue.filter(o=>o.date<=offD(new Date(),35)).map(o=>({date:o.date,title:o.item.name,meta:'vencimento',amount:o.item.amount,tone:'fut'})),
+    ...S.goals.filter(g=>g.deadline>=today()&&g.deadline<=offD(new Date(),180)).map(g=>({date:g.deadline,title:g.name,meta:'meta',amount:Math.max(0,g.target-g.current),tone:'neu'}))
+  ].sort((a,b)=>a.date.localeCompare(b.date)).slice(0,8);
+  const goals=S.goals.slice(0,4).map(g=>{
+    const rem=Math.max(0,g.target-g.current);
+    const monthly=Number(g.monthly)||Math.max(1,rem/Math.max(1,dDiff(g.deadline)/30));
+    const monthsToGoal=monthly?Math.ceil(rem/monthly):null;
+    const monthsLeft=Math.max(1,Math.ceil(dDiff(g.deadline)/30));
+    return {...g,rem,monthly,monthsToGoal,needPerMonth:rem/monthsLeft};
+  });
+  const diary=cur.txs.filter(t=>t.note).slice(0,5);
+  const actions=[];
+  if(risk30<0)actions.push(`Preservar caixa: próximos 30 dias podem fechar ${fmt(Math.abs(risk30))} negativos.`);
+  if(budgetRisks[0])actions.push(`Olhar ${budgetRisks[0].category}: já está em ${Math.round(budgetRisks[0].pct)}% do limite.`);
+  if(forgotten[0])actions.push(`Conferir ${forgotten[0].desc}: recorrente não apareceu neste mês.`);
+  if(!actions.length)actions.push('Manter ritmo: sem risco crítico hoje, revise lançamentos pendentes e próximas contas.');
+  const cuts=topCats.slice(0,3).map(([cat,total])=>{
+    const verbs=['renegociar','planejar melhor','pausar ou trocar'];
+    return `${cat}: ${verbs[hashStr(cat)%verbs.length]} parte de ${fmt(total)} sem cortar no impulso.`;
+  });
+  const monthLabel=m=>`${String(m.date.getMonth()+1).padStart(2,'0')}/${String(m.date.getFullYear()).slice(-2)}`;
+  return `<div class="intel-panel">
+    <div class="intel-head"><div><div class="ct">Centro de inteligência financeira</div><div class="cs">Leitura humana do mês, riscos e próximos movimentos</div></div><button class="btn btn-g btn-sm" onclick="showPage('future')">Ver calendário</button></div>
+    <div class="intel-grid">
+      <div class="intel-card hero"><span>O que posso fazer hoje?</span>${actions.map(a=>`<strong>${esc(a)}</strong>`).join('')}</div>
+      <div class="intel-card"><span>Risco 30 dias</span><strong class="${risk30>=0?'pos':'neg'}">${fmt(risk30)}</strong><small>${risk30>=0?'saldo suporta compromissos próximos':'risco de fechar negativo se nada mudar'}</small></div>
+      <div class="intel-card"><span>Mês atípico</span><strong class="${atypical?'neg':'pos'}">${atypical?'Sim':'Não'}</strong><small>${avgExp?`mês atual ${fmt(cur.expense)} vs média ${fmt(avgExp)}`:'sem histórico suficiente'}</small></div>
+      <div class="intel-card"><span>Benchmark</span><strong>${best?monthLabel(best):'—'}</strong><small>melhor mês ${best?fmt(best.balance):'sem dados'} • pior ${worst?monthLabel(worst):'—'} ${worst?fmt(worst.balance):''}</small></div>
+    </div>
+    <div class="intel-section"><div class="intel-title">Previsão explicada</div><div class="intel-horizons">${horizons.map(h=>`<div><span>${h.days}d</span><strong>${fmt(h.base)}</strong><small>cons. ${fmt(h.conservative)} • otim. ${fmt(h.optimistic)}</small></div>`).join('')}</div><p>Motivo: uso média de receitas/despesas recentes, saldo atual e vencimentos próximos. Conservador adiciona pressão extra de gastos; otimista considera melhora parcial da sobra.</p></div>
+    <div class="intel-columns">
+      <div class="intel-section"><div class="intel-title">Categorias que drenam</div>${topCats.length?topCats.map(([cat,total])=>`<div class="intel-row"><span>${esc(cat)}</span><strong>${fmt(total)}</strong></div>`).join(''):'<div class="sync-empty">Sem despesas no mês.</div>'}</div>
+      <div class="intel-section"><div class="intel-title">Assinaturas e esquecidos</div>${subscriptions.length?subscriptions.map(s=>`<div class="intel-row"><span>${esc(s.desc)}</span><strong>${fmt(s.avg)}</strong><small>${s.count} mês(es) • último ${fmtD(s.last)}</small></div>`).join(''):'<div class="sync-empty">Nenhum padrão recorrente ainda.</div>'}</div>
+      <div class="intel-section"><div class="intel-title">Simulador de metas</div>${goals.length?goals.map(g=>`<div class="intel-row"><span>${esc(g.name)}</span><strong>${g.monthsToGoal?g.monthsToGoal+' meses':'—'}</strong><small>guardar ${fmt(g.monthly)}/mês • precisa ${fmt(g.needPerMonth)}/mês até ${fmtD(g.deadline)}</small></div>`).join(''):'<div class="sync-empty">Crie uma meta para simular.</div>'}</div>
+      <div class="intel-section"><div class="intel-title">Calendário financeiro</div>${calendar.length?calendar.map(i=>`<div class="intel-row"><span>${fmtD(i.date)} • ${esc(i.title)}</span><strong class="${i.tone}">${fmt(i.amount)}</strong><small>${esc(i.meta)}</small></div>`).join(''):'<div class="sync-empty">Sem compromissos próximos.</div>'}</div>
+    </div>
+    <div class="intel-section"><div class="intel-title">Sugestões sem moralismo</div>${cuts.length?cuts.map(c=>`<div class="intel-tip">${esc(c)}</div>`).join(''):'<div class="intel-tip">Quando houver mais gastos, eu sugiro cortes, trocas ou renegociações com contexto.</div>'}</div>
+    <div class="intel-section"><div class="intel-title">Diário financeiro do mês</div>${diary.length?diary.map(t=>`<div class="intel-tip">${fmtD(t.date)} • ${esc(t.desc)}: ${esc(t.note)}</div>`).join(''):'<div class="intel-tip">Notas dos lançamentos aparecem aqui para explicar o mês depois.</div>'}</div>
+  </div>`;
+}
+
+// ════════════════════════════════════════════════════════════
 // EDIO INLINE
 // ════════════════════════════════════════════════════════════
 let _editingInline=null;
@@ -3517,6 +3628,7 @@ const WIDGET_DEFS = [
   { id:'quickactions', ico:'⚡', name:'Ações rápidas',      desc:'Atalhos úteis para o dia a dia',    default:true },
   { id:'charts',    ico:'📊', name:'Gráficos',              desc:'Fluxo de caixa e categorias',        default:true },
   { id:'compare',   ico:'📅', name:'Comparativo mensal',    desc:'Este mês vs mês anterior',         default:true },
+  { id:'intelligence',ico:'🧠', name:'Inteligência 4.2',     desc:'Risco, metas, calendário e decisões', default:true },
   { id:'projection',ico:'🔭', name:'Dica de projeção',      desc:'Tendência dos próximos meses',       default:true },
   { id:'weekly',    ico:'📆', name:'Dica da semana',        desc:'Gastos e economia da semana',        default:true },
   { id:'anomaly',   ico:'💡', name:'Dica fora da curva',    desc:'Categorias acima da média',          default:true },
@@ -3639,6 +3751,7 @@ function renderDash() {
   const renderers={
     cards:widgetCards,quickactions:widgetQuickActions,ministats:widgetMiniStats,accounts:widgetAccounts,vehicles:widgetVehicles,shopping:widgetShoppingDash,
     compare:()=>'<div class="dash-section" id="monthCompare"></div>',
+    intelligence:renderIntelligencePanel,
     projection:()=>'<div class="dash-section" id="projCard"></div>',
     weekly:()=>'<div class="dash-section" id="wsum"></div>',
     anomaly:()=>'<div class="dash-section" id="anom"></div>',
