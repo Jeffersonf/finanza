@@ -4587,6 +4587,21 @@ function widgetMiniStats(){
     <div class="mini-stat"><div class="ms-ico">🗓️</div><div class="ms-val" style="color:var(--ac2)">${diasRest}</div><div class="ms-lbl">${scope==='30d'?'Dias do mes':'Dias restantes'}</div></div>
   </div>`;
 }
+function widgetQuickActions(){
+  const limit=Number((widgetFilters?.quickactions?.limit)||6);
+  const actions=[
+    {icon:'+',title:'Nova transação',hint:'Lançar gasto ou receita',className:'primary',fn:'openModal()'},
+    {icon:'📥',title:'Importar',hint:'CSV, OFX, Pix, OCR e texto',className:'primary',fn:'openImportCenter()'},
+    {icon:'📌',title:'Vencimento',hint:'Conta futura ou fixa',fn:'openDueModal()'},
+    {icon:'🎯',title:'Orçamento',hint:'Definir limite mensal',fn:'openBudModal()'},
+    {icon:'🏦',title:'Conta',hint:'Saldo ou carteira',fn:'openAccModal()'},
+    {icon:'🏆',title:'Meta',hint:'Objetivo financeiro',fn:'openGoalModal()'}
+  ].slice(0,Math.max(limit,4));
+  return `<div class="quick-actions-widget dash-section">
+    <div class="bh"><div><div class="ct">Ações rápidas</div><div class="cs">Capture, importe e organize sem sair da dashboard</div></div></div>
+    <div class="quick-actions-grid">${actions.map(a=>`<button class="quick-action-card ${a.className||''}" onclick="${a.fn}"><span class="quick-action-ico">${a.icon}</span><strong>${esc(a.title)}</strong><small>${esc(a.hint)}</small></button>`).join('')}</div>
+  </div>`;
+}
 function widgetAccounts(){
   if(!S.accounts.length)return '';
   const limit=(widgetFilters?.accounts?.limit)||'5';
@@ -4650,7 +4665,7 @@ function widgetRecent(){
   const limit=Number((widgetFilters?.recent?.limit)||6);
   const scope=(widgetFilters?.recent?.scope)||'all';
   const sorted=[...S.transactions].filter(t=>!isFut(t.date)&&!t.paid&&(type==='all'||t.type===type)).filter(t=>{if(scope!=='month')return true;const d=new Date(t.date+'T12:00:00');return d.getMonth()===curDt.getMonth()&&d.getFullYear()===curDt.getFullYear();}).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,limit);
-  return `<div class="box dash-section"><div class="bh"><div class="ct">Ultimas transacoes</div><button class="btn btn-g btn-sm" onclick="showPage('transactions')">Ver todas</button></div><div class="recent-list" id="recList">${sorted.length?sorted.map(recentTxHTML).join(''):'<div class="empty"><span class="ei">💸</span><p>Nenhuma transacao ainda.</p></div>'}</div></div>`;
+  return `<div class="box dash-section"><div class="bh"><div class="ct">Ultimas transacoes</div><div class="widget-header-actions"><button class="btn btn-g btn-sm" onclick="openImportCenter()">📥 Importar</button><button class="btn btn-g btn-sm" onclick="showPage('transactions')">Ver todas</button></div></div><div class="recent-list" id="recList">${sorted.length?sorted.map(recentTxHTML).join(''):'<div class="empty"><span class="ei">💸</span><p>Nenhuma transacao ainda.</p></div>'}</div></div>`;
 }
 function widgetShoppingDash(){
   let data={lists:[],items:[]};
