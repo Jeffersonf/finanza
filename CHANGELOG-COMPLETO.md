@@ -2,6 +2,50 @@
 
 Documento consolidado do que ja foi construido ate a linha `4.0.0`, com base no estado atual do repositorio, nos roadmaps existentes e no historico recente de commits.
 
+Observacao importante:
+
+- `ROADMAP-COMPLETO.md` usa `[x]` como "quero fazer", nao como "feito".
+- Este changelog registra o que realmente entrou no produto.
+- A versao publicada continua `4.0.0`, mas o repositorio ja acumulou rodadas posteriores sem bump formal de versao.
+
+## Pos-4.0.0 - Rodadas entregues sem bump de versao
+
+### 4.1 - Usabilidade sem atrito
+
+- [x] Cadastro principal de transacao exigindo so o valor.
+- [x] Defaults inteligentes para descricao, categoria, data e conta.
+- [x] Busca global com acoes diretas como editar, pagar, duplicar e abrir contexto relacionado.
+- [x] Edicao inline de vencimentos.
+- [x] `Enter` para salvar nos fluxos principais.
+- [x] Melhoria de acessibilidade, foco e estados vazios.
+- [x] Polimento mobile nas telas principais.
+
+### 4.2 - Inteligencia financeira pessoal
+
+- [x] Simuladores de metas e planejamento.
+- [x] Projecoes, comparativos e leituras em linguagem humana.
+- [x] Alertas, ranking de categorias e sugestoes de acao.
+- [x] Widget experimental de inteligencia implementado e depois removido por decisao de foco e qualidade.
+
+### 4.10 - Fundacao confiavel
+
+- [x] Suite de testes para parser de transacao.
+- [x] Testes de permissoes.
+- [x] Testes e schema para backup/importacao JSON.
+- [x] Migracoes de backup por versao.
+- [x] Fixture demo importavel.
+- [x] Padronizacao de `npm run check` e `npm test`.
+- [x] Endurecimento de permissoes defensivas e retornos de importacao.
+
+### 4.11 - Performance e foco no controle de gastos
+
+- [x] Dashboard reorganizada para priorizar o fluxo diario.
+- [x] Widgets classificados em `Essencial`, `Apoio` e `Analise`.
+- [x] Ordem padrao mais focada em captura, revisao e decisao de gasto.
+- [x] Reducao de re-render completo em ajustes pontuais de widgets.
+- [x] `financas.html` reduzido a entrada leve apontando para `index.html`.
+- [x] Home com texto e organizacao mais orientados ao controle de gastos.
+
 ## 4.0.0 - Linha principal web + Capacitor + API
 
 Status: concluida e pronta para evolucao incremental.
