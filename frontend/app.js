@@ -2,7 +2,7 @@
 const APP_VERSION='4.0.0';
 const DEFAULT_API_URL='https://finanza-api.onrender.com';
 const CK='fz_cfg',LK='fz_local',CCK='fz_cats',VK='fz_view',AVK='fz_avatar',PRIVK='fz_privacy',CAR_KEY='fz_car';
-const RATES_KEY='fz_rates', WIDGET_ORDER_KEY='fz_widget_order', WIDGET_SIZE_KEY='fz_widget_sizes', WIDGET_FILTER_KEY='fz_widget_filters', DUE_KEY='fz_due_items', TX_FILTERS_KEY='fz_tx_filters';
+const RATES_KEY='fz_rates', WIDGET_ORDER_KEY='fz_widget_order', WIDGET_FILTER_KEY='fz_widget_filters', DUE_KEY='fz_due_items', TX_FILTERS_KEY='fz_tx_filters';
 const SAVE_STATE_KEY='fz_save_state', SYNC_HISTORY_KEY='fz_sync_history', AUDIT_HISTORY_KEY='fz_audit_history';
 let monthlyIncomeCents=0;
 let dueItems=[];
@@ -579,7 +579,7 @@ function saveCar(){
 }
 function getAppSettings(){
   const avatarData=localStorage.getItem(AVK)||'';
-  return {theme:document.documentElement.dataset.theme||localStorage.getItem('fz_t')||'dark',rates:{cdi:RATES.cdi,selic:RATES.selic,monthlyIncomeCents,monthly_income_cents:monthlyIncomeCents,dueItems,car:carState?.vehicles?.length?carState:normalizeCarState(),avatarData,avatar_data:avatarData},widgetPrefs,widgetOrder,widgetSizes,widgetFilters,txView:curView,activeList:slActiveList};
+  return {theme:document.documentElement.dataset.theme||localStorage.getItem('fz_t')||'dark',rates:{cdi:RATES.cdi,selic:RATES.selic,monthlyIncomeCents,monthly_income_cents:monthlyIncomeCents,dueItems,car:carState?.vehicles?.length?carState:normalizeCarState(),avatarData,avatar_data:avatarData},widgetPrefs,widgetOrder,widgetFilters,txView:curView,activeList:slActiveList};
 }
 function applyRemoteSettings(settings={}){
   if(settings.theme)applyTheme(settings.theme);
@@ -605,7 +605,6 @@ function applyRemoteSettings(settings={}){
   localStorage.setItem(RATES_KEY,JSON.stringify({cdi:RATES.cdi,selic:RATES.selic,monthlyIncomeCents,monthly_income_cents:monthlyIncomeCents,dueItems,avatarData:localStorage.getItem(AVK)||''}));
   widgetPrefs=asObj(settings.widget_prefs||settings.widgetPrefs||widgetPrefs);
   widgetOrder=asArr(settings.widget_order||settings.widgetOrder||widgetOrder);
-  widgetSizes=asObj(settings.widget_sizes||settings.widgetSizes||widgetSizes);
   widgetFilters=asObj(settings.widget_filters||settings.widgetFilters||widgetFilters);
   if(settings.tx_view||settings.txView)localStorage.setItem(VK,settings.tx_view||settings.txView);
   if(settings.active_list||settings.activeList)slActiveList=settings.active_list||settings.activeList;
@@ -3247,7 +3246,6 @@ const WIDGET_DEFS = [
 
 let widgetPrefs = {};
 let widgetOrder = [];
-let widgetSizes = {};
 let widgetFilters = {};
 
 function loadWidgetPrefs() {
@@ -3260,11 +3258,9 @@ function loadWidgetPrefs() {
     if (widgetPrefs[w.id] === undefined) widgetPrefs[w.id] = w.default;
   });
   try{widgetOrder=asArr(JSON.parse(localStorage.getItem(WIDGET_ORDER_KEY)||'[]'));}catch{widgetOrder=[];}
-  try{widgetSizes=asObj(JSON.parse(localStorage.getItem(WIDGET_SIZE_KEY)||'{}'));}catch{widgetSizes={};}
   try{widgetFilters=asObj(JSON.parse(localStorage.getItem(WIDGET_FILTER_KEY)||'{}'));}catch{widgetFilters={};}
   const ids=WIDGET_DEFS.map(w=>w.id);
   widgetOrder=[...widgetOrder.filter(id=>ids.includes(id)),...ids.filter(id=>!widgetOrder.includes(id))];
-  widgetSizes=Object.fromEntries(Object.entries(widgetSizes).filter(([id])=>ids.includes(id)));
   ensureAtLeastOneWidget();
 }
 
@@ -3273,7 +3269,6 @@ function saveWidgetPrefs() {
   if(cfg.mode==='api')saveRemoteState().catch(()=>{});
 }
 function saveWidgetOrder(){localStorage.setItem(WIDGET_ORDER_KEY,JSON.stringify(widgetOrder));if(cfg.mode==='api')saveRemoteState().catch(()=>{});}
-function saveWidgetSizes(){localStorage.setItem(WIDGET_SIZE_KEY,JSON.stringify(widgetSizes));if(cfg.mode==='api')saveRemoteState().catch(()=>{});}
 function saveWidgetFilters(){localStorage.setItem(WIDGET_FILTER_KEY,JSON.stringify(widgetFilters));if(cfg.mode==='api')saveRemoteState().catch(()=>{});}
 function isWidgetOn(id) {
   return widgetPrefs[id] !== false;
@@ -3310,25 +3305,15 @@ function resetDashboardWidgets(){
   widgetPrefs={};
   WIDGET_DEFS.forEach(w=>widgetPrefs[w.id]=w.default);
   widgetOrder=WIDGET_DEFS.map(w=>w.id);
-  widgetSizes={};
   widgetFilters={};
   ensureAtLeastOneWidget();
   localStorage.setItem(WIDGETS_KEY,JSON.stringify(widgetPrefs));
   localStorage.setItem(WIDGET_ORDER_KEY,JSON.stringify(widgetOrder));
-  localStorage.setItem(WIDGET_SIZE_KEY,JSON.stringify(widgetSizes));
   localStorage.setItem(WIDGET_FILTER_KEY,JSON.stringify(widgetFilters));
   if(cfg.mode==='api')saveRemoteState().catch(()=>{});
   renderWidgetToggles();
   renderDash();
   toast('Dashboard voltou aos padrões','success');
-}
-function widgetSize(id){return ['compact','normal','large'].includes(widgetSizes[id])?widgetSizes[id]:'normal';}
-function cycleWidgetSize(id){
-  const next={compact:'normal',normal:'large',large:'compact'}[widgetSize(id)]||'normal';
-  widgetSizes[id]=next;
-  saveWidgetSizes();
-  renderDash();
-  toast(next==='compact'?'Widget compacto':next==='large'?'Widget grande':'Widget normal','info');
 }
 function setWidgetFilter(widget,key,value){
   widgetFilters[widget]=asObj(widgetFilters[widget]);
@@ -3359,10 +3344,8 @@ function renderDash() {
   const ids=WIDGET_DEFS.map(w=>w.id);
   widgetPrefs=asObj(widgetPrefs);
   widgetOrder=asArr(widgetOrder);
-  widgetSizes=asObj(widgetSizes);
   widgetFilters=asObj(widgetFilters);
   widgetOrder=[...widgetOrder.filter(id=>ids.includes(id)),...ids.filter(id=>!widgetOrder.includes(id))];
-  widgetSizes=Object.fromEntries(Object.entries(widgetSizes).filter(([id])=>ids.includes(id)));
   ensureAtLeastOneWidget();
 
   const renderers={
@@ -3376,10 +3359,8 @@ function renderDash() {
   };
   const wrap=(id,html)=>{
     if(!html)return '';
-    const size=widgetSize(id);
-    const sizeLabel=size==='compact'?'Compacto':size==='large'?'Grande':'Normal';
-    const tools=`<div class="widget-tools"><button class="widget-size-btn" onclick="cycleWidgetSize('${id}')" title="Tamanho: ${sizeLabel}" aria-label="Alterar tamanho do widget">${size==='compact'?'P':size==='large'?'G':'M'}</button><div class="widget-stepper"><button class="widget-move-btn" onclick="moveWidgetStep('${id}',-1)" title="Mover widget para cima" aria-label="Mover widget para cima">▲</button><button class="widget-move-btn" onclick="moveWidgetStep('${id}',1)" title="Mover widget para baixo" aria-label="Mover widget para baixo">▼</button></div><button class="widget-drag-btn" title="Arrastar widget" aria-label="Arrastar widget">⋮⋮</button><button class="widget-remove-btn" onclick="toggleWidget('${id}')" title="Remover widget" aria-label="Remover widget">✕</button></div>`;
-    return `<div class="dash-section-wrap widget-size-${size}" draggable="true" data-widget-id="${id}">${tools}${html}</div>`;
+    const tools=`<div class="widget-tools"><div class="widget-stepper"><button class="widget-move-btn" onclick="moveWidgetStep('${id}',-1)" title="Mover widget para cima" aria-label="Mover widget para cima">▲</button><button class="widget-move-btn" onclick="moveWidgetStep('${id}',1)" title="Mover widget para baixo" aria-label="Mover widget para baixo">▼</button></div><button class="widget-drag-btn" title="Arrastar widget" aria-label="Arrastar widget">⋮⋮</button><button class="widget-remove-btn" onclick="toggleWidget('${id}')" title="Remover widget" aria-label="Remover widget">✕</button></div>`;
+    return `<div class="dash-section-wrap" draggable="true" data-widget-id="${id}">${tools}${html}</div>`;
   };
   const sections=widgetOrder.filter(id=>isWidgetOn(id)&&renderers[id]).map(id=>wrap(id,renderers[id]())).filter(Boolean);
 

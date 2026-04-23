@@ -1359,29 +1359,6 @@ select.sel {
 .dash-section-wrap > .dash-section {
   margin-bottom: 0 !important;
 }
-.dash-section-wrap.widget-size-compact > .dash-section {
-  max-height: 230px;
-  overflow: hidden;
-}
-.dash-section-wrap.widget-size-compact::after {
-  content: '';
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: 46px;
-  border-radius: 0 0 var(--r-lg) var(--r-lg);
-  background: linear-gradient(180deg, transparent, var(--bg));
-  pointer-events: none;
-}
-.dash-section-wrap.widget-size-large .cc-box,
-.dash-section-wrap.widget-size-large .box,
-.dash-section-wrap.widget-size-large .vehicle-widget,
-.dash-section-wrap.widget-size-large .goals-widget,
-.dash-section-wrap.widget-size-large .budget-widget {
-  padding: 24px;
-}
-.dash-section-wrap.widget-size-large canvas {
-  max-height: 260px;
-}
 .dash-widgets.is-reordering .dash-section-wrap:not(.dragging) {
   transition: opacity .12s ease;
 }
@@ -1448,8 +1425,7 @@ select.sel {
 }
 .widget-move-btn,
 .widget-drag-btn,
-.widget-remove-btn,
-.widget-size-btn {
+.widget-remove-btn {
   width: 31px;
   height: 31px;
   border-radius: 11px;
@@ -1477,14 +1453,11 @@ select.sel {
 }
 .widget-move-btn { cursor: pointer; }
 .widget-remove-btn { cursor: pointer; }
-.widget-size-btn { cursor: pointer; font-size: 11px; color: var(--ac2); }
 .widget-drag-btn:active { cursor: grabbing; transform: scale(.94); }
-.widget-move-btn:active,
-.widget-size-btn:active { transform: scale(.94); }
+.widget-move-btn:active { transform: scale(.94); }
 .widget-remove-btn:hover { background: rgba(245,112,90,.15); color: var(--dan); border-color: rgba(245,112,90,.3); }
 .widget-drag-btn:hover,
-.widget-move-btn:hover,
-.widget-size-btn:hover { color: var(--ac); border-color: rgba(200,245,90,.3); background: rgba(200,245,90,.08); }
+.widget-move-btn:hover { color: var(--ac); border-color: rgba(200,245,90,.3); background: rgba(200,245,90,.08); }
 .widget-drag-btn {
   letter-spacing: -2px;
   font-size: 12px;
@@ -1731,8 +1704,7 @@ select.sel {
   }
   .widget-move-btn,
   .widget-drag-btn,
-  .widget-remove-btn,
-  .widget-size-btn {
+  .widget-remove-btn {
     width: 34px;
     height: 34px;
   }
