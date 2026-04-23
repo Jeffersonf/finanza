@@ -1,5 +1,5 @@
 ﻿'use strict';
-const APP_VERSION='4.0.0';
+const APP_VERSION='4.3.0';
 const DEFAULT_API_URL='https://finanza-api.onrender.com';
 const CK='fz_cfg',LK='fz_local',CCK='fz_cats',VK='fz_view',AVK='fz_avatar',PRIVK='fz_privacy',CAR_KEY='fz_car';
 const RATES_KEY='fz_rates', WIDGET_ORDER_KEY='fz_widget_order', WIDGET_FILTER_KEY='fz_widget_filters', DUE_KEY='fz_due_items', TX_FILTERS_KEY='fz_tx_filters';
@@ -3454,6 +3454,8 @@ function renderCar(){
 }
 // SETTINGS
 const CHANGELOG_ITEMS=[
+  {tag:'4.3 - Dados e importação',items:['Importador CSV com mapeamento assistido, perfis e deduplicação','Importação OFX, texto colado, PDF simples, OCR, Pix e QR/NFC-e em texto','Revisão em lote com estados de nova, duplicada e conciliável','Tela visual de conflito para manter atual, usar importado ou mesclar','Snapshots compactos antes de importar e metadados de conciliação']},
+  {tag:'4.1/4.2 - Usabilidade e inteligência',items:['Cadastro principal de transação exigindo só o valor','Defaults inteligentes para descrição, categoria, data e conta','Busca global com ações diretas e edição inline de vencimentos','Simuladores, projeções, comparativos e alertas financeiros']},
   {tag:'Produto',items:['Linha 4.0 consolidada como web + Capacitor + API','Modo local e modo online com login, usuários e sincronização','Navegação desktop/mobile, tema escuro e privacidade de valores']},
   {tag:'Finanças',items:['Transações com filtros, busca, visual compacta, gráficos e edição inline','Entrada rápida por texto com prévia, categoria, conta e recorrência sugeridas','Recorrências, parcelamentos, pendências e lançamentos futuros','Orçamentos por categoria, metas, contas, transferências e rendimento']},
   {tag:'Planejamento',items:['Dashboard com widgets configuráveis, reordenáveis e restauráveis','Comparativo mensal, projeção até o fim do mês e central de pendências','Vencimentos com contas fixas, atrasados, a pagar, a receber e notificações locais']},
