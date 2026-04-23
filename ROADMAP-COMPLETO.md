@@ -9,6 +9,14 @@ Legenda sugerida:
 - `[-]` descartar
 - `[~]` talvez / incubar
 
+## Status atual de versao
+
+- Versao publicada do app: `4.0.0` (`package.json`, `frontend/app.js` e `frontend/financas.html`).
+- Ciclo em andamento no roadmap: `4.10 - Fundacao confiavel`.
+- Escopo do ciclo `4.10`: testes automatizados, CI, schema de backup/importacao JSON e reducao de risco em permissoes.
+- Linha futura planejada: `5.0 - Android nativo premium`.
+- Observacao: neste roadmap, `[x]` significa "quero fazer", nao "feito".
+
 ## Norte do produto
 
 - [x] Fazer o Finanza virar o centro pessoal de decisao financeira, nao so um registrador de gastos.
@@ -220,6 +228,19 @@ Legenda sugerida:
 - [x] Onboarding guiado com dados demo opcionais.
 - [x] Sandbox de exemplo para testar sem mexer nos dados reais.
 - [x] Sistema de comandos/atalhos no desktop.
+
+## 4.10 - Fundacao confiavel (ciclo atual)
+
+Este ciclo organiza itens da fundacao tecnica continua sem mudar a versao publicada `4.0.0` ainda.
+
+Itens puxados para este ciclo:
+
+- Criar testes para permissoes de usuario.
+- Criar suite de testes para parser de transacao.
+- Criar testes para importacao JSON.
+- Formalizar schema de backup.
+- Adicionar CI para testes.
+- Adicionar validacao de deploy.
 
 ## 5.0 - Android nativo premium
 

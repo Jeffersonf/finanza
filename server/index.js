@@ -11,6 +11,7 @@ const fs      = require('fs');
 const path    = require('path');
 const { cleanText, normalizeRole, userRole, canWrite, publicUser } = require('./permissions');
 const { parseTransactionText } = require('./transactionParser');
+const { normalizeBackupPayload, backupImportCounts } = require('./backupSchema');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -639,7 +640,8 @@ app.put('/api/import', userAuth, requireWrite, async (req, res) => {
   const client = await pool.connect();
   try {
     const uid = req.user.id;
-    const data = req.body || {};
+    const data = normalizeBackupPayload(req.body || {});
+    const imported = backupImportCounts(data);
     await client.query('BEGIN');
 
     await replaceRows(client, 'transactions', uid, data.transactions || [],
@@ -669,27 +671,20 @@ app.put('/api/import', userAuth, requireWrite, async (req, res) => {
     );
 
     await replaceAppState(client, uid, {
-      accounts: data.accounts || [],
-      categories: data.categories || data.customCategories || [],
-      shopping: data.shopping || { lists: data.shoppingLists || [], items: data.shoppingItems || [] },
-      settings: data.settings || {}
+      accounts: data.accounts,
+      categories: data.categories,
+      shopping: data.shopping,
+      settings: data.settings,
+      dueItems: data.dueItems
     });
 
     await auditEvent(client, req.user, 'backup_importado', 'backup', uid, 'importacao completa', {
-      transactions: (data.transactions || []).length,
-      budgets: (data.budgets || []).length,
-      goals: (data.goals || []).length,
-      accounts: (data.accounts || []).length
+      ...imported
     });
     await client.query('COMMIT');
     res.json({
       success: true,
-      imported: {
-        transactions: (data.transactions || []).length,
-        budgets: (data.budgets || []).length,
-        goals: (data.goals || []).length,
-        accounts: (data.accounts || []).length
-      }
+      imported
     });
   } catch (e) {
     await client.query('ROLLBACK').catch(() => {});
