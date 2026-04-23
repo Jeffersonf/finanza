@@ -11,12 +11,15 @@ CREATE TABLE IF NOT EXISTS users (
     username    VARCHAR(100) UNIQUE,
     password_hash TEXT,
     api_key     VARCHAR(128) NOT NULL UNIQUE,
+    role        VARCHAR(20) NOT NULL DEFAULT 'editor',
     is_admin    BOOLEAN DEFAULT FALSE,
     created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(100) UNIQUE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'editor';
+UPDATE users SET role = 'admin' WHERE is_admin = TRUE AND role <> 'admin';
 
 -- TRANSACOES por usuario
 CREATE TABLE IF NOT EXISTS transactions (
@@ -149,6 +152,20 @@ CREATE TABLE IF NOT EXISTS backup_log (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- AUDITORIA persistente por usuario
+CREATE TABLE IF NOT EXISTS audit_events (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     UUID REFERENCES users(id) ON DELETE SET NULL,
+    actor_name  TEXT DEFAULT '',
+    actor_role  VARCHAR(20) DEFAULT '',
+    action      VARCHAR(80) NOT NULL,
+    entity      VARCHAR(80) NOT NULL,
+    entity_id   TEXT,
+    detail      TEXT DEFAULT '',
+    metadata    JSONB DEFAULT '{}'::jsonb,
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- TRIGGERS
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = NOW(); RETURN NEW; END; $$ LANGUAGE plpgsql;
@@ -185,3 +202,5 @@ CREATE INDEX IF NOT EXISTS idx_cat_user  ON categories(user_id);
 CREATE INDEX IF NOT EXISTS idx_sl_user   ON shopping_lists(user_id);
 CREATE INDEX IF NOT EXISTS idx_si_user   ON shopping_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_si_list   ON shopping_items(user_id, list_id);
+CREATE INDEX IF NOT EXISTS idx_audit_user_time ON audit_events(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_entity    ON audit_events(entity, entity_id);

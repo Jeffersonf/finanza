@@ -50,7 +50,7 @@ No Supabase:
 2. Cole o conteudo de `db/init.sql`.
 3. Execute.
 
-Isso cria as tabelas de usuarios, transacoes, orcamentos, metas, contas, categorias personalizadas, lista de compras, preferencias do app e log de backup.
+Isso cria as tabelas de usuarios, transacoes, orcamentos, metas, contas, categorias personalizadas, lista de compras, preferencias do app, log de backup e trilha de auditoria.
 
 ## 3. Deploy da API no Render
 
@@ -86,10 +86,10 @@ A resposta retorna a `api_key` do admin. Guarde essa chave.
 curl -X POST https://SEU-APP.onrender.com/api/users \
   -H "x-api-key: SUA_API_SECRET" \
   -H "Content-Type: application/json" \
-  -d '{"name": "Joao"}'
+  -d '{"name": "Joao", "username": "joao", "password": "senha-forte", "role": "editor"}'
 ```
 
-A resposta inclui a `api_key` do usuario.
+A resposta inclui a `api_key` do usuario. Os papeis aceitos pela API sao `admin`, `editor`, `read` e `guest`; perfis `read` e `guest` consultam dados, mas nao editam transacoes, metas, orcamentos, importacao ou estado remoto.
 
 ## 6. Entrar no app
 
@@ -110,6 +110,7 @@ Na tela inicial do Finanza:
 | GET | `/api/users` | Admin | Lista usuarios |
 | DELETE | `/api/users/:id` | Admin | Remove usuario |
 | POST | `/api/me/regenerate-key` | User | Gera nova `api_key` |
+| GET | `/api/audit-log` | User | Consulta a trilha de auditoria persistente |
 | GET/POST/PUT/DELETE | `/api/transactions` | User | CRUD de transacoes |
 | GET/POST/DELETE | `/api/budgets` | User | CRUD de orcamentos |
 | GET/POST/DELETE | `/api/goals` | User | CRUD de metas |

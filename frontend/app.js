@@ -6,7 +6,7 @@ const RATES_KEY='fz_rates', WIDGET_ORDER_KEY='fz_widget_order', WIDGET_FILTER_KE
 const SAVE_STATE_KEY='fz_save_state', SYNC_HISTORY_KEY='fz_sync_history', AUDIT_HISTORY_KEY='fz_audit_history';
 let monthlyIncomeCents=0;
 let dueItems=[];
-let cfg={url:'',key:'',mode:'',userName:'',userId:''};
+let cfg={url:'',key:'',mode:'',userName:'',userId:'',role:''};
 let S={transactions:[],budgets:[],goals:[],accounts:[]};
 let custCats=[];
 let carState={vehicles:[],events:[],activeVehicleId:''};
@@ -186,7 +186,7 @@ async function doSetup(){
     const login=await fetch(url+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
     if(!login.ok){const er=await login.json().catch(()=>({}));throw new Error(er.error||'Login inválido');}
     const u=await login.json();
-    cfg={url,key:u.api_key,mode:'api',userName:u.name,userId:u.id,loginName:username};
+    cfg={url,key:u.api_key,mode:'api',userName:u.name,userId:u.id,loginName:username,role:u.role||''};
     localStorage.setItem(CK,JSON.stringify(cfg));
     hideSetup();await initApp();toast(`Bem-vindo, ${u.name}! OK`,'success');
   }catch(e){err.textContent='Falha: '+e.message;err.classList.add('show');btn.disabled=false;txt.textContent='Entrar →';}
@@ -233,7 +233,7 @@ async function resetPassword(){
     doSetup();
   }catch(e){err.textContent='Erro: '+e.message;err.classList.add('show');}
 }
-function startLocal(){cfg={url:'',key:'',mode:'local',userName:'Eu',userId:''};localStorage.setItem(CK,JSON.stringify(cfg));hideSetup();initApp();}
+function startLocal(){cfg={url:'',key:'',mode:'local',userName:'Eu',userId:'',role:''};localStorage.setItem(CK,JSON.stringify(cfg));hideSetup();initApp();}
 function normalizeBackupData(d){
   const data=d?.app==='Finanza'||d?.version?d:{...d};
   if(!Array.isArray(data.transactions))throw new Error('Arquivo inválido: não parece um backup do Finanza');
@@ -302,6 +302,33 @@ function loadAuditHistory(){
   catch{auditHistory=[];}
 }
 function saveAuditHistory(){localStorage.setItem(AUDIT_HISTORY_KEY,JSON.stringify(auditHistory.slice(0,30)));}
+function auditLabel(v){
+  return String(v||'')
+    .replace(/_/g,' ')
+    .replace(/\b\w/g,m=>m.toUpperCase());
+}
+function normalizeAuditEvent(item={}){
+  return {
+    id:item.id||uid(),
+    action:auditLabel(item.action),
+    target:auditLabel(item.entity||item.target||'Registro'),
+    detail:item.detail||item.entity_id||'',
+    source:item.source||'online',
+    actor:item.actor_name||item.actor||cfg.userName||cfg.loginName||'online',
+    role:item.actor_role||'',
+    at:item.created_at?new Date(item.created_at).getTime():(Number(item.at)||Date.now())
+  };
+}
+async function loadPersistentAuditHistory(){
+  if(cfg.mode!=='api')return;
+  try{
+    const events=await api('GET','/api/audit-log?limit=30');
+    auditHistory=(events||[]).map(normalizeAuditEvent);
+    saveAuditHistory();
+  }catch(err){
+    logSyncEvent('error','Auditoria online indisponível',err.message);
+  }
+}
 function logAuditEvent(action,target,detail='',source=cfg.mode==='api'?'online':'local'){
   const actor=cfg.userName||cfg.loginName||'local';
   auditHistory.unshift({id:uid(),action,target,detail,source,actor,at:Date.now()});
@@ -335,7 +362,7 @@ function updateTrustPanel(){
   if(meta)meta.textContent=`${cfg.mode==='api'?'Modo online':'Modo local'} • ${fmtDateTime(state.at)}`;
   if(queue)queue.textContent=syncQ.length?`${syncQ.length} operação(ões) aguardando envio`:'Sem pendências na fila';
   if(hist)hist.innerHTML=syncHistory.length?syncHistory.slice(0,6).map(item=>`<div class="sync-item ${item.kind}"><div><div class="sync-title">${esc(item.message)}</div><div class="sync-meta">${esc(item.meta||fmtDateTime(item.at))}</div></div><span class="sync-time">${fmtDateTime(item.at)}</span></div>`).join(''):'<div class="sync-empty">Sem eventos recentes de sincronização.</div>';
-  if(audit)audit.innerHTML=auditHistory.length?auditHistory.slice(0,6).map(item=>`<div class="sync-item"><div><div class="sync-title">${esc(item.action)} • ${esc(item.target)}</div><div class="sync-meta">${esc(item.actor)} • ${esc(item.source)}${item.detail?` • ${esc(item.detail)}`:''}</div></div><span class="sync-time">${fmtDateTime(item.at)}</span></div>`).join(''):'<div class="sync-empty">Nenhuma ação importante registrada ainda.</div>';
+  if(audit)audit.innerHTML=auditHistory.length?auditHistory.slice(0,8).map(item=>`<div class="sync-item"><div><div class="sync-title">${esc(item.action)} • ${esc(item.target)}</div><div class="sync-meta">${esc(item.actor)}${item.role?` • ${esc(item.role)}`:''} • ${esc(item.source)}${item.detail?` • ${esc(item.detail)}`:''}</div></div><span class="sync-time">${fmtDateTime(item.at)}</span></div>`).join(''):'<div class="sync-empty">Nenhuma ação importante registrada ainda.</div>';
 }
 function txFingerprint(t={}){
   return [
@@ -472,7 +499,7 @@ function importLocal(inp){
     try{
       const data=normalizeBackupData(JSON.parse(e.target.result));
       applyBackupData(data);
-      cfg={url:'',key:'',mode:'local',userName:data.user||'Eu',userId:''};
+      cfg={url:'',key:'',mode:'local',userName:data.user||'Eu',userId:'',role:''};
       localStorage.setItem(CK,JSON.stringify(cfg));
       hideSetup();
       initApp();
@@ -500,7 +527,7 @@ function setConn(s){
   const dot=document.getElementById('connDot');if(dot)dot.className='conn-dot '+s;
   const L={online:'Dados sincronizados',offline:'Dados locais',error:'Sem conexao'};
   const lbl=document.getElementById('connLbl');if(lbl)lbl.textContent=L[s]||s;
-  document.getElementById('uRole').textContent=cfg.mode==='api'?'Conta online':'Modo local';
+  document.getElementById('uRole').textContent=cfg.mode==='api'?`Conta online${cfg.role?' • '+cfg.role:''}`:'Modo local';
 }
 function openConnModal(){document.getElementById('connUrl').value=cfg.url;document.getElementById('connUser').value=cfg.loginName||'';document.getElementById('connPass').value='';document.getElementById('connModal').classList.add('open');}
 async function saveConn(){
@@ -512,7 +539,7 @@ async function saveConn(){
     const r=await fetch(url+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
     if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||'Login inválido');}
     const u=await r.json();
-    cfg={...cfg,url,key:u.api_key,mode:'api',userName:u.name,userId:u.id,loginName:username};localStorage.setItem(CK,JSON.stringify(cfg));
+    cfg={...cfg,url,key:u.api_key,mode:'api',userName:u.name,userId:u.id,loginName:username,role:u.role||''};localStorage.setItem(CK,JSON.stringify(cfg));
     closeM('connModal');await initApp();toast('Salvo!','success');
   }catch(e){toast('Erro: '+e.message,'error');}
 }
@@ -1525,7 +1552,7 @@ async function migrateToOnline(){
     toast('Migrando tudo...','info');
     const r=await fetch(base+'/api/import',{method:'PUT',headers:{'Content-Type':'application/json','x-api-key':key},body:JSON.stringify(buildBackupData())});
     if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||'Erro ao importar');}
-    cfg={url:base,key,mode:'api',userName:u.name,userId:u.id};localStorage.setItem(CK,JSON.stringify(cfg));
+    cfg={url:base,key,mode:'api',userName:u.name,userId:u.id,role:u.role||''};localStorage.setItem(CK,JSON.stringify(cfg));
     logAuditEvent('Migracao concluida','Conta online',base,'online');
     toast('Dados migrados para online OK','success');await initApp();
   }catch(e){toast('Erro: '+e.message,'error');}
@@ -2816,6 +2843,7 @@ async function initApp(){
   loadSyncQ();
   loadSyncHistory();
   loadAuditHistory();
+  await loadPersistentAuditHistory();
   updSyncBadge();
   if(!loadSaveState().status)noteLocalSave(cfg.mode==='api'?'Conta pronta para sincronizar':'Dados prontos neste dispositivo');
   updateTrustPanel();

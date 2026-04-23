@@ -24,6 +24,29 @@ pool.connect()
   .catch(e => { console.error('❌ DB erro:', e.message); process.exit(1); });
 
 // ── MIDDLEWARES ─────────────────────────────
+async function ensureOperationalSchema() {
+  await pool.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'editor';
+    UPDATE users SET role = 'admin' WHERE is_admin = TRUE AND role <> 'admin';
+    CREATE TABLE IF NOT EXISTS audit_events (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id     UUID REFERENCES users(id) ON DELETE SET NULL,
+      actor_name  TEXT DEFAULT '',
+      actor_role  VARCHAR(20) DEFAULT '',
+      action      VARCHAR(80) NOT NULL,
+      entity      VARCHAR(80) NOT NULL,
+      entity_id   TEXT,
+      detail      TEXT DEFAULT '',
+      metadata    JSONB DEFAULT '{}'::jsonb,
+      created_at  TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_audit_user_time ON audit_events(user_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_events(entity, entity_id);
+  `);
+}
+
+ensureOperationalSchema().catch(e => console.error('Schema bootstrap erro:', e.message));
+
 const allowedOrigins = (process.env.CORS_ORIGIN || '')
   .split(',')
   .map(s => s.trim())
@@ -63,6 +86,58 @@ function normalizeCategoryName(v) {
 
 function normalizeUsername(v) {
   return cleanText(v).trim().toLowerCase();
+}
+
+function normalizeRole(role, isAdmin = false) {
+  if (isAdmin) return 'admin';
+  const value = cleanText(role, 'editor').trim().toLowerCase();
+  return ['admin', 'editor', 'read', 'guest'].includes(value) ? value : 'editor';
+}
+
+function userRole(user) {
+  return normalizeRole(user?.role, !!user?.is_admin);
+}
+
+function canWrite(user) {
+  return ['admin', 'editor'].includes(userRole(user));
+}
+
+function requireWrite(req, res, next) {
+  if (!canWrite(req.user)) return res.status(403).json({ error: 'Perfil sem permissao de edicao' });
+  next();
+}
+
+function publicUser(user) {
+  return {
+    id: user.id,
+    name: user.name,
+    username: user.username,
+    role: userRole(user),
+    is_admin: !!user.is_admin,
+    created_at: user.created_at
+  };
+}
+
+async function auditEvent(db, user, action, entity, entityId = null, detail = '', metadata = {}) {
+  try {
+    await db.query(
+      `INSERT INTO audit_events
+        (user_id, actor_name, actor_role, action, entity, entity_id, detail, metadata)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)`,
+      [
+        user?.id || null,
+        cleanText(user?.name || user?.username || ''),
+        userRole(user),
+        cleanText(action, 'acao'),
+        cleanText(entity, 'registro'),
+        entityId == null ? null : String(entityId),
+        cleanText(detail),
+        toJsonb(metadata, {})
+      ]
+    );
+  } catch (e) {
+    console.error('Falha ao gravar auditoria:', e.message);
+  }
 }
 
 function moneyToNumber(raw) {
@@ -255,7 +330,7 @@ app.get('/health', async (req, res) => {
 
 // Verificar própria chave e retornar info do usuário
 app.get('/api/me', userAuth, (req, res) => {
-  res.json({ id: req.user.id, name: req.user.name, is_admin: req.user.is_admin });
+  res.json(publicUser(req.user));
 });
 
 app.post('/api/login', async (req, res) => {
@@ -267,7 +342,7 @@ app.post('/api/login', async (req, res) => {
     if (!rows.length || !verifyPassword(password, rows[0].password_hash)) {
       return res.status(401).json({ error: 'Usuário ou senha inválidos' });
     }
-    res.json({ id: rows[0].id, name: rows[0].name, is_admin: rows[0].is_admin, api_key: rows[0].api_key });
+    res.json({ ...publicUser(rows[0]), api_key: rows[0].api_key });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -279,11 +354,12 @@ app.post('/api/password-reset', adminAuth, async (req, res) => {
     const password = req.body?.password || '';
     if (!username || !password) return res.status(400).json({ error: 'Usuário e nova senha são obrigatórios' });
     const { rows } = await pool.query(
-      'UPDATE users SET password_hash=$1 WHERE username=$2 RETURNING id, name, username',
+      'UPDATE users SET password_hash=$1 WHERE username=$2 RETURNING id, name, username, role, is_admin, created_at',
       [hashPassword(password), username]
     );
     if (!rows.length) return res.status(404).json({ error: 'Usuário não encontrado' });
-    res.json({ success: true, user: rows[0] });
+    await auditEvent(pool, { name: 'admin-key', role: 'admin', is_admin: true }, 'senha_redefinida', 'user', rows[0].id, rows[0].username || rows[0].name);
+    res.json({ success: true, user: publicUser(rows[0]) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -302,10 +378,12 @@ app.post('/api/register', async (req, res) => {
     const username = normalizeUsername(req.body?.username || name);
     if (!username || !password) return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
     const api_key = crypto.randomBytes(32).toString('hex');
+    const role = normalizeRole(req.body?.role, isFirstUser);
     const { rows } = await pool.query(
-      'INSERT INTO users (name, username, password_hash, api_key, is_admin) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, username, api_key, is_admin, created_at',
-      [name, username, hashPassword(password), api_key, isFirstUser]
+      'INSERT INTO users (name, username, password_hash, api_key, role, is_admin) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, username, api_key, role, is_admin, created_at',
+      [name, username, hashPassword(password), api_key, role, isFirstUser]
     );
+    await auditEvent(pool, rows[0], 'usuario_criado', 'user', rows[0].id, isFirstUser ? 'primeiro admin' : 'cadastro direto');
     res.status(201).json(rows[0]);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -319,10 +397,12 @@ app.post('/api/users', adminAuth, async (req, res) => {
     const username = normalizeUsername(req.body?.username || name);
     if (!username || !password) return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
     const api_key = crypto.randomBytes(32).toString('hex');
+    const role = normalizeRole(req.body?.role, false);
     const { rows } = await pool.query(
-      'INSERT INTO users (name, username, password_hash, api_key) VALUES ($1, $2, $3, $4) RETURNING id, name, username, api_key, created_at',
-      [name, username, hashPassword(password), api_key]
+      'INSERT INTO users (name, username, password_hash, api_key, role, is_admin) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, username, api_key, role, is_admin, created_at',
+      [name, username, hashPassword(password), api_key, role, role === 'admin']
     );
+    await auditEvent(pool, { name: 'admin-key', role: 'admin', is_admin: true }, 'usuario_criado', 'user', rows[0].id, `${rows[0].username || rows[0].name} (${userRole(rows[0])})`);
     res.status(201).json(rows[0]);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -340,9 +420,10 @@ app.post('/api/setup', adminAuth, async (req, res) => {
     if (!username || !password) return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
     const api_key = crypto.randomBytes(32).toString('hex');
     const { rows } = await pool.query(
-      'INSERT INTO users (name, username, password_hash, api_key, is_admin) VALUES ($1, $2, $3, $4, TRUE) RETURNING id, name, username, api_key',
-      [name, username, hashPassword(password), api_key]
+      'INSERT INTO users (name, username, password_hash, api_key, role, is_admin) VALUES ($1, $2, $3, $4, $5, TRUE) RETURNING id, name, username, api_key, role, is_admin, created_at',
+      [name, username, hashPassword(password), api_key, 'admin']
     );
+    await auditEvent(pool, rows[0], 'admin_inicial_criado', 'user', rows[0].id, rows[0].username || rows[0].name);
     res.status(201).json({ message: 'Admin criado', ...rows[0] });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -353,9 +434,9 @@ app.post('/api/setup', adminAuth, async (req, res) => {
 app.get('/api/users', adminAuth, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT id, name, is_admin, created_at FROM users ORDER BY created_at'
+      'SELECT id, name, username, role, is_admin, created_at FROM users ORDER BY created_at'
     );
-    res.json(rows);
+    res.json(rows.map(publicUser));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -364,7 +445,8 @@ app.get('/api/users', adminAuth, async (req, res) => {
 // Deletar usuário (admin)
 app.delete('/api/users/:id', adminAuth, async (req, res) => {
   try {
-    await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]);
+    const { rows } = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id, name, username, role, is_admin', [req.params.id]);
+    if (rows.length) await auditEvent(pool, { name: 'admin-key', role: 'admin', is_admin: true }, 'usuario_removido', 'user', rows[0].id, rows[0].username || rows[0].name);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -376,6 +458,7 @@ app.post('/api/me/regenerate-key', userAuth, async (req, res) => {
   try {
     const new_key = crypto.randomBytes(32).toString('hex');
     await pool.query('UPDATE users SET api_key = $1 WHERE id = $2', [new_key, req.user.id]);
+    await auditEvent(pool, req.user, 'api_key_regenerada', 'user', req.user.id);
     res.json({ api_key: new_key });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -390,6 +473,23 @@ app.post('/api/transactions/parse', userAuth, async (req, res) => {
   const parsed = parseTransactionText(req.body?.text);
   if (!parsed) return res.status(400).json({ error: 'Texto nÃ£o reconhecido' });
   res.json(parsed);
+});
+
+app.get('/api/audit-log', userAuth, async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 80, 1), 200);
+    const params = [limit];
+    const where = userRole(req.user) === 'admin' ? '' : 'WHERE user_id=$2';
+    if (where) params.push(req.user.id);
+    const { rows } = await pool.query(
+      `SELECT id,user_id,actor_name,actor_role,action,entity,entity_id,detail,metadata,created_at
+       FROM audit_events ${where}
+       ORDER BY created_at DESC
+       LIMIT $1`,
+      params
+    );
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/transactions', userAuth, async (req, res) => {
@@ -421,7 +521,7 @@ app.get('/api/transactions', userAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/transactions', userAuth, async (req, res) => {
+app.post('/api/transactions', userAuth, requireWrite, async (req, res) => {
   try {
     const { type, description, amount, category, date, note = '',
             account_id, paid=false, pending=false,
@@ -438,11 +538,12 @@ app.post('/api/transactions', userAuth, async (req, res) => {
        account_id||null, !!paid, !!pending,
        installment_group||null, installment_num||null, installment_total||null, recur_group||null]
     );
+    await auditEvent(pool, req.user, 'transacao_criada', 'transaction', rows[0].id, rows[0].description, { amount: rows[0].amount, category: rows[0].category });
     res.status(201).json(rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.put('/api/transactions/:id', userAuth, async (req, res) => {
+app.put('/api/transactions/:id', userAuth, requireWrite, async (req, res) => {
   try {
     const { type, description, amount, category, date, note, account_id, paid, pending } = req.body;
     const { rows } = await pool.query(
@@ -456,16 +557,18 @@ app.put('/api/transactions/:id', userAuth, async (req, res) => {
        req.params.id, req.user.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
+    await auditEvent(pool, req.user, 'transacao_atualizada', 'transaction', rows[0].id, rows[0].description, { amount: rows[0].amount, category: rows[0].category });
     res.json(rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/transactions/:id', userAuth, async (req, res) => {
+app.delete('/api/transactions/:id', userAuth, requireWrite, async (req, res) => {
   try {
-    const { rowCount } = await pool.query(
-      'DELETE FROM transactions WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]
+    const { rows, rowCount } = await pool.query(
+      'DELETE FROM transactions WHERE id=$1 AND user_id=$2 RETURNING id, description, amount, category', [req.params.id, req.user.id]
     );
     if (!rowCount) return res.status(404).json({ error: 'Não encontrado' });
+    await auditEvent(pool, req.user, 'transacao_removida', 'transaction', rows[0].id, rows[0].description, { amount: rows[0].amount, category: rows[0].category });
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -493,12 +596,13 @@ app.get('/api/state', userAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.put('/api/state', userAuth, async (req, res) => {
+app.put('/api/state', userAuth, requireWrite, async (req, res) => {
   const client = await pool.connect();
   try {
     const uid = req.user.id;
     await client.query('BEGIN');
     await replaceAppState(client, uid, req.body || {});
+    await auditEvent(client, req.user, 'estado_salvo', 'state', uid, 'preferencias e dados auxiliares');
     await client.query('COMMIT');
     res.json({ success: true });
   } catch (e) {
@@ -509,7 +613,7 @@ app.put('/api/state', userAuth, async (req, res) => {
   }
 });
 
-app.put('/api/import', userAuth, async (req, res) => {
+app.put('/api/import', userAuth, requireWrite, async (req, res) => {
   const client = await pool.connect();
   try {
     const uid = req.user.id;
@@ -549,6 +653,12 @@ app.put('/api/import', userAuth, async (req, res) => {
       settings: data.settings || {}
     });
 
+    await auditEvent(client, req.user, 'backup_importado', 'backup', uid, 'importacao completa', {
+      transactions: (data.transactions || []).length,
+      budgets: (data.budgets || []).length,
+      goals: (data.goals || []).length,
+      accounts: (data.accounts || []).length
+    });
     await client.query('COMMIT');
     res.json({
       success: true,
@@ -580,7 +690,7 @@ app.get('/api/budgets', userAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/budgets', userAuth, async (req, res) => {
+app.post('/api/budgets', userAuth, requireWrite, async (req, res) => {
   try {
     const { category, limit } = req.body;
     const { rows } = await pool.query(
@@ -589,13 +699,15 @@ app.post('/api/budgets', userAuth, async (req, res) => {
        RETURNING *`,
       [req.user.id, normalizeCategoryName(category), limit]
     );
+    await auditEvent(pool, req.user, 'orcamento_salvo', 'budget', rows[0].id, rows[0].category, { limit: rows[0].limit });
     res.status(201).json(rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/budgets/:id', userAuth, async (req, res) => {
+app.delete('/api/budgets/:id', userAuth, requireWrite, async (req, res) => {
   try {
-    await pool.query('DELETE FROM budgets WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
+    const { rows } = await pool.query('DELETE FROM budgets WHERE id=$1 AND user_id=$2 RETURNING id, category, "limit"', [req.params.id, req.user.id]);
+    if (rows.length) await auditEvent(pool, req.user, 'orcamento_removido', 'budget', rows[0].id, rows[0].category, { limit: rows[0].limit });
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -613,7 +725,7 @@ app.get('/api/goals', userAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/goals', userAuth, async (req, res) => {
+app.post('/api/goals', userAuth, requireWrite, async (req, res) => {
   try {
     const { name, icon='🎯', target, current=0, deadline, description='', monthly=0 } = req.body;
     const { rows } = await pool.query(
@@ -621,11 +733,12 @@ app.post('/api/goals', userAuth, async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
       [req.user.id, name, icon, target, current, deadline, description, monthly]
     );
+    await auditEvent(pool, req.user, 'meta_criada', 'goal', rows[0].id, rows[0].name, { target: rows[0].target });
     res.status(201).json(rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.patch('/api/goals/:id/add', userAuth, async (req, res) => {
+app.patch('/api/goals/:id/add', userAuth, requireWrite, async (req, res) => {
   try {
     const { amount } = req.body;
     const { rows } = await pool.query(
@@ -634,13 +747,15 @@ app.patch('/api/goals/:id/add', userAuth, async (req, res) => {
       [amount, req.params.id, req.user.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
+    await auditEvent(pool, req.user, 'meta_atualizada', 'goal', rows[0].id, rows[0].name, { current: rows[0].current, target: rows[0].target });
     res.json(rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/goals/:id', userAuth, async (req, res) => {
+app.delete('/api/goals/:id', userAuth, requireWrite, async (req, res) => {
   try {
-    await pool.query('DELETE FROM goals WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
+    const { rows } = await pool.query('DELETE FROM goals WHERE id=$1 AND user_id=$2 RETURNING id, name, target', [req.params.id, req.user.id]);
+    if (rows.length) await auditEvent(pool, req.user, 'meta_removida', 'goal', rows[0].id, rows[0].name, { target: rows[0].target });
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -713,6 +828,7 @@ app.post('/api/backup', userAuth, async (req, res) => {
     execSync(`PGPASSWORD="${url.password}" pg_dump -h ${url.hostname} -U ${url.username} ${url.pathname.slice(1)} | gzip > ${fp}`);
     const size = fs.statSync(fp).size;
     await pool.query('INSERT INTO backup_log (filename, size_bytes) VALUES ($1,$2)', [file, size]);
+    await auditEvent(pool, req.user, 'backup_sql_criado', 'backup', file, file, { size_bytes: size });
     res.json({ success: true, filename: file, size_bytes: size });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
