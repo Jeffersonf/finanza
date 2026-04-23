@@ -146,7 +146,6 @@
   <div class="ph"><div><div class="pt">Dashboard</div><div class="ps">Centro do dia para lançar, revisar e decidir seus gastos</div></div>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
       <div class="mnav"><button id="prevM">‹</button><span class="mname" id="curM"></span><button id="nextM">›</button></div>
-      <button class="btn btn-g btn-sm privacy-action" id="privBtnDash" onclick="togglePrivacy()">👁️ Ocultar valores</button>
       <button class="btn btn-g btn-sm" onclick="openImportCenter()" title="Importar transações" aria-label="Importar transações">📥</button>
       <button class="btn btn-p" onclick="openModal()">+ Nova</button>
     </div>
@@ -594,23 +593,27 @@
 </div></div>
 <div class="ov" id="importCenterModal"><div class="modal import-center-modal">
   <button class="mc" onclick="closeM('importCenterModal')">✕</button>
-  <div class="mt">Centro de Importação 4.3</div>
-  <div class="ms">CSV, OFX, pasta local e texto extraído de comprovantes. Revise, reconcilie e importe em lote.</div>
+  <div class="import-modal-head">
+    <div>
+      <div class="mt">Importar transações</div>
+      <div class="ms">Escolha a fonte, prepare a revisão e confirme só o que deve entrar.</div>
+    </div>
+    <button class="btn btn-g btn-sm" onclick="openImportInbox()">Caixa de entrada</button>
+  </div>
   <div class="import-center-toolbar" id="importCenterToolbar"></div>
   <div class="import-center-grid">
     <div class="import-center-pane">
-      <div class="ss-r" style="padding:0 0 12px;border:0;">
-        <div><div class="ss-l">Fonte</div><div class="ss-s">Escolha o formato ou cole texto do extrato/comprovante</div></div>
-      </div>
+      <div class="import-pane-title"><strong>1. Fonte</strong><span>Arquivo, pasta ou texto copiado</span></div>
       <div class="import-source-tabs" id="importSourceTabs"></div>
       <div id="importSourceBody"></div>
       <div class="import-source-actions">
-        <button class="btn btn-g btn-sm" onclick="parseImportDraft()">Preparar revisão</button>
-        <button class="btn btn-g btn-sm" onclick="openImportInbox()">Caixa de entrada</button>
+        <button class="btn btn-p btn-sm" onclick="parseImportDraft()">Preparar revisão</button>
+        <button class="btn btn-g btn-sm" onclick="clearImportDraft();renderImportCenter()">Limpar</button>
       </div>
       <div class="import-snapshots" id="importSnapshots"></div>
     </div>
     <div class="import-center-pane">
+      <div class="import-pane-title"><strong>2. Revisão</strong><span>Concilie duplicadas antes de importar</span></div>
       <div class="import-review-head" id="importReviewHead"></div>
       <div class="import-mapping" id="importMapping"></div>
       <div class="import-review-list" id="importReviewList"></div>

@@ -138,8 +138,6 @@ function applyPrivacy(v){
   const icon=privacyMode?'\u{1F648}':'\u{1F441}\uFE0F';
   const btn=document.getElementById('privBtn');
   if(btn){btn.textContent=icon;btn.title=privacyMode?'Mostrar valores':'Ocultar valores';btn.setAttribute('aria-label',btn.title);}
-  const dashBtn=document.getElementById('privBtnDash');
-  if(dashBtn){dashBtn.textContent=privacyMode?'🙈 Mostrar valores':'👁️ Ocultar valores';dashBtn.title=privacyMode?'Mostrar valores':'Ocultar valores';}
   const tog=document.getElementById('privTog');if(tog)tog.checked=privacyMode;
   localStorage.setItem(PRIVK,privacyMode?'1':'0');
 }
@@ -664,12 +662,12 @@ function renderImportToolbar(){
   const duplicates=rows.filter(r=>r.status==='duplicate').length;
   const recon=rows.filter(r=>r.status==='match').length;
   const el=document.getElementById('importCenterToolbar');if(!el)return;
-  el.innerHTML=`<div class="insight-grid">
-    <div class="insight-card"><div class="insight-k">Fonte</div><div class="insight-v">${importSourceLabel(importDraft.source)}</div></div>
-    <div class="insight-card"><div class="insight-k">Linhas preparadas</div><div class="insight-v">${rows.length}</div></div>
-    <div class="insight-card"><div class="insight-k">Duplicadas</div><div class="insight-v" style="color:var(--warn)">${duplicates}</div></div>
-    <div class="insight-card"><div class="insight-k">Reconciliação</div><div class="insight-v" style="color:var(--ac2)">${recon}</div></div>
-    <div class="insight-card"><div class="insight-k">Caixa de entrada</div><div class="insight-v" style="color:var(--dan)">${pendingInbox}</div></div>
+  el.innerHTML=`<div class="import-status-strip">
+    <div><span>Fonte</span><strong>${importSourceLabel(importDraft.source)}</strong></div>
+    <div><span>Preparadas</span><strong>${rows.length}</strong></div>
+    <div><span>Duplicadas</span><strong style="color:var(--warn)">${duplicates}</strong></div>
+    <div><span>Conciliar</span><strong style="color:var(--ac2)">${recon}</strong></div>
+    <div><span>Entrada</span><strong style="color:var(--dan)">${pendingInbox}</strong></div>
   </div>`;
 }
 function renderImportSourceTabs(){
@@ -689,16 +687,16 @@ function renderImportSourceBody(){
   const el=document.getElementById('importSourceBody');if(!el)return;
   const profileOptions=['<option value="">Perfil salvo</option>',...Object.keys(importCenterState.profiles.csv).sort().map(name=>`<option value="${esc(name)}" ${importDraft.profileName===name?'selected':''}>${esc(name)}</option>`)].join('');
   const ruleSummary=`${importCenterState.rules.categories.length} regra(s) de categoria • ${importCenterState.rules.subscriptions.length} regra(s) de assinatura`;
-  const textBody=src=>`<div class="import-source-panel"><label class="fl">${importSourceLabel(src)}</label><textarea class="ta" id="importTextArea" placeholder="${esc(importSourcePlaceholder(src))}" oninput="importDraft.text=this.value">${esc(importDraft.text||'')}</textarea><div class="ss-s">${importSourceHint(src)}</div></div>`;
+  const textBody=src=>`<div class="import-source-panel"><label class="fl">${importSourceLabel(src)}</label><textarea class="ta import-textarea" id="importTextArea" placeholder="${esc(importSourcePlaceholder(src))}" oninput="importDraft.text=this.value">${esc(importDraft.text||'')}</textarea><div class="import-helper">${importSourceHint(src)}</div></div>`;
   const sourceBody={
-    csv:`<div class="import-source-panel"><label class="fl">Arquivo CSV</label><input type="file" class="fi" accept=".csv,text/csv,.txt" onchange="handleImportFiles(this.files)"><div class="import-inline-grid"><label><span>Perfil</span><select class="fi sel" onchange="applyImportProfile(this.value)">${profileOptions}</select></label><label><span>Deduplicação</span><select class="fi sel" id="importDedupe" onchange="importDraft.dedupe=this.value"><option value="exact" ${importDraft.dedupe==='exact'?'selected':''}>Exata</option><option value="soft" ${importDraft.dedupe==='soft'?'selected':''}>Descrição + valor</option><option value="off" ${importDraft.dedupe==='off'?'selected':''}>Não ignorar</option></select></label></div><div class="ss-s">${ruleSummary}</div></div>`,
-    ofx:`<div class="import-source-panel"><label class="fl">Arquivo OFX</label><input type="file" class="fi" accept=".ofx,.qfx,.txt" onchange="handleImportFiles(this.files)"><div class="ss-s">${ruleSummary}</div></div>`,
+    csv:`<div class="import-source-panel"><label class="import-file-drop"><span>Selecionar CSV</span><small>Escolha .csv ou .txt exportado do banco.</small><input type="file" accept=".csv,text/csv,.txt" onchange="handleImportFiles(this.files)"></label><div class="import-inline-grid"><label><span>Perfil</span><select class="fi sel" onchange="applyImportProfile(this.value)">${profileOptions}</select></label><label><span>Deduplicação</span><select class="fi sel" id="importDedupe" onchange="importDraft.dedupe=this.value"><option value="exact" ${importDraft.dedupe==='exact'?'selected':''}>Exata</option><option value="soft" ${importDraft.dedupe==='soft'?'selected':''}>Descrição + valor</option><option value="off" ${importDraft.dedupe==='off'?'selected':''}>Não ignorar</option></select></label></div><div class="import-helper">${ruleSummary}</div></div>`,
+    ofx:`<div class="import-source-panel"><label class="import-file-drop"><span>Selecionar OFX</span><small>Use .ofx ou .qfx exportado pelo banco/cartão.</small><input type="file" accept=".ofx,.qfx,.txt" onchange="handleImportFiles(this.files)"></label><div class="import-helper">${ruleSummary}</div></div>`,
     pdf:textBody('pdf'),
     ocr:textBody('ocr'),
     pix:textBody('pix'),
     qr:textBody('qr'),
     text:textBody('text'),
-    folder:`<div class="import-source-panel"><label class="fl">Pasta ou múltiplos arquivos</label><input type="file" class="fi" multiple webkitdirectory directory accept=".csv,.txt,.ofx,.qfx" onchange="handleImportFiles(this.files)"><div class="ss-s">Importa lotes de CSV, OFX e textos extraídos de uma pasta local.</div></div>`
+    folder:`<div class="import-source-panel"><label class="import-file-drop"><span>Selecionar pasta</span><small>Importa lotes de CSV, OFX e textos extraídos de uma pasta local.</small><input type="file" multiple webkitdirectory directory accept=".csv,.txt,.ofx,.qfx" onchange="handleImportFiles(this.files)"></label></div>`
   };
   el.innerHTML=sourceBody[importDraft.source]||'';
 }
@@ -962,8 +960,8 @@ function renderImportReview(){
   if(!head||!list)return;
   const rows=importDraft.rows||[];
   if(!rows.length){
-    head.innerHTML='<div class="ss-l">Revisão em lote</div><div class="ss-s">Quando você preparar uma importação, ela aparece aqui.</div>';
-    list.innerHTML='';
+    head.innerHTML='<div class="ss-l">Nenhuma revisão preparada</div><div class="ss-s">Escolha uma fonte à esquerda e toque em Preparar revisão.</div>';
+    list.innerHTML='<div class="import-empty"><span>📥</span><strong>Pronto para receber dados</strong><p>Depois da preparação, cada lançamento aparece aqui com decisão, categoria e conta antes de entrar no histórico.</p></div>';
     return;
   }
   const counts={
