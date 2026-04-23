@@ -27,6 +27,19 @@ Observacao importante:
 - [x] Alertas, ranking de categorias e sugestoes de acao.
 - [x] Widget experimental de inteligencia implementado e depois removido por decisao de foco e qualidade.
 
+### 4.3 - Dados, importadores e reconciliacao
+
+- [x] Importador CSV com mapeamento assistido, perfis e regra de deduplicacao.
+- [x] Importacao OFX.
+- [x] Importacao por texto colado para extrato, PDF simples, OCR, comprovante Pix e QR/NFC-e convertidos em texto.
+- [x] Importacao em lote por pasta local.
+- [x] Revisao em lote com estados de nova, duplicada e conciliavel.
+- [x] Tela de conflito visual com opcoes de manter atual, usar importado ou mesclar.
+- [x] Regras salvas de categoria e assinatura.
+- [x] Caixa de entrada para transacoes importadas sem categoria.
+- [x] Snapshots compactos para restauracao rapida antes de importar.
+- [x] Marcacao de transacoes conciliadas e metadados de importacao.
+
 ### 4.10 - Fundacao confiavel
 
 - [x] Suite de testes para parser de transacao.

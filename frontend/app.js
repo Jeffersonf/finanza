@@ -628,7 +628,28 @@ function openImportCenter(){
   renderImportCenter();
   document.getElementById('importCenterModal')?.classList.add('open');
 }
-function importSourceLabel(src){return({csv:'CSV',ofx:'OFX',text:'Texto',folder:'Pasta'})[src]||src;}
+function importSourceLabel(src){return({csv:'CSV',ofx:'OFX',text:'Texto',pdf:'PDF/Extrato',ocr:'OCR/Recibo',pix:'Comprovante Pix',qr:'QR/NFC-e',folder:'Pasta'})[src]||src;}
+function isTextImportSource(src=''){
+  return ['text','pdf','ocr','pix','qr'].includes(src);
+}
+function importSourcePlaceholder(src='text'){
+  return ({
+    text:'Cole aqui texto de extrato, linhas copiadas do banco ou anotações para importar.',
+    pdf:'Cole aqui o texto copiado de um PDF simples de fatura ou extrato. Se o PDF estiver em imagem, use OCR antes.',
+    ocr:'Cole aqui o texto extraído por OCR de recibo, comprovante ou nota.',
+    pix:'Cole aqui o texto do comprovante Pix copiado do banco ou OCR do comprovante.',
+    qr:'Cole aqui o texto lido de QR code, NFC-e ou cupom fiscal convertido para texto.'
+  })[src]||'Cole aqui o texto para importar.';
+}
+function importSourceHint(src='text'){
+  return ({
+    text:'Aceita várias linhas. Cada linha pode virar um lançamento.',
+    pdf:'Bom para PDF simples com texto selecionável ou OCR já extraído.',
+    ocr:'Use quando você já tiver o texto extraído de imagem ou recibo.',
+    pix:'O parser tenta reconhecer valor, data, descrição e sentido de entrada/saída.',
+    qr:'Use para textos copiados de QR/NFC-e ou dados fiscais simplificados.'
+  })[src]||'Aceita várias linhas. Cada linha pode virar um lançamento.';
+}
 function renderImportCenter(){
   renderImportToolbar();
   renderImportSourceTabs();
@@ -653,7 +674,7 @@ function renderImportToolbar(){
 }
 function renderImportSourceTabs(){
   const el=document.getElementById('importSourceTabs');if(!el)return;
-  const tabs=[['csv','CSV'],['ofx','OFX'],['text','Texto colado'],['folder','Pasta local']];
+  const tabs=[['csv','CSV'],['ofx','OFX'],['pdf','PDF'],['ocr','OCR'],['pix','Pix'],['qr','QR/NFC-e'],['text','Texto'],['folder','Pasta local']];
   el.innerHTML=tabs.map(([id,label])=>`<button class="cat-filter-chip ${importDraft.source===id?'active':''}" onclick="setImportSource('${id}')">${label}</button>`).join('');
 }
 function setImportSource(src){
@@ -668,10 +689,15 @@ function renderImportSourceBody(){
   const el=document.getElementById('importSourceBody');if(!el)return;
   const profileOptions=['<option value="">Perfil salvo</option>',...Object.keys(importCenterState.profiles.csv).sort().map(name=>`<option value="${esc(name)}" ${importDraft.profileName===name?'selected':''}>${esc(name)}</option>`)].join('');
   const ruleSummary=`${importCenterState.rules.categories.length} regra(s) de categoria • ${importCenterState.rules.subscriptions.length} regra(s) de assinatura`;
+  const textBody=src=>`<div class="import-source-panel"><label class="fl">${importSourceLabel(src)}</label><textarea class="ta" id="importTextArea" placeholder="${esc(importSourcePlaceholder(src))}" oninput="importDraft.text=this.value">${esc(importDraft.text||'')}</textarea><div class="ss-s">${importSourceHint(src)}</div></div>`;
   const sourceBody={
     csv:`<div class="import-source-panel"><label class="fl">Arquivo CSV</label><input type="file" class="fi" accept=".csv,text/csv,.txt" onchange="handleImportFiles(this.files)"><div class="import-inline-grid"><label><span>Perfil</span><select class="fi sel" onchange="applyImportProfile(this.value)">${profileOptions}</select></label><label><span>Deduplicação</span><select class="fi sel" id="importDedupe" onchange="importDraft.dedupe=this.value"><option value="exact" ${importDraft.dedupe==='exact'?'selected':''}>Exata</option><option value="soft" ${importDraft.dedupe==='soft'?'selected':''}>Descrição + valor</option><option value="off" ${importDraft.dedupe==='off'?'selected':''}>Não ignorar</option></select></label></div><div class="ss-s">${ruleSummary}</div></div>`,
     ofx:`<div class="import-source-panel"><label class="fl">Arquivo OFX</label><input type="file" class="fi" accept=".ofx,.qfx,.txt" onchange="handleImportFiles(this.files)"><div class="ss-s">${ruleSummary}</div></div>`,
-    text:`<div class="import-source-panel"><label class="fl">Texto extraído</label><textarea class="ta" id="importTextArea" placeholder="Cole aqui texto de extrato, PDF copiado, OCR, comprovante Pix, NFC-e ou QR em texto." oninput="importDraft.text=this.value">${esc(importDraft.text||'')}</textarea><div class="ss-s">Aceita várias linhas. Cada linha pode virar um lançamento.</div></div>`,
+    pdf:textBody('pdf'),
+    ocr:textBody('ocr'),
+    pix:textBody('pix'),
+    qr:textBody('qr'),
+    text:textBody('text'),
     folder:`<div class="import-source-panel"><label class="fl">Pasta ou múltiplos arquivos</label><input type="file" class="fi" multiple webkitdirectory directory accept=".csv,.txt,.ofx,.qfx" onchange="handleImportFiles(this.files)"><div class="ss-s">Importa lotes de CSV, OFX e textos extraídos de uma pasta local.</div></div>`
   };
   el.innerHTML=sourceBody[importDraft.source]||'';
@@ -913,7 +939,7 @@ async function parseImportDraft(){
     }else if(importDraft.source==='ofx'){
       if(!importDraft.files.length)throw new Error('Escolha um OFX primeiro');
       for(const file of importDraft.files)rows.push(...parseOfxRows(await file.text(),file.name));
-    }else if(importDraft.source==='text'){
+    }else if(isTextImportSource(importDraft.source)){
       if(!String(importDraft.text||'').trim())throw new Error('Cole um texto para importar');
       rows=parseTextImportRows(importDraft.text);
     }else if(importDraft.source==='folder'){
@@ -956,6 +982,25 @@ function renderImportReview(){
         <span class="state-pill ${row.status==='duplicate'?'error':row.status==='match'?'syncing':'synced'}">${row.status==='duplicate'?'Duplicada':row.status==='match'?'Conciliar':'Nova'}</span>
       </div>
       ${match?`<div class="import-review-match">Atual: ${esc(match.desc)} • ${fmt(match.amount)} • ${fmtD(match.date)}</div>`:''}
+      ${match?`<div class="import-conflict-grid">
+        <div class="import-conflict-card">
+          <div class="import-conflict-kicker">Atual</div>
+          <strong>${esc(match.desc)}</strong>
+          <small>${fmt(match.amount)} • ${fmtD(match.date)} • ${esc(match.category||'Sem categoria')}</small>
+          <small>${esc(match.note||'Sem observação')}</small>
+        </div>
+        <div class="import-conflict-card imported">
+          <div class="import-conflict-kicker">Importado</div>
+          <strong>${esc(row.description)}</strong>
+          <small>${fmt(row.amount)} • ${fmtD(row.date)} • ${esc(row.category||'Sem categoria')}</small>
+          <small>${esc(row.note||'Sem observação')}</small>
+        </div>
+      </div>
+      <div class="import-conflict-actions">
+        <button class="btn btn-g btn-sm" onclick="setImportRowField(${idx},'decision','reconcile')">Manter atual</button>
+        <button class="btn btn-g btn-sm" onclick="setImportRowField(${idx},'decision','replace')">Usar importado</button>
+        <button class="btn btn-g btn-sm" onclick="setImportRowField(${idx},'decision','merge')">Mesclar manualmente</button>
+      </div>`:''}
       <div class="import-inline-grid">
         <label><span>Decisão</span><select class="fi sel" onchange="setImportRowField(${idx},'decision',this.value)"><option value="create" ${row.decision==='create'?'selected':''}>Criar novo</option><option value="reconcile" ${row.decision==='reconcile'?'selected':''}>Conciliar</option><option value="replace" ${row.decision==='replace'?'selected':''}>Usar importado</option><option value="merge" ${row.decision==='merge'?'selected':''}>Mesclar manual</option><option value="skip" ${row.decision==='skip'?'selected':''}>Ignorar</option></select></label>
         <label><span>Categoria</span><select class="fi sel" onchange="setImportRowField(${idx},'category',this.value)">${allCats().map(cat=>`<option value="${esc(cat.name)}" ${cat.name===row.category?'selected':''}>${cat.ico} ${esc(cat.name)}</option>`).join('')}</select></label>
@@ -968,6 +1013,7 @@ function renderImportReview(){
 function setImportRowField(idx,key,value){
   if(!importDraft.rows[idx])return;
   importDraft.rows[idx][key]=value;
+  renderImportReview();
 }
 function saveImportCategoryRule(idx){
   const row=importDraft.rows[idx];if(!row)return;

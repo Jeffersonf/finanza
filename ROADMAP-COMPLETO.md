@@ -86,6 +86,8 @@ Status de implementacao: linha marcada no roadmap, mas o widget experimental de 
 
 ## 4.3 - Dados, importadores e reconciliacao
 
+Status de implementacao: centro de importacao consolidado com CSV, OFX, texto colado, PDF/OCR/Pix/QR via texto extraido, revisao em lote, regras, snapshots rapidos, caixa de entrada e tela visual de conflito para reconciliacao manual.
+
 - [x] Importador universal de extrato CSV.
 - [x] Mapeamento assistido de colunas.
 - [x] Perfis salvos de importacao por banco/cartao.
