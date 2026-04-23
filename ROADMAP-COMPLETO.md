@@ -29,13 +29,15 @@ Legenda sugerida:
 
 ## 4.1 - Usabilidade sem atrito
 
+Status de implementacao: fechamento funcional aplicado nesta rodada com cadastro principal de transacao exigindo apenas valor, busca com acoes diretas, edicao inline de vencimentos, Enter nos modais principais, melhorias de acessibilidade/foco e ajustes mobile dos novos fluxos.
+
 - [x] Entrada rapida por texto livre no frontend.
 - [x] Aceitar frases como `mercado 87,90 hoje nubank`.
 - [x] Aceitar frases como `recebi 350 freela ontem`.
 - [x] Aceitar frases como `internet 120 vence dia 10`.
 - [x] Mostrar preview antes de salvar transacao parseada.
 - [x] Permitir `Enter` para salvar em fluxos rapidos.
-- [ ] Reduzir campos obrigatorios no cadastro principal.
+- [x] Reduzir campos obrigatorios no cadastro principal.
 - [x] Sugerir categoria automaticamente pelo texto.
 - [x] Sugerir conta automaticamente pelo historico.
 - [x] Sugerir recorrencia quando o mesmo gasto se repete.

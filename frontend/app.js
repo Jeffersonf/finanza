@@ -1108,6 +1108,30 @@ function searchScore(texts=[],query=''){
 function searchItem(meta){
   return {...meta,score:searchScore(meta.texts,meta.query)};
 }
+function stopSearchClick(ev){
+  if(ev)ev.stopPropagation();
+}
+function searchActions(item){
+  const id=esc(item.id);
+  if(item.kind==='transaction'){
+    const payAction=item.type==='expense'?`<button onclick="stopSearchClick(event);closeSrch();markPaid('${id}')">${item.paid?'Desmarcar':'Pagar'}</button>`:'';
+    return `<div class="srch-inline-actions">
+      <button onclick="stopSearchClick(event);closeSrch();openModal('${id}')">Editar</button>
+      <button onclick="stopSearchClick(event);closeSrch();dupTx('${id}')">Duplicar</button>
+      ${payAction}
+    </div>`;
+  }
+  if(item.kind==='due'){
+    return `<div class="srch-inline-actions">
+      <button onclick="stopSearchClick(event);closeSrch();openDueModal('${id}')">Editar</button>
+      <button onclick="stopSearchClick(event);closeSrch();payDue('${id}', '${esc(item.date||today())}')">Pagar</button>
+      <button onclick="stopSearchClick(event);closeSrch();postponeDue('${id}', '${esc(item.date||today())}', 'week')">Adiar</button>
+    </div>`;
+  }
+  if(item.kind==='account')return `<div class="srch-inline-actions"><button onclick="stopSearchClick(event);closeSrch();openAccModal('${id}')">Abrir conta</button></div>`;
+  if(item.kind==='goal')return `<div class="srch-inline-actions"><button onclick="stopSearchClick(event);closeSrch();showPage('goals')">Abrir meta</button></div>`;
+  return '';
+}
 function openSearchTarget(kind,id,aux=''){
   closeSrch();
   if(kind==='transaction'){
@@ -1161,6 +1185,8 @@ function doSrch(q){
     query:q,
     kind:'transaction',
     id:t.id,
+    type:t.type,
+    paid:t.paid,
     texts:[t.desc,t.category,t.note,S.accounts.find(a=>a.id===t.accountId)?.name],
     title:t.desc,
     meta:[fmtD(t.date),t.category,t.note].filter(Boolean).join(' • '),
@@ -1193,6 +1219,7 @@ function doSrch(q){
     query:q,
     kind:'due',
     id:d.id,
+    date:d.nextDueDate||today(),
     texts:[d.name,d.category,d.paymentPlace,d.notes,methodLabel(d.paymentMethod)],
     title:d.name,
     meta:[fmt(d.amount),d.category,d.nextDueDate?fmtD(d.nextDueDate):'',d.paymentPlace].filter(Boolean).join(' • '),
@@ -1262,10 +1289,21 @@ function doSrch(q){
   const total=groups.reduce((s,g)=>s+g.items.length,0);
   let html=getSearchQuickActions();
   html+=`<div class="srch-summary">${total} resultado${total!==1?'s':''} em ${groups.length} área${groups.length!==1?'s':''}</div>`;
-  html+=groups.map(group=>`<div class="srch-group"><div class="srch-lbl">${group.label}</div>${group.items.map(item=>`<div class="srch-row" onclick="${item.action}"><div class="srch-ico">${item.icon||'•'}</div><div style="flex:1;min-width:0"><div class="srch-title">${esc(item.title)}</div><div class="srch-meta">${esc(item.meta||'')}</div></div>${item.amount?`<div class="srch-amt" style="${item.tone?`color:${item.tone}`:''}">${esc(item.amount)}</div>`:''}</div>`).join('')}</div>`).join('');
+  html+=groups.map(group=>`<div class="srch-group"><div class="srch-lbl">${group.label}</div>${group.items.map(item=>`<div class="srch-row" role="button" tabindex="0" onclick="${item.action}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${item.action}}"><div class="srch-ico">${item.icon||'•'}</div><div style="flex:1;min-width:0"><div class="srch-title">${esc(item.title)}</div><div class="srch-meta">${esc(item.meta||'')}</div>${searchActions(item)}</div>${item.amount?`<div class="srch-amt" style="${item.tone?`color:${item.tone}`:''}">${esc(item.amount)}</div>`:''}</div>`).join('')}</div>`).join('');
   el.innerHTML=html;
 }
-document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();openSrch();}if(e.key==='Escape'){closeSrch();document.querySelectorAll('.ov.open').forEach(o=>o.classList.remove('open'));}});
+function handleModalEnter(e){
+  if(e.defaultPrevented)return false;
+  if(e.key!=='Enter'||e.shiftKey||e.ctrlKey||e.altKey||e.metaKey)return false;
+  const tag=(e.target?.tagName||'').toLowerCase();
+  if(['button','textarea','select'].includes(tag))return false;
+  if(document.getElementById('txModal')?.classList.contains('open')){e.preventDefault();saveTx();return true;}
+  if(document.getElementById('dueModal')?.classList.contains('open')){e.preventDefault();saveDue();return true;}
+  if(document.getElementById('budModal')?.classList.contains('open')){e.preventDefault();saveBud();return true;}
+  if(document.getElementById('goalModal')?.classList.contains('open')){e.preventDefault();saveGoal();return true;}
+  return false;
+}
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();openSrch();return;}if(handleModalEnter(e))return;if(e.key==='Escape'){closeSrch();document.querySelectorAll('.ov.open').forEach(o=>o.classList.remove('open'));}});
 function openModal(id=null,futDate=false){
   editId=id;const tx=id?S.transactions.find(t=>t.id===id):null;
   document.getElementById('mTit').textContent=tx?'Editar Transação':'Nova Transação';
@@ -1446,16 +1484,17 @@ function updIPrev(){
   document.getElementById('iPrev').innerHTML=`<strong>${fmt(per)}</strong>/mês  ${n} = ${fmt(total)}<br>${dates.slice(0,3).join(', ')}${n>3?` ... ${dates[n-1]}`:''}`;
 }
 async function saveTx(){
-  const desc=document.getElementById('txDesc').value.trim();
+  let desc=document.getElementById('txDesc').value.trim();
   const amount=parseFloat(document.getElementById('txAmt').value);
-  const category=document.getElementById('txCat').value;
-  const date=document.getElementById('txDt').value;
+  const category=document.getElementById('txCat').value||'A classificar';
+  const date=document.getElementById('txDt').value||today();
   const note=document.getElementById('txNote').value.trim();
-  const type=getTyp();const accountId=document.getElementById('txAcc').value;
+  const type=getTyp();const accountId=document.getElementById('txAcc').value||S.accounts[0]?.id||null;
   const isInst=document.getElementById('instChk').checked;
   const isRec=document.getElementById('recChk').checked;
-  if(!desc||!amount||!date){toast('Preencha todos os campos','error');return;}
+  if(!amount){toast('Informe o valor para salvar','error');return;}
   if(amount<=0){toast('Valor deve ser positivo','error');return;}
+  if(!desc)desc=category||'Lançamento';
   const btn=document.getElementById('saveTxBtn');btn.disabled=true;btn.textContent='Salvando...';
   try{
     if(isInst&&!editId){
@@ -1488,7 +1527,7 @@ async function saveTx(){
         if(editId){const u=await api('PUT',`/api/transactions/${editId}`,pl);const i=S.transactions.findIndex(t=>t.id===editId);S.transactions[i]=nTx({...u,accountId});}
         else{const c=await api('POST','/api/transactions',pl);S.transactions.unshift(nTx({...c,accountId}));}
       } else {
-        const tx={id:editId||uid(),type,desc,amount,category,date,note,accountId,installmentGroup:null,installmentNum:null,installmentTotal:null,recurGroup:null,paid:false,pending:false};
+        const tx={id:editId||uid(),type,desc,amount,category,date,note,accountId,installmentGroup:oldTx?.installmentGroup||null,installmentNum:oldTx?.installmentNum||null,installmentTotal:oldTx?.installmentTotal||null,recurGroup:oldTx?.recurGroup||null,paid:oldTx?.paid||false,pending:oldTx?.pending||false};
         if(editId){const i=S.transactions.findIndex(t=>t.id===editId);S.transactions[i]=tx;}else S.transactions.unshift(tx);
         saveLocal();
       }
@@ -1944,7 +1983,37 @@ function dueHTML(o){
   const item=o.item,c=getCat(item.category),dl=dDiff(o.date),late=o.date<today();
   const acc=S.accounts.find(a=>a.id===item.accountId);
   const tone=late?'var(--dan)':dl<=3?'var(--warn)':'var(--fut)';
-  return `<div class="ti fut-tx" style="border-left-color:${tone}"><div class="tico" style="background:${c.col}20">${c.ico}</div><div class="tinf"><div class="tnm">${item.name}</div><div class="tcat"><span class="bdg" style="background:rgba(167,139,250,.12);color:${tone}">${late?'atrasado':dl===0?'vence hoje':'em '+dl+'d'}</span><span class="bdg">${methodLabel(item.paymentMethod)}</span>${item.paymentPlace?`<span class="bdg">${item.paymentPlace}</span>`:''}${acc?`<span class="bdg">${acc.icon} ${acc.name}</span>`:''}${item.notes?`<span style="color:var(--mt);font-size:9px">${item.notes}</span>`:''}</div></div><div class="tr"><div class="tam fut-c">-${fmt(item.amount)}</div><div class="tdt">${fmtD(o.date)}</div></div><div class="tact"><button class="ib ok" onclick="payDue('${item.id}','${o.date}')">✓</button><button class="ib" onclick="postponeDue('${item.id}','${o.date}','week')" title="Adiar 7 dias">⏭️</button><button class="ib" onclick="openDueModal('${item.id}')">✏️</button><button class="ib del" onclick="delDue('${item.id}')">🗑️</button></div></div>`;
+  return `<div style="border-radius:14px;overflow:hidden"><div class="ti fut-tx" style="border-left-color:${tone}"><div class="tico" style="background:${c.col}20">${c.ico}</div><div class="tinf"><div class="tnm">${item.name}</div><div class="tcat"><span class="bdg" style="background:rgba(167,139,250,.12);color:${tone}">${late?'atrasado':dl===0?'vence hoje':'em '+dl+'d'}</span><span class="bdg">${methodLabel(item.paymentMethod)}</span>${item.paymentPlace?`<span class="bdg">${item.paymentPlace}</span>`:''}${acc?`<span class="bdg">${acc.icon} ${acc.name}</span>`:''}${item.notes?`<span style="color:var(--mt);font-size:9px">${item.notes}</span>`:''}</div></div><div class="tr"><div class="tam fut-c">-${fmt(item.amount)}</div><div class="tdt">${fmtD(o.date)}</div></div><div class="tact"><button class="ib ok" onclick="payDue('${item.id}','${o.date}')" title="Pagar">✓</button><button class="ib" onclick="postponeDue('${item.id}','${o.date}','week')" title="Adiar 7 dias">⏭️</button><button class="ib" onclick="openDueInline('${item.id}')" title="Editar inline">✏️</button><button class="ib" onclick="openDueModal('${item.id}')" title="Editar completo">⋯</button><button class="ib del" onclick="delDue('${item.id}')" title="Remover">🗑️</button></div></div><div class="due-inline-wrap" id="due-inline-${item.id}"></div></div>`;
+}
+function openDueInline(id){
+  const item=dueItems.find(x=>x.id===id);if(!item)return;
+  document.querySelectorAll('.due-inline-wrap').forEach(el=>{if(el.id!==`due-inline-${id}`)el.innerHTML='';});
+  const el=document.getElementById(`due-inline-${id}`);if(!el)return;
+  const catOpts=allCats().map(c=>`<option value="${esc(c.name)}" ${c.name===item.category?'selected':''}>${c.ico} ${esc(c.name)}</option>`).join('');
+  el.innerHTML=`<div class="due-inline-edit">
+    <input class="ti-edit-inp" id="dueInName-${id}" value="${esc(item.name)}" placeholder="Nome">
+    <input class="ti-edit-inp amount" id="dueInAmount-${id}" type="number" min="0" step="0.01" value="${item.amount||''}" placeholder="Valor">
+    <input class="ti-edit-inp" id="dueInDate-${id}" type="date" value="${item.nextDueDate||today()}">
+    <select class="ti-edit-inp" id="dueInCat-${id}">${catOpts}</select>
+    <button class="btn btn-p btn-sm" onclick="saveDueInline('${id}')">Salvar</button>
+    <button class="btn btn-g btn-sm" onclick="document.getElementById('due-inline-${id}').innerHTML=''">Cancelar</button>
+  </div>`;
+  document.getElementById(`dueInName-${id}`)?.focus();
+}
+function saveDueInline(id){
+  const item=dueItems.find(x=>x.id===id);if(!item)return;
+  const name=document.getElementById(`dueInName-${id}`)?.value.trim();
+  const amount=parseFloat(document.getElementById(`dueInAmount-${id}`)?.value)||0;
+  const date=document.getElementById(`dueInDate-${id}`)?.value||today();
+  if(!name||!amount){toast('Informe nome e valor','error');return;}
+  item.name=name;
+  item.amount=amount;
+  item.nextDueDate=date;
+  item.dueDay=new Date(date+'T12:00:00').getDate();
+  item.category=document.getElementById(`dueInCat-${id}`)?.value||item.category;
+  saveDueItems();
+  renderFut();
+  toast('Vencimento atualizado inline','success');
 }
 function openDueModal(id=null){
   const d=id?dueItems.find(x=>x.id===id):null;
