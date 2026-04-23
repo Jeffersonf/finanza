@@ -10,6 +10,7 @@ const crypto  = require('crypto');
 const fs      = require('fs');
 const path    = require('path');
 const { cleanText, normalizeRole, userRole, canWrite, publicUser } = require('./permissions');
+const { parseTransactionText } = require('./transactionParser');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -112,13 +113,6 @@ async function auditEvent(db, user, action, entity, entityId = null, detail = ''
   }
 }
 
-function moneyToNumber(raw) {
-  const v = cleanText(raw).trim();
-  if (!v) return 0;
-  const normalized = v.includes(',') ? v.replace(/\./g, '').replace(',', '.') : v;
-  return Number(normalized) || 0;
-}
-
 function inferCategoryFromText(text, type) {
   if (type === 'income') {
     if (/(sal[aá]rio|pagamento)/.test(text)) return 'SalÃ¡rio';
@@ -135,7 +129,7 @@ function inferCategoryFromText(text, type) {
   return 'Outros';
 }
 
-function parseTransactionText(text) {
+function parseTransactionTextLegacy(text) {
   const raw = cleanText(text).trim();
   if (!raw) return null;
   const amountMatch = raw.match(/\d+(?:[.,]\d{1,2})?/);
