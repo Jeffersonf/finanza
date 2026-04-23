@@ -236,14 +236,16 @@ Este ciclo organiza itens da fundacao tecnica continua sem mudar a versao public
 Itens puxados para este ciclo:
 
 - Criar testes para permissoes de usuario.
-- Criar suite de testes para parser de transacao.
-- Criar testes para importacao JSON.
+- Criar suite de testes para parser de transacao. Entregas atuais: valores com `R$`, salario, conta composta, categorias de saude, recorrencia por texto e entradas invalidas.
+- Criar testes para importacao JSON. Entregas atuais: campos estruturais invalidos, vencimentos em `settings.rates`, contadores completos e fixture demo importavel.
 - Formalizar schema de backup.
 - Criar migracoes de backup por versao.
-- Criar fixtures de dados demo.
+- Criar fixtures de dados demo. Entrega atual: backup demo com transacoes, vencimento recorrente, lista de compras, meta, orcamento, conta e estado basico de carro.
 - Adicionar CI para testes.
 - Adicionar validacao de deploy.
 - Padronizar comandos `npm run check` e `npm test`.
+- Endurecer permissoes defensivas. Entrega atual: `canWrite(null)` bloqueia escrita e `publicUser()` nao quebra nem vaza campos sensiveis.
+- Melhorar retorno de importacao. Entrega atual: backend informa contagem de categorias, listas, itens de compra e vencimentos alem de transacoes, orcamentos, metas e contas.
 
 ## 5.0 - Android nativo premium
 

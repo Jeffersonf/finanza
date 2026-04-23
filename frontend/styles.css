@@ -39,28 +39,29 @@
              radial-gradient(ellipse 50% 40% at 15% 80%, rgba(167,139,250,.06) 0%, transparent 60%);
 }
 [data-theme=light] {
-  --ac: #4f8f00;
-  --ac2: #007f66;
-  --fut: #6f4fe8;
-  --dan: #c83a2c;
-  --warn: #8a6400;
+  --ac: #3f7d00;
+  --ac2: #007a61;
+  --fut: #6848d9;
+  --dan: #b93326;
+  --warn: #836000;
   --grn: #15803d;
-  --bg: #e8ecf5;
-  --bg2: #dde3f0;
-  --sf: rgba(255,255,255,.96);
-  --sf2: rgba(235,239,250,.9);
+  --bg: #f4f7ef;
+  --bg2: #e8eedf;
+  --sf: rgba(255,255,255,.9);
+  --sf2: rgba(246,249,240,.86);
   --sf-solid: #ffffff;
-  --bd: rgba(44,55,105,.22);
-  --bd2: rgba(44,55,105,.12);
-  --tx: #060814;
-  --tx2: rgba(6,8,20,.82);
-  --mt: rgba(6,8,20,.62);
-  --sh: rgba(20,30,80,.12);
-  --glow-ac: rgba(160,215,30,.15);
-  --glow-ac2: rgba(40,205,160,.12);
-  --grad-bg: radial-gradient(ellipse 90% 55% at 50% -5%, rgba(160,215,30,.14) 0%, transparent 65%),
-             radial-gradient(ellipse 55% 45% at 92% 85%, rgba(40,205,160,.1) 0%, transparent 55%),
-             radial-gradient(ellipse 40% 35% at 8% 75%, rgba(140,120,240,.07) 0%, transparent 50%);
+  --bd: rgba(56,74,44,.16);
+  --bd2: rgba(56,74,44,.09);
+  --tx: #11170d;
+  --tx2: rgba(17,23,13,.82);
+  --mt: rgba(17,23,13,.58);
+  --sh: rgba(71,89,42,.12);
+  --glow-ac: rgba(131,190,24,.16);
+  --glow-ac2: rgba(0,150,118,.11);
+  --grad-bg: radial-gradient(ellipse 80% 58% at 20% -8%, rgba(197,232,118,.34) 0%, transparent 62%),
+             radial-gradient(ellipse 58% 45% at 98% 18%, rgba(83,202,169,.18) 0%, transparent 56%),
+             radial-gradient(ellipse 46% 34% at 16% 92%, rgba(246,194,92,.14) 0%, transparent 58%),
+             linear-gradient(145deg, #fbfcf6 0%, #eef4e5 46%, #e6efe9 100%);
 }
 
 /* Android WebView fallback - backdrop-filter not supported */
@@ -135,6 +136,7 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
+  background: var(--grad-bg);
 }
 
 
@@ -1076,9 +1078,27 @@ select.sel {
 [data-theme=light] .wc-desc { color: rgba(6,8,20,.66); }
 [data-theme=light] .sl-cat-label { color: rgba(6,8,20,.66); }
 [data-theme=light] body::before { opacity: 1; }
-[data-theme=light] .sc { box-shadow: 0 18px 38px rgba(36,48,92,.08), inset 0 1px 0 rgba(255,255,255,.7); }
-[data-theme=light] .box { box-shadow: 0 18px 38px rgba(36,48,92,.07); }
-[data-theme=light] .cc-box { box-shadow: 0 18px 38px rgba(36,48,92,.07); }
+[data-theme=light] .sidebar {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.94), rgba(249,252,242,.88)),
+    var(--sf);
+  box-shadow: 14px 0 36px rgba(71,89,42,.08);
+}
+[data-theme=light] .fnav {
+  background: rgba(255,255,255,.88);
+  box-shadow: 0 -10px 30px rgba(71,89,42,.1);
+}
+[data-theme=light] .sc,
+[data-theme=light] .box,
+[data-theme=light] .cc-box {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.94), rgba(250,253,244,.86)),
+    var(--sf);
+  border-color: rgba(78,98,54,.13);
+}
+[data-theme=light] .sc { box-shadow: 0 18px 38px rgba(71,89,42,.08), inset 0 1px 0 rgba(255,255,255,.8); }
+[data-theme=light] .box { box-shadow: 0 18px 38px rgba(71,89,42,.07); }
+[data-theme=light] .cc-box { box-shadow: 0 18px 38px rgba(71,89,42,.07); }
 [data-theme=light] .bg-card,
 [data-theme=light] .insight-card,
 [data-theme=light] .mini-stat,
@@ -1086,8 +1106,24 @@ select.sel {
 [data-theme=light] .budget-widget,
 [data-theme=light] .wcard,
 [data-theme=light] .month-compare .mc-card {
-  background: #fff;
+  background: linear-gradient(145deg, #fff, #fbfdf7);
+  border-color: rgba(78,98,54,.12);
   color: var(--tx);
+}
+[data-theme=light] .sb-search,
+[data-theme=light] .fi,
+[data-theme=light] .sb,
+[data-theme=light] select.sel,
+[data-theme=light] .vtog,
+[data-theme=light] .theme-btn,
+[data-theme=light] .mnav {
+  background: rgba(255,255,255,.72);
+  border-color: rgba(78,98,54,.15);
+}
+[data-theme=light] .nav-item:hover,
+[data-theme=light] .pop-item:hover,
+[data-theme=light] .ti:hover {
+  background: rgba(126,166,54,.1);
 }
 [data-theme=light] .yield-pill {
   background: rgba(79,143,0,.1);
@@ -1108,9 +1144,8 @@ select.sel {
 [data-theme=light] .nav-item.fn.active {
   color: var(--tx);
 }
-[data-theme=light] .fnav { box-shadow: 0 -2px 20px rgba(20,30,80,.1); }
 [data-theme=light] .fi:focus,
-[data-theme=light] .sb:focus { box-shadow: 0 0 0 3px rgba(160,215,30,.2) !important; }
+[data-theme=light] .sb:focus { box-shadow: 0 0 0 3px rgba(126,166,54,.18) !important; }
 
 
 /* ─── CONN STATUS TOAST ─────────────────────────────────────── */

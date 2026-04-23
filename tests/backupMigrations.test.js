@@ -35,3 +35,23 @@ test('preserva backups versionados sem forcar migracao destrutiva', () => {
   assert.equal(migrated.version, '4.0.0');
   assert.deepEqual(migrated.transactions, input.transactions);
 });
+
+test('migra backup 4.0-preview como legado compativel', () => {
+  const migrated = migrateBackupPayload({
+    version: '4.0-preview',
+    transactions: [{ id: 't1', description: 'Internet', recur_group: 'rec1' }]
+  });
+
+  assert.equal(migrated.version, CURRENT_BACKUP_VERSION);
+  assert.equal(migrated.transactions[0].desc, 'Internet');
+  assert.equal(migrated.transactions[0].recurGroup, 'rec1');
+});
+
+test('cria estruturas vazias para backup legado minimo', () => {
+  const migrated = migrateBackupPayload({});
+
+  assert.equal(migrated.version, CURRENT_BACKUP_VERSION);
+  assert.deepEqual(migrated.transactions, []);
+  assert.deepEqual(migrated.shopping, { lists: [], items: [] });
+  assert.deepEqual(migrated.settings.rates, {});
+});

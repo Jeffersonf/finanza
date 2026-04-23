@@ -39,6 +39,20 @@
       "accountId": "demo-conta-principal",
       "paid": false,
       "pending": false
+    },
+    {
+      "id": "demo-tx-internet",
+      "type": "expense",
+      "desc": "Internet",
+      "description": "Internet",
+      "amount": 120,
+      "category": "Moradia",
+      "date": "2026-05-10",
+      "note": "Conta fixa demo",
+      "accountId": "demo-conta-principal",
+      "paid": false,
+      "pending": true,
+      "recurGroup": "demo-rec-internet"
     }
   ],
   "budgets": [
@@ -103,7 +117,33 @@
     "rates": {
       "cdi": 10.4,
       "selic": 10.5,
-      "dueItems": []
+      "dueItems": [],
+      "car": {
+        "activeVehicleId": "demo-carro",
+        "vehicles": [
+          {
+            "id": "demo-carro",
+            "name": "Carro demo",
+            "plate": "DMO-2026",
+            "model": "Hatch",
+            "odometer": 38500
+          }
+        ],
+        "events": [
+          {
+            "id": "demo-car-fuel",
+            "vehicleId": "demo-carro",
+            "type": "fuel",
+            "date": "2026-04-21",
+            "odometer": 38500,
+            "fuelType": "Gasolina",
+            "liters": 32,
+            "pricePerLiter": 5.79,
+            "amount": 185.28,
+            "title": "Abastecimento demo"
+          }
+        ]
+      }
     },
     "widgetPrefs": {},
     "widgetOrder": [],

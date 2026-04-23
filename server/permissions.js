@@ -15,10 +15,11 @@ function userRole(user) {
 }
 
 function canWrite(user) {
+  if (!user) return false;
   return ['admin', 'editor'].includes(userRole(user));
 }
 
-function publicUser(user) {
+function publicUser(user = {}) {
   return {
     id: user.id,
     name: user.name,

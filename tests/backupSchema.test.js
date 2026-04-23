@@ -49,7 +49,11 @@ test('conta itens importados a partir do payload normalizado', () => {
     transactions: 2,
     budgets: 1,
     goals: 0,
-    accounts: 2
+    accounts: 2,
+    categories: 0,
+    shoppingLists: 0,
+    shoppingItems: 0,
+    dueItems: 0
   });
 });
 
@@ -62,4 +66,18 @@ test('rejeita campos estruturais com tipo invalido', () => {
     () => normalizeBackupPayload(null),
     /Backup JSON deve ser um objeto/
   );
+  assert.throws(
+    () => normalizeBackupPayload({ transactions: [], shopping: { lists: {} } }),
+    /shopping\.lists deve ser uma lista/
+  );
+});
+
+test('mantem vencimentos vindos de settings.rates quando nao ha dueItems raiz', () => {
+  const backup = normalizeBackupPayload({
+    transactions: [],
+    settings: { rates: { dueItems: [{ id: 'due-settings' }] } }
+  });
+
+  assert.deepEqual(backup.dueItems, [{ id: 'due-settings' }]);
+  assert.deepEqual(backup.settings.rates.dueItems, [{ id: 'due-settings' }]);
 });

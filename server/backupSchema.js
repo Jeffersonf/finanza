@@ -56,7 +56,11 @@ function backupImportCounts(data) {
     transactions: data.transactions.length,
     budgets: data.budgets.length,
     goals: data.goals.length,
-    accounts: data.accounts.length
+    accounts: data.accounts.length,
+    categories: data.categories.length,
+    shoppingLists: data.shopping.lists.length,
+    shoppingItems: data.shopping.items.length,
+    dueItems: data.dueItems.length
   };
 }
 

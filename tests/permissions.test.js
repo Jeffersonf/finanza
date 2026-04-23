@@ -23,6 +23,7 @@ test('somente admin e editor podem escrever', () => {
   assert.equal(canWrite({ role: 'editor' }), true);
   assert.equal(canWrite({ role: 'read' }), false);
   assert.equal(canWrite({ role: 'guest' }), false);
+  assert.equal(canWrite(null), false);
 });
 
 test('publicUser nao expõe api_key nem hash de senha', () => {
@@ -44,5 +45,16 @@ test('publicUser nao expõe api_key nem hash de senha', () => {
     role: 'admin',
     is_admin: true,
     created_at: '2026-04-22'
+  });
+});
+
+test('publicUser aceita usuario ausente sem vazar dados', () => {
+  assert.deepEqual(publicUser(), {
+    id: undefined,
+    name: undefined,
+    username: undefined,
+    role: 'editor',
+    is_admin: false,
+    created_at: undefined
   });
 });

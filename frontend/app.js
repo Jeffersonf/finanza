@@ -735,12 +735,10 @@ async function saveRemoteState(){
   const shopping=sl?.lists?.length?sl:(()=>{try{return JSON.parse(localStorage.getItem(SL_KEY)||'{}');}catch{return{lists:[],items:[]};}})();
   const car=carState?.vehicles?.length?carState:(()=>{try{return normalizeCarState(JSON.parse(localStorage.getItem(CAR_KEY)||'{}'));}catch{return normalizeCarState();}})();
   setSaveState('syncing','Sincronizando alterações com a nuvem');
-  showConnBar('syncing','Sincronizando dados...',0);
   try{
     await api('PUT','/api/state',{accounts:S.accounts,categories:custCats,shopping,car,settings:getAppSettings()});
     setSaveState('synced','Tudo sincronizado com a conta online');
     logSyncEvent('success','Sincronização concluída',`${S.transactions.length} transações • ${car.events?.length||0} registros do carro`);
-    showConnBar('online','Dados sincronizados',2200);
   }catch(err){
     setSaveState('error','Falha ao sincronizar com o servidor',{error:err.message});
     logSyncEvent('error','Falha na sincronização',err.message);
@@ -3020,6 +3018,7 @@ async function syncQueue(){
 // ════════════════════════════════════════════════════════════
 let _lastConnState='';
 function showConnBar(state,msg,duration=3000){
+  if(state==='syncing'||state==='online')return;
   if(state===_lastConnState&&state==='online')return;
   _lastConnState=state;
   const b=document.getElementById('connBar');

@@ -10,9 +10,9 @@ function normalizeText(value) {
 }
 
 function moneyToNumber(raw) {
-  const v = cleanText(raw).trim();
+  const v = cleanText(raw).replace(/r\$/gi, '').trim();
   if (!v) return 0;
-  const normalized = v.includes(',') ? v.replace(/\./g, '').replace(',', '.') : v;
+  const normalized = v.includes(',') ? v.replace(/\./g, '').replace(',', '.') : v.replace(/\s+/g, '');
   return Number(normalized) || 0;
 }
 
@@ -24,10 +24,10 @@ function inferCategoryFromText(text, type) {
     if (/(invest|rendimento)/.test(normalized)) return 'Investimentos';
     return 'Outros';
   }
+  if (/(farmacia|remedio|medico|consulta|exame|saude)/.test(normalized)) return 'Sa\u00fade';
   if (/(mercado|supermercado|ifood|restaurante|lanche|padaria|comida|delivery)/.test(normalized)) return 'Alimenta\u00e7\u00e3o';
   if (/(uber|99|taxi|gasolina|combustivel|onibus|metro)/.test(normalized)) return 'Transporte';
   if (/(aluguel|luz|agua|internet|condominio|casa|energia)/.test(normalized)) return 'Moradia';
-  if (/(farmacia|remedio|medico|consulta|exame|saude)/.test(normalized)) return 'Sa\u00fade';
   if (/(curso|livro|faculdade|educacao)/.test(normalized)) return 'Educa\u00e7\u00e3o';
   if (/(cinema|bar|jogo|show|lazer)/.test(normalized)) return 'Lazer';
   if (/(netflix|spotify|prime|assinatura)/.test(normalized)) return 'Assinaturas';
@@ -71,10 +71,14 @@ function inferAccountHint(text) {
   return known.find(name => new RegExp(`\\b${name.replace(/\s+/g, '\\s+')}\\b`).test(normalized)) || '';
 }
 
+function inferRecurring(text) {
+  return /\b(mensal|todo mes|todo mês|recorrente|fixo|fixa|assinatura)\b/.test(normalizeText(text));
+}
+
 function titleFromText(text, amountToken, fallback, accountHint = '') {
   let clean = cleanText(text)
     .replace(amountToken, ' ')
-    .replace(/\b(?:r\$|gastei|paguei|comprei|recebi|receita|despesa|hoje|ontem|amanh[a\u00e3]|vence|vencimento|dia|em|daqui|dias?|no|na|de|com|pelo|pela)\b/gi, ' ')
+    .replace(/\b(?:r\$|gastei|paguei|comprei|recebi|receita|despesa|sal[a\u00e1]rio|entrada|ganhei|hoje|ontem|amanh[a\u00e3]|vence|vencimento|dia|em|daqui|dias?|no|na|de|com|pelo|pela)\b/gi, ' ')
     .replace(/\d{1,2}/g, ' ');
 
   if (accountHint) clean = clean.replace(new RegExp(accountHint.replace(/\s+/g, '\\s+'), 'ig'), ' ');
@@ -101,6 +105,7 @@ function parseTransactionText(text, options = {}) {
   const pending = type === 'expense' && (/(vence|vencimento|a pagar|boleto|conta fixa|fixo|fixa)/.test(normalized) || date > dateOnly(options.baseDate || new Date()));
   const category = inferCategoryFromText(raw, type);
   const accountHint = inferAccountHint(raw);
+  const recurring = type === 'expense' && inferRecurring(raw);
   const description = titleFromText(raw, amountToken, category, accountHint);
 
   return {
@@ -111,7 +116,8 @@ function parseTransactionText(text, options = {}) {
     category,
     date,
     pending,
-    accountHint
+    accountHint,
+    recurring
   };
 }
 
@@ -120,5 +126,6 @@ module.exports = {
   inferCategoryFromText,
   parseDateFromText,
   inferAccountHint,
+  inferRecurring,
   parseTransactionText
 };
