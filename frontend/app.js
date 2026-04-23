@@ -256,13 +256,19 @@ function renderAdminUsers(){
   if(box)box.style.display=canManageUsers()?'block':'none';
   const list=document.getElementById('adminUsersList');if(!list)return;
   if(!canManageUsers()){list.innerHTML='';return;}
+  const roleOptions=['admin','editor','read','guest'];
   list.innerHTML=adminUsers.length?adminUsers.map(u=>`
     <div class="admin-user-row">
       <div class="admin-user-main">
         <div class="sync-title">${esc(u.name||u.username||'Usuário')}</div>
         <div class="sync-meta">${esc(u.username||'sem login')} • ${roleLabel(u.role)}${u.is_admin?' • admin':''}</div>
       </div>
-      <button class="btn btn-d btn-sm" onclick="deleteAdminUser('${u.id}')" ${u.id===cfg.userId?'disabled title="Você não pode remover sua própria conta aqui"':''}>Remover</button>
+      <div class="admin-user-actions">
+        <select class="fi admin-role-select" onchange="updateAdminUserRole('${u.id}',this.value)" ${u.id===cfg.userId?'disabled title="Use outra conta admin para alterar seu próprio papel"':''}>
+          ${roleOptions.map(role=>`<option value="${role}" ${role===u.role?'selected':''}>${roleLabel(role)}</option>`).join('')}
+        </select>
+        <button class="btn btn-d btn-sm" onclick="deleteAdminUser('${u.id}')" ${u.id===cfg.userId?'disabled title="Você não pode remover sua própria conta aqui"':''}>Remover</button>
+      </div>
     </div>
   `).join(''):'<div class="sync-empty">Nenhum usuário encontrado.</div>';
 }
@@ -281,6 +287,27 @@ async function createAdminUser(){
     await loadPersistentAuditHistory();
     updateTrustPanel();
   }catch(err){toast('Erro: '+err.message,'error');}
+}
+async function updateAdminUserRole(id,role){
+  if(!canManageUsers())return;
+  if(id===cfg.userId){toast('Use outra conta admin para alterar seu próprio papel','error');renderAdminUsers();return;}
+  const prev=adminUsers.find(u=>u.id===id)?.role;
+  try{
+    const updated=await api('PATCH',`/api/users/${id}/role`,{role});
+    const i=adminUsers.findIndex(u=>u.id===id);
+    if(i>=0)adminUsers[i]=updated;
+    renderAdminUsers();
+    toast('Papel atualizado','success');
+    await loadPersistentAuditHistory();
+    updateTrustPanel();
+  }catch(err){
+    if(prev){
+      const i=adminUsers.findIndex(u=>u.id===id);
+      if(i>=0)adminUsers[i]={...adminUsers[i],role:prev};
+      renderAdminUsers();
+    }
+    toast('Erro: '+err.message,'error');
+  }
 }
 async function deleteAdminUser(id){
   if(!canManageUsers())return;

@@ -75,10 +75,10 @@ Depois que a API estiver no ar:
 curl -X POST https://SEU-APP.onrender.com/api/setup \
   -H "x-api-key: SUA_API_SECRET" \
   -H "Content-Type: application/json" \
-  -d '{"name": "Seu Nome"}'
+  -d '{"name": "Jefferson", "username": "jefferson", "password": "sua-senha"}'
 ```
 
-A resposta retorna a `api_key` do admin. Guarde essa chave.
+A resposta retorna a `api_key` do admin. Se o usuario informado ja existir e ainda nao houver nenhum admin, ele sera promovido para `admin`.
 
 ## 5. Criar usuarios
 
@@ -89,7 +89,7 @@ curl -X POST https://SEU-APP.onrender.com/api/users \
   -d '{"name": "Joao", "username": "joao", "password": "senha-forte", "role": "editor"}'
 ```
 
-A resposta inclui a `api_key` do usuario. Os papeis aceitos pela API sao `admin`, `editor`, `read` e `guest`; perfis `read` e `guest` consultam dados, mas nao editam transacoes, metas, orcamentos, importacao ou estado remoto. Contas com papel `admin` tambem podem listar, criar e remover usuarios pelo app, sem precisar digitar a `API_SECRET`.
+A resposta inclui a `api_key` do usuario. Os papeis aceitos pela API sao `admin`, `editor`, `read` e `guest`; perfis `read` e `guest` consultam dados, mas nao editam transacoes, metas, orcamentos, importacao ou estado remoto. Contas com papel `admin` tambem podem listar, criar, alterar papeis e remover usuarios pelo app, sem precisar digitar a `API_SECRET`.
 
 ## 6. Entrar no app
 
@@ -108,6 +108,7 @@ Na tela inicial do Finanza:
 | GET | `/api/me` | User | Dados do usuario logado |
 | POST | `/api/users` | Admin | Cria usuario |
 | GET | `/api/users` | Admin | Lista usuarios |
+| PATCH | `/api/users/:id/role` | Admin | Altera papel do usuario |
 | DELETE | `/api/users/:id` | Admin | Remove usuario |
 | POST | `/api/me/regenerate-key` | User | Gera nova `api_key` |
 | GET | `/api/audit-log` | User | Consulta a trilha de auditoria persistente |

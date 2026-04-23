@@ -440,6 +440,22 @@ app.post('/api/setup', adminAuth, async (req, res) => {
     const { name = 'Admin', password = '' } = req.body;
     const username = normalizeUsername(req.body?.username || name);
     if (!username || !password) return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
+    const { rows: existingUser } = await pool.query('SELECT id FROM users WHERE username=$1', [username]);
+    if (existingUser.length) {
+      const { rows } = await pool.query(
+        `UPDATE users
+         SET name=COALESCE(NULLIF($1,''), name),
+             password_hash=$2,
+             role='admin',
+             is_admin=TRUE
+         WHERE username=$3
+         RETURNING id, name, username, api_key, role, is_admin, created_at`,
+        [name, hashPassword(password), username]
+      );
+      await auditEvent(pool, req.adminActor || rows[0], 'usuario_promovido_admin', 'user', rows[0].id, rows[0].username || rows[0].name);
+      return res.status(200).json({ message: 'Usuario promovido a admin', ...rows[0] });
+    }
+
     const api_key = crypto.randomBytes(32).toString('hex');
     const { rows } = await pool.query(
       'INSERT INTO users (name, username, password_hash, api_key, role, is_admin) VALUES ($1, $2, $3, $4, $5, TRUE) RETURNING id, name, username, api_key, role, is_admin, created_at',
@@ -465,6 +481,24 @@ app.get('/api/users', adminAuth, async (req, res) => {
 });
 
 // Deletar usuário (admin)
+app.patch('/api/users/:id/role', adminAuth, async (req, res) => {
+  try {
+    const role = normalizeRole(req.body?.role, false);
+    const { rows } = await pool.query(
+      `UPDATE users
+       SET role=$1, is_admin=$2
+       WHERE id=$3
+       RETURNING id, name, username, role, is_admin, created_at`,
+      [role, role === 'admin', req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
+    await auditEvent(pool, req.adminActor, 'papel_atualizado', 'user', rows[0].id, `${rows[0].username || rows[0].name} -> ${userRole(rows[0])}`);
+    res.json(publicUser(rows[0]));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.delete('/api/users/:id', adminAuth, async (req, res) => {
   try {
     const { rows } = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id, name, username, role, is_admin', [req.params.id]);

@@ -1552,9 +1552,14 @@ select.sel {
   border-bottom:1px solid var(--bd);
 }
 .admin-user-main{min-width:0;}
+.admin-user-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.admin-role-select{width:112px;padding:7px 9px;font-size:12px;}
 @media(max-width:700px){
   .admin-user-form{grid-template-columns:1fr 1fr;}
   .admin-user-form button{grid-column:1/-1;}
+  .admin-user-row{align-items:flex-start;flex-direction:column;}
+  .admin-user-actions{width:100%;justify-content:space-between;}
+  .admin-role-select{flex:1;width:auto;}
 }
 /* ─── MINI STAT WIDGET ──────────────────────────────────────── */
 .mini-stats {
