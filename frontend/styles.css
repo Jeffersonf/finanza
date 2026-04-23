@@ -1446,6 +1446,33 @@ select:focus-visible,
   font-size:11px;
   color:var(--mt);
 }
+.dash-manager-tag{
+  display:inline-flex;
+  align-items:center;
+  margin-left:8px;
+  padding:2px 7px;
+  border-radius:999px;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  vertical-align:middle;
+}
+.dash-manager-tag.tag-core{
+  color:var(--ac);
+  background:rgba(200,245,90,.12);
+  border:1px solid rgba(200,245,90,.22);
+}
+.dash-manager-tag.tag-support{
+  color:var(--ac2);
+  background:rgba(90,175,245,.10);
+  border:1px solid rgba(90,175,245,.18);
+}
+.dash-manager-tag.tag-analysis{
+  color:var(--warn);
+  background:rgba(245,200,90,.10);
+  border:1px solid rgba(245,200,90,.18);
+}
 .dash-manager-panel{
   margin-top:10px;
   border:1px solid var(--bd);
@@ -1488,6 +1515,9 @@ select:focus-visible,
 .dash-manager-row.is-off{
   opacity:.76;
 }
+.dash-manager-row.is-off .dash-manager-tag{
+  opacity:.8;
+}
 .dash-manager-row.drag-over{
   border-color:rgba(200,245,90,.46);
   box-shadow:0 0 0 2px rgba(200,245,90,.14) inset;
@@ -1511,6 +1541,9 @@ select:focus-visible,
 }
 .dash-manager-info strong{
   font-size:13px;
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
 }
 .dash-manager-info small{
   margin-top:2px;
@@ -1612,6 +1645,10 @@ select:focus-visible,
   font-size:11px;
   line-height:1.45;
   color:var(--mt);
+}
+[data-theme=light] .dash-manager-head,
+[data-theme=light] .dash-manager-panel{
+  box-shadow:0 16px 34px rgba(36,48,92,.06);
 }
 .insight-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
 .insight-card { background: var(--sf); border: 1px solid var(--bd); border-radius: 18px; padding: 14px 16px; }

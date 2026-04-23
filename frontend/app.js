@@ -4107,27 +4107,28 @@ function initDeepLink() {
 // ════════════════════════════════════════════════════════════
 const WIDGETS_KEY = 'fz_widgets';
 const MIN_DASH_WIDGETS = 3;
-const FOCUSED_WIDGET_IDS = ['cards','quickactions','compare','budalerts','budgets','recent'];
+const FOCUSED_WIDGET_IDS = ['cards','quickactions','recent','budalerts'];
+const DEFAULT_DASH_WIDGET_ORDER = ['cards','quickactions','recent','budalerts','accounts','budgets','goals','shopping','vehicles','compare','ministats','barcats','saverate','charts','projection','weekly','anomaly'];
 
 // Definição de todos os widgets disponíveis
 const WIDGET_DEFS = [
-  { id:'cards',     ico:'💳', name:'Resumo do dia a dia',  desc:'Salário, gastos, sobra e a pagar', default:true },
-  { id:'quickactions', ico:'⚡', name:'Ações rápidas',      desc:'Atalhos úteis para o dia a dia',    default:true },
-  { id:'charts',    ico:'📊', name:'Gráficos',              desc:'Fluxo de caixa e categorias',        default:false },
-  { id:'compare',   ico:'📅', name:'Comparativo mensal',    desc:'Este mês vs mês anterior',         default:true },
-  { id:'projection',ico:'🔭', name:'Dica de projeção',      desc:'Tendência dos próximos meses',       default:false },
-  { id:'weekly',    ico:'📆', name:'Dica da semana',        desc:'Gastos e economia da semana',        default:false },
-  { id:'anomaly',   ico:'💡', name:'Dica fora da curva',    desc:'Categorias acima da média',          default:false },
-  { id:'budalerts', ico:'⚠️', name:'Alertas de orçamento',  desc:'Limites próximos do teto',          default:true },
-  { id:'goals',     ico:'🏆', name:'Metas rápidas',         desc:'Progresso das suas metas',           default:false },
-  { id:'budgets',   ico:'🎯', name:'Orçamentos rápidos',    desc:'Uso mensal por categoria',           default:false },
-  { id:'recent',    ico:'💸', name:'Últimas transações',    desc:'Lançamentos recentes',              default:true },
-  { id:'ministats', ico:'📈', name:'Mini estatísticas',     desc:'Média diária, maior gasto, dias',   default:false },
-  { id:'accounts',  ico:'🏦', name:'Saldos das contas',     desc:'Saldo de cada conta bancária',      default:false },
-  { id:'vehicles',  ico:'🚗', name:'Veículos',              desc:'Resumo do carro ativo e manutenção', default:false },
-  { id:'shopping',  ico:'🛒', name:'Lista de compras',      desc:'Itens pendentes da lista ativa',    default:false },
-  { id:'barcats',   ico:'📉', name:'Ranking de gastos',     desc:'Top categorias em barras',          default:false },
-  { id:'saverate',  ico:'💹', name:'Taxa de economia',      desc:'Quanto sobra das receitas',         default:false },
+  { id:'cards',     ico:'💳', name:'Resumo do dia a dia',  desc:'Salário, gastos, sobra e a pagar',   default:true,  group:'core' },
+  { id:'quickactions', ico:'⚡', name:'Ações rápidas',      desc:'Atalhos úteis para o dia a dia',     default:true,  group:'core' },
+  { id:'recent',    ico:'💸', name:'Últimas transações',    desc:'Lançamentos recentes',               default:true,  group:'core' },
+  { id:'budalerts', ico:'⚠️', name:'Alertas de orçamento',  desc:'Riscos que pedem decisão hoje',      default:true,  group:'core' },
+  { id:'accounts',  ico:'🏦', name:'Saldos das contas',     desc:'Saldo de cada conta bancária',       default:false, group:'support' },
+  { id:'budgets',   ico:'🎯', name:'Orçamentos rápidos',    desc:'Uso mensal por categoria',            default:false, group:'support' },
+  { id:'goals',     ico:'🏆', name:'Metas rápidas',         desc:'Progresso das suas metas',            default:false, group:'support' },
+  { id:'shopping',  ico:'🛒', name:'Lista de compras',      desc:'Itens pendentes da lista ativa',     default:false, group:'support' },
+  { id:'vehicles',  ico:'🚗', name:'Veículos',              desc:'Resumo do carro ativo e manutenção', default:false, group:'support' },
+  { id:'compare',   ico:'📅', name:'Comparativo mensal',    desc:'Este mês vs mês anterior',           default:false, group:'analysis' },
+  { id:'ministats', ico:'📈', name:'Mini estatísticas',     desc:'Média diária, maior gasto, dias',    default:false, group:'analysis' },
+  { id:'barcats',   ico:'📉', name:'Ranking de gastos',     desc:'Top categorias em barras',           default:false, group:'analysis' },
+  { id:'saverate',  ico:'💹', name:'Taxa de economia',      desc:'Quanto sobra das receitas',          default:false, group:'analysis' },
+  { id:'charts',    ico:'📊', name:'Gráficos',              desc:'Fluxo de caixa e categorias',         default:false, group:'analysis' },
+  { id:'projection',ico:'🔭', name:'Dica de projeção',      desc:'Tendência dos próximos meses',        default:false, group:'analysis' },
+  { id:'weekly',    ico:'📆', name:'Dica da semana',        desc:'Gastos e economia da semana',         default:false, group:'analysis' },
+  { id:'anomaly',   ico:'💡', name:'Dica fora da curva',    desc:'Categorias acima da média',           default:false, group:'analysis' },
 ];
 
 let widgetPrefs = {};
@@ -4137,6 +4138,11 @@ let dashboardManagerOpen = false;
 let activeWidgetMenuId = '';
 let dashboardDragId = '';
 let dashDirty = true;
+
+function defaultDashboardWidgetOrder(){
+  const ids=WIDGET_DEFS.map(w=>w.id);
+  return [...DEFAULT_DASH_WIDGET_ORDER.filter(id=>ids.includes(id)),...ids.filter(id=>!DEFAULT_DASH_WIDGET_ORDER.includes(id))];
+}
 
 function loadWidgetPrefs() {
   try {
@@ -4150,7 +4156,8 @@ function loadWidgetPrefs() {
   try{widgetOrder=asArr(JSON.parse(localStorage.getItem(WIDGET_ORDER_KEY)||'[]'));}catch{widgetOrder=[];}
   try{widgetFilters=asObj(JSON.parse(localStorage.getItem(WIDGET_FILTER_KEY)||'{}'));}catch{widgetFilters={};}
   const ids=WIDGET_DEFS.map(w=>w.id);
-  widgetOrder=[...widgetOrder.filter(id=>ids.includes(id)),...ids.filter(id=>!widgetOrder.includes(id))];
+  const fallbackOrder=defaultDashboardWidgetOrder();
+  widgetOrder=[...widgetOrder.filter(id=>ids.includes(id)),...fallbackOrder.filter(id=>!widgetOrder.includes(id))];
   ensureAtLeastOneWidget();
 }
 
@@ -4168,6 +4175,11 @@ function activeWidgetCount(){
 }
 function widgetById(id){
   return WIDGET_DEFS.find(w=>w.id===id)||null;
+}
+function widgetGroupLabel(group){
+  if(group==='core')return 'Essencial';
+  if(group==='support')return 'Apoio';
+  return 'Análise';
 }
 function getWidgetFilter(widget,key,fallback){
   const current=asObj(widgetFilters[widget]);
@@ -4208,6 +4220,7 @@ function applyFocusedDashboardPreset(){
   WIDGET_DEFS.forEach(w=>widgetPrefs[w.id]=FOCUSED_WIDGET_IDS.includes(w.id));
   ensureAtLeastOneWidget();
   saveWidgetPrefs();
+  activeWidgetMenuId='';
   renderDash();
   toast('Dashboard focada em controle de gastos','success');
 }
@@ -4231,7 +4244,7 @@ function moveWidgetOrder(id,dir){
   renderDash();
 }
 function resetWidgetOrder(){
-  widgetOrder=WIDGET_DEFS.map(w=>w.id);
+  widgetOrder=defaultDashboardWidgetOrder();
   saveWidgetOrder();
   renderDash();
   toast('Ordem do dashboard restaurada','info');
@@ -4248,7 +4261,7 @@ function moveWidgetToEdge(id,edge){
 function resetDashboardWidgets(){
   widgetPrefs={};
   WIDGET_DEFS.forEach(w=>widgetPrefs[w.id]=w.default);
-  widgetOrder=WIDGET_DEFS.map(w=>w.id);
+  widgetOrder=defaultDashboardWidgetOrder();
   widgetFilters={};
   activeWidgetMenuId='';
   ensureAtLeastOneWidget();
@@ -4263,15 +4276,30 @@ function setWidgetFilter(widget,key,value){
   widgetFilters[widget]=asObj(widgetFilters[widget]);
   widgetFilters[widget][key]=value;
   saveWidgetFilters();
+  if(isDashboardActive()){
+    replaceDashboardWidget(widget);
+    renderDashboardManager();
+    return;
+  }
   renderDash();
 }
 function toggleWidgetMenu(id){
+  const previous=activeWidgetMenuId;
   activeWidgetMenuId=activeWidgetMenuId===id?'':id;
+  if(isDashboardActive()){
+    rerenderDashboardWidgets([previous,id].filter(Boolean));
+    return;
+  }
   renderDash();
 }
 function closeWidgetMenu(){
   if(!activeWidgetMenuId)return;
+  const previous=activeWidgetMenuId;
   activeWidgetMenuId='';
+  if(isDashboardActive()){
+    rerenderDashboardWidgets([previous]);
+    return;
+  }
   renderDash();
 }
 function openWidgetTarget(id){
@@ -4323,6 +4351,70 @@ function onDashboardManagerDrop(id,event){
   dashboardDragId='';
   saveWidgetOrder();
   renderDash();
+}
+function dashboardWidgetRenderers(){
+  return {
+    cards:widgetCards,
+    quickactions:widgetQuickActions,
+    ministats:widgetMiniStats,
+    accounts:widgetAccounts,
+    vehicles:widgetVehicles,
+    shopping:widgetShoppingDash,
+    compare:()=>'<div class="dash-section" id="monthCompare"></div>',
+    projection:()=>'<div class="dash-section" id="projCard"></div>',
+    weekly:()=>'<div class="dash-section" id="wsum"></div>',
+    anomaly:()=>'<div class="dash-section" id="anom"></div>',
+    budalerts:()=>'<div class="dash-section" id="budAlerts"></div>',
+    saverate:widgetSaveRate,
+    goals:widgetGoals,
+    budgets:widgetBudgets,
+    barcats:widgetBarCats,
+    charts:widgetCharts,
+    recent:widgetRecent
+  };
+}
+function dashboardVisibleWidgetIds(){
+  return widgetOrder.filter(id=>isWidgetOn(id)&&dashboardWidgetRenderers()[id]);
+}
+function dashboardWidgetMarkup(id,isDark=document.documentElement.dataset.theme==='dark'){
+  const renderers=dashboardWidgetRenderers();
+  const render=renderers[id];
+  if(!render||!isWidgetOn(id))return '';
+  const html=render();
+  if(!html)return '';
+  const menuOpen=activeWidgetMenuId===id;
+  const menu=`<div class="widget-menu-shell"><button class="widget-menu-btn" onclick="event.stopPropagation();toggleWidgetMenu('${id}')" aria-label="Abrir menu do widget" title="Ajustar widget">⋯</button>${menuOpen?`<div class="widget-menu-panel" onclick="event.stopPropagation()">${renderWidgetMenuPanel(id)}</div>`:''}</div>`;
+  return `<div class="dash-section-wrap" data-widget-id="${id}" data-theme-snapshot="${isDark?'dark':'light'}">${menu}${html}</div>`;
+}
+function dashboardWidgetPostRender(id,isDark=document.documentElement.dataset.theme==='dark'){
+  if(id==='compare')renderMonthCompare();
+  if(id==='projection')renderProjection();
+  if(id==='weekly'||id==='anomaly')renderWeekly();
+  if(id==='budalerts')renderBudAlerts();
+  if(id==='charts')renderCharts(isDark);
+}
+function replaceDashboardWidget(id){
+  const container=document.getElementById('dashWidgets');
+  if(!container||!isDashboardActive())return;
+  const isDark=document.documentElement.dataset.theme==='dark';
+  const markup=dashboardWidgetMarkup(id,isDark);
+  const existing=container.querySelector(`.dash-section-wrap[data-widget-id="${id}"]`);
+  if(!markup){
+    if(existing)existing.remove();
+    return;
+  }
+  const temp=document.createElement('div');
+  temp.innerHTML=markup.trim();
+  const nextId=dashboardVisibleWidgetIds().slice(dashboardVisibleWidgetIds().indexOf(id)+1).find(candidate=>container.querySelector(`.dash-section-wrap[data-widget-id="${candidate}"]`));
+  const nextNode=nextId?container.querySelector(`.dash-section-wrap[data-widget-id="${nextId}"]`):null;
+  const replacement=temp.firstElementChild;
+  if(existing)existing.replaceWith(replacement);
+  else if(nextNode)container.insertBefore(replacement,nextNode);
+  else container.appendChild(replacement);
+  dashboardWidgetPostRender(id,isDark);
+}
+function rerenderDashboardWidgets(ids=[]){
+  [...new Set(ids.filter(Boolean))].forEach(id=>replaceDashboardWidget(id));
 }
 function widgetSelectControl(widget,key,label,options,fallback){
   const current=String(getWidgetFilter(widget,key,fallback));
@@ -4393,9 +4485,13 @@ function renderWidgetMenuPanel(id){
 function renderDashboardManager(){
   const el=document.getElementById('dashManager');
   if(!el)return;
-  const visible=activeWidgetCount();
-  const allActive=visible===WIDGET_DEFS.length;
-  el.innerHTML=`<div class="dash-manager-head"><div><div class="dash-manager-title">Widgets da dashboard</div><div class="dash-manager-sub">${visible} visíveis de ${WIDGET_DEFS.length} disponíveis</div></div><button class="btn btn-g btn-sm" onclick="toggleDashboardManager()">${dashboardManagerOpen?'Fechar editor':'Editar widgets'}</button></div>${dashboardManagerOpen?`<div class="dash-manager-panel"><div class="dash-manager-actions"><button class="btn btn-g btn-sm" onclick="applyFocusedDashboardPreset()">Foco em gastos</button><button class="btn btn-g btn-sm" ${allActive?'disabled':''} onclick="enableAllDashboardWidgets()">Selecionar todos</button><button class="btn btn-g btn-sm" onclick="resetWidgetOrder()">Restaurar ordem</button><button class="btn btn-g btn-sm" onclick="resetDashboardWidgets()">Voltar ao padrão</button></div><div class="dash-manager-tip">Arraste os widgets aqui para reorganizar a sequencia sem mexer nos cards da dashboard.</div><div class="dash-manager-list">${widgetOrder.map((id,idx)=>{const w=widgetById(id);if(!w)return'';const on=isWidgetOn(id);return `<div class="dash-manager-row ${on?'is-on':'is-off'}" data-widget-id="${id}" draggable="true" ondragstart="onDashboardManagerDragStart('${id}')" ondragend="onDashboardManagerDragEnd()" ondragover="onDashboardManagerDragOver('${id}',event)" ondrop="onDashboardManagerDrop('${id}',event)"><div class="dash-manager-info"><span class="dash-manager-grab" aria-hidden="true">⋮⋮</span><span class="dash-manager-ico">${w.ico}</span><div><strong>${esc(w.name)}</strong><small>${esc(w.desc)}</small></div></div><div class="dash-manager-controls"><button class="btn btn-g btn-sm" ${idx===0?'disabled':''} onclick="moveWidgetOrder('${id}',-1)">↑</button><button class="btn btn-g btn-sm" ${idx===widgetOrder.length-1?'disabled':''} onclick="moveWidgetOrder('${id}',1)">↓</button><button class="btn ${on?'btn-d':'btn-g'} btn-sm" onclick="toggleWidget('${id}')">${on?'Remover':'Adicionar'}</button></div></div>`;}).join('')}</div></div>`:''}`;
+  const activeIds=WIDGET_DEFS.filter(w=>isWidgetOn(w.id)).map(w=>w.id);
+  const visible=activeIds.length;
+  const coreVisible=activeIds.filter(id=>widgetById(id)?.group==='core').length;
+  const supportVisible=activeIds.filter(id=>widgetById(id)?.group==='support').length;
+  const analysisVisible=activeIds.filter(id=>widgetById(id)?.group==='analysis').length;
+  const allActive=activeIds.length===WIDGET_DEFS.length;
+  el.innerHTML=`<div class="dash-manager-head"><div><div class="dash-manager-title">Dashboard essencial primeiro</div><div class="dash-manager-sub">${coreVisible} essenciais • ${supportVisible} de apoio • ${analysisVisible} analíticos ativos</div></div><button class="btn btn-g btn-sm" onclick="toggleDashboardManager()">${dashboardManagerOpen?'Fechar editor':'Editar widgets'}</button></div>${dashboardManagerOpen?`<div class="dash-manager-panel"><div class="dash-manager-actions"><button class="btn btn-g btn-sm" onclick="applyFocusedDashboardPreset()">Só o essencial</button><button class="btn btn-g btn-sm" ${allActive?'disabled':''} onclick="enableAllDashboardWidgets()">Selecionar todos</button><button class="btn btn-g btn-sm" onclick="resetWidgetOrder()">Restaurar ordem</button><button class="btn btn-g btn-sm" onclick="resetDashboardWidgets()">Voltar ao padrão</button></div><div class="dash-manager-tip">A home agora prioriza capturar, revisar e decidir gastos. Widgets analíticos continuam disponíveis, mas podem ficar desligados para manter o fluxo leve. Arraste aqui para reorganizar sem mexer nos cards da tela.</div><div class="dash-manager-list">${widgetOrder.map((id,idx)=>{const w=widgetById(id);if(!w)return'';const on=isWidgetOn(id);return `<div class="dash-manager-row ${on?'is-on':'is-off'}" data-widget-id="${id}" draggable="true" ondragstart="onDashboardManagerDragStart('${id}')" ondragend="onDashboardManagerDragEnd()" ondragover="onDashboardManagerDragOver('${id}',event)" ondrop="onDashboardManagerDrop('${id}',event)"><div class="dash-manager-info"><span class="dash-manager-grab" aria-hidden="true">⋮⋮</span><span class="dash-manager-ico">${w.ico}</span><div><strong>${esc(w.name)} <span class="dash-manager-tag tag-${esc(w.group||'analysis')}">${widgetGroupLabel(w.group)}</span></strong><small>${esc(w.desc)}</small></div></div><div class="dash-manager-controls"><button class="btn btn-g btn-sm" ${idx===0?'disabled':''} onclick="moveWidgetOrder('${id}',-1)">↑</button><button class="btn btn-g btn-sm" ${idx===widgetOrder.length-1?'disabled':''} onclick="moveWidgetOrder('${id}',1)">↓</button><button class="btn ${on?'btn-d':'btn-g'} btn-sm" onclick="toggleWidget('${id}')">${on?'Remover':'Adicionar'}</button></div></div>`;}).join('')}</div></div>`:''}`;
 }
 
 function widgetRangeDate(scope='month'){
@@ -4601,43 +4697,22 @@ function renderDash(force=false) {
   widgetPrefs=asObj(widgetPrefs);
   widgetOrder=asArr(widgetOrder);
   widgetFilters=asObj(widgetFilters);
-  widgetOrder=[...widgetOrder.filter(id=>ids.includes(id)),...ids.filter(id=>!widgetOrder.includes(id))];
+  const fallbackOrder=defaultDashboardWidgetOrder();
+  widgetOrder=[...widgetOrder.filter(id=>ids.includes(id)),...fallbackOrder.filter(id=>!widgetOrder.includes(id))];
   ensureAtLeastOneWidget();
-
-  const renderers={
-    cards:widgetCards,quickactions:widgetQuickActions,ministats:widgetMiniStats,accounts:widgetAccounts,vehicles:widgetVehicles,shopping:widgetShoppingDash,
-    compare:()=>'<div class="dash-section" id="monthCompare"></div>',
-    projection:()=>'<div class="dash-section" id="projCard"></div>',
-    weekly:()=>'<div class="dash-section" id="wsum"></div>',
-    anomaly:()=>'<div class="dash-section" id="anom"></div>',
-    budalerts:()=>'<div class="dash-section" id="budAlerts"></div>',
-    saverate:widgetSaveRate,goals:widgetGoals,budgets:widgetBudgets,barcats:widgetBarCats,charts:widgetCharts,recent:widgetRecent
-  };
-  const wrap=(id,html)=>{
-    if(!html)return '';
-    const menuOpen=activeWidgetMenuId===id;
-    const menu=`<div class="widget-menu-shell"><button class="widget-menu-btn" onclick="event.stopPropagation();toggleWidgetMenu('${id}')" aria-label="Abrir menu do widget" title="Ajustar widget">⋯</button>${menuOpen?`<div class="widget-menu-panel" onclick="event.stopPropagation()">${renderWidgetMenuPanel(id)}</div>`:''}</div>`;
-    return `<div class="dash-section-wrap" data-widget-id="${id}">${menu}${html}</div>`;
-  };
-  const sections=widgetOrder.filter(id=>isWidgetOn(id)&&renderers[id]).map(id=>wrap(id,renderers[id]())).filter(Boolean);
+  const sections=dashboardVisibleWidgetIds().map(id=>dashboardWidgetMarkup(id,isDark)).filter(Boolean);
 
   const container = document.getElementById('dashWidgets');
   if (container) container.innerHTML = sections.join('');
   dashDirty = false;
   renderDashboardManager();
 
-  // Render sub-widgets que precisam de DOM pronto
-  if (isWidgetOn('compare'))    renderMonthCompare();
-  if (isWidgetOn('projection')) renderProjection();
-  if (isWidgetOn('weekly') || isWidgetOn('anomaly')) renderWeekly();
-  if (isWidgetOn('budalerts'))  renderBudAlerts();
-  if (isWidgetOn('charts'))     renderCharts(isDark);
+  dashboardVisibleWidgetIds().forEach(id=>dashboardWidgetPostRender(id,isDark));
 }
 document.addEventListener('click',e=>{
   if(!activeWidgetMenuId)return;
   if(e.target.closest('.widget-menu-shell'))return;
-  activeWidgetMenuId='';
-  renderDash();
+  closeWidgetMenu();
 });
 
 const SL_KEY = 'fz_shopping';

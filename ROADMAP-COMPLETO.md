@@ -11,9 +11,9 @@ Legenda sugerida:
 
 ## Status atual de versao
 
-- Versao publicada do app: `4.0.0` (`package.json`, `frontend/app.js` e `frontend/financas.html`).
-- Ciclo em andamento no roadmap: `4.10 - Fundacao confiavel`.
-- Escopo do ciclo `4.10`: testes automatizados, CI, schema de backup/importacao JSON e reducao de risco em permissoes.
+- Versao publicada do app: `4.0.0` (`package.json`, `frontend/app.js` e `frontend/index.html`).
+- Ciclo em andamento no roadmap: `4.11 - Performance e foco no controle de gastos`.
+- Escopo do ciclo `4.11`: reduzir re-render da dashboard, priorizar widgets essenciais, diminuir duplicacao estrutural no frontend e manter a home orientada a captura, revisao e decisao de gasto.
 - Linha futura planejada: `5.0 - Android nativo premium`.
 - Observacao: neste roadmap, `[x]` significa "quero fazer", nao "feito".
 
@@ -233,7 +233,7 @@ Status de implementacao: linha marcada no roadmap, mas o widget experimental de 
 - [x] Sandbox de exemplo para testar sem mexer nos dados reais.
 - [x] Sistema de comandos/atalhos no desktop.
 
-## 4.10 - Fundacao confiavel (ciclo atual)
+## 4.10 - Fundacao confiavel
 
 Este ciclo organiza itens da fundacao tecnica continua sem mudar a versao publicada `4.0.0` ainda.
 
@@ -250,6 +250,19 @@ Itens puxados para este ciclo:
 - Padronizar comandos `npm run check` e `npm test`.
 - Endurecer permissoes defensivas. Entrega atual: `canWrite(null)` bloqueia escrita e `publicUser()` nao quebra nem vaza campos sensiveis.
 - Melhorar retorno de importacao. Entrega atual: backend informa contagem de categorias, listas, itens de compra e vencimentos alem de transacoes, orcamentos, metas e contas.
+
+## 4.11 - Performance e foco no controle de gastos (ciclo atual)
+
+Status de implementacao: dashboard reorganizada para priorizar o fluxo diario, com widgets classificados em essencial/apoio/analise, render parcial em interacoes pontuais do menu e filtros, e `financas.html` reduzido a entrada leve apontando para `index.html`.
+
+- [x] Manter um nucleo sagrado: lancar transacao, ver saldo, ver vencimentos e buscar.
+- [x] Tratar inteligencia e widgets analiticos como camada secundaria e opcional.
+- [x] Otimizar a dashboard para evitar re-render completo em ajustes pontuais.
+- [x] Reordenar a home para priorizar widgets essenciais por padrao.
+- [x] Esconder por padrao widgets mais analiticos.
+- [x] Reduzir duplicacao entre `index.html` e `financas.html`.
+- [x] Revisar a home para ficar mais "controle de gastos" e menos "painel de tudo".
+- [x] Definir criterio de produto: se uma feature nao melhora captura, revisao ou decisao de gasto, ela entra depois.
 
 ## 5.0 - Android nativo premium
 
