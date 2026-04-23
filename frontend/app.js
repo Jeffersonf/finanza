@@ -1708,7 +1708,7 @@ function showPage(id){
   document.querySelectorAll('.nav-item,.fn-item,[data-page]').forEach(n=>n.classList.toggle('active',n.dataset.page===id));
   if(prev&&prev!==id)pgHist.push(prev);
   window.scrollTo({top:0,behavior:'smooth'});
-  if(id==='dashboard')renderDash();
+  if(id==='dashboard')renderDash(true);
   else if(id==='accounts'){renderAccs();popAccSels();}
   else if(id==='transactions')renderTx();
   else if(id==='future')renderFut();
@@ -1719,7 +1719,7 @@ function showPage(id){
   else if(id==='settings')renderSet();
 }
 document.querySelectorAll('.nav-item,.fn-item,[data-page]').forEach(n=>{n.onclick=()=>showPage(n.dataset.page);});
-function refreshAll(){renderDash();const id=document.querySelector('.page.active')?.id?.replace('page-','');if(id&&id!=='dashboard')showPage(id);}
+function refreshAll(){renderDash();const id=currentPageId();if(id&&id!=='dashboard')showPage(id);}
 function txHTML(tx){
   const cat=getCat(tx.category);const fut=isFut(tx.date);const dl=dDiff(tx.date);
   let cls='ti';if(tx.paid)cls+=' paid-tx';else if(tx.pending)cls+=' pnd-tx';else if(fut)cls+=' fut-tx';
@@ -3620,25 +3620,26 @@ function initDeepLink() {
 // ════════════════════════════════════════════════════════════
 const WIDGETS_KEY = 'fz_widgets';
 const MIN_DASH_WIDGETS = 3;
+const FOCUSED_WIDGET_IDS = ['cards','quickactions','compare','budalerts','budgets','recent'];
 
 // Definição de todos os widgets disponíveis
 const WIDGET_DEFS = [
   { id:'cards',     ico:'💳', name:'Resumo do dia a dia',  desc:'Salário, gastos, sobra e a pagar', default:true },
   { id:'quickactions', ico:'⚡', name:'Ações rápidas',      desc:'Atalhos úteis para o dia a dia',    default:true },
-  { id:'charts',    ico:'📊', name:'Gráficos',              desc:'Fluxo de caixa e categorias',        default:true },
+  { id:'charts',    ico:'📊', name:'Gráficos',              desc:'Fluxo de caixa e categorias',        default:false },
   { id:'compare',   ico:'📅', name:'Comparativo mensal',    desc:'Este mês vs mês anterior',         default:true },
-  { id:'intelligence',ico:'🧠', name:'Inteligência 4.2',     desc:'Risco, metas, calendário e decisões', default:true },
-  { id:'projection',ico:'🔭', name:'Dica de projeção',      desc:'Tendência dos próximos meses',       default:true },
-  { id:'weekly',    ico:'📆', name:'Dica da semana',        desc:'Gastos e economia da semana',        default:true },
-  { id:'anomaly',   ico:'💡', name:'Dica fora da curva',    desc:'Categorias acima da média',          default:true },
+  { id:'intelligence',ico:'🧠', name:'Inteligência 4.2',     desc:'Risco, metas, calendário e decisões', default:false },
+  { id:'projection',ico:'🔭', name:'Dica de projeção',      desc:'Tendência dos próximos meses',       default:false },
+  { id:'weekly',    ico:'📆', name:'Dica da semana',        desc:'Gastos e economia da semana',        default:false },
+  { id:'anomaly',   ico:'💡', name:'Dica fora da curva',    desc:'Categorias acima da média',          default:false },
   { id:'budalerts', ico:'⚠️', name:'Alertas de orçamento',  desc:'Limites próximos do teto',          default:true },
-  { id:'goals',     ico:'🏆', name:'Metas rápidas',         desc:'Progresso das suas metas',           default:true },
+  { id:'goals',     ico:'🏆', name:'Metas rápidas',         desc:'Progresso das suas metas',           default:false },
   { id:'budgets',   ico:'🎯', name:'Orçamentos rápidos',    desc:'Uso mensal por categoria',           default:false },
   { id:'recent',    ico:'💸', name:'Últimas transações',    desc:'Lançamentos recentes',              default:true },
   { id:'ministats', ico:'📈', name:'Mini estatísticas',     desc:'Média diária, maior gasto, dias',   default:false },
   { id:'accounts',  ico:'🏦', name:'Saldos das contas',     desc:'Saldo de cada conta bancária',      default:false },
-  { id:'vehicles',  ico:'🚗', name:'Veículos',              desc:'Resumo do carro ativo e manutenção', default:true },
-  { id:'shopping',  ico:'🛒', name:'Lista de compras',      desc:'Itens pendentes da lista ativa',    default:true },
+  { id:'vehicles',  ico:'🚗', name:'Veículos',              desc:'Resumo do carro ativo e manutenção', default:false },
+  { id:'shopping',  ico:'🛒', name:'Lista de compras',      desc:'Itens pendentes da lista ativa',    default:false },
   { id:'barcats',   ico:'📉', name:'Ranking de gastos',     desc:'Top categorias em barras',          default:false },
   { id:'saverate',  ico:'💹', name:'Taxa de economia',      desc:'Quanto sobra das receitas',         default:false },
 ];
@@ -3648,6 +3649,7 @@ let widgetOrder = [];
 let widgetFilters = {};
 let dashboardManagerOpen = false;
 let activeWidgetMenuId = '';
+let dashDirty = true;
 
 function loadWidgetPrefs() {
   try {
@@ -3684,6 +3686,12 @@ function getWidgetFilter(widget,key,fallback){
   const current=asObj(widgetFilters[widget]);
   return current[key] ?? fallback;
 }
+function currentPageId(){
+  return document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard';
+}
+function isDashboardActive(){
+  return currentPageId()==='dashboard';
+}
 function ensureAtLeastOneWidget(){
   if(activeWidgetCount()>=MIN_DASH_WIDGETS)return;
   WIDGET_DEFS.filter(w=>w.default||w.id==='cards').some(w=>{
@@ -3707,6 +3715,14 @@ function toggleWidget(id) {
   if(willDisable&&activeWidgetMenuId===id)activeWidgetMenuId='';
   saveWidgetPrefs();
   renderDash();
+}
+function applyFocusedDashboardPreset(){
+  widgetPrefs={};
+  WIDGET_DEFS.forEach(w=>widgetPrefs[w.id]=FOCUSED_WIDGET_IDS.includes(w.id));
+  ensureAtLeastOneWidget();
+  saveWidgetPrefs();
+  renderDash();
+  toast('Dashboard focada em controle de gastos','success');
 }
 function toggleDashboardManager(){
   dashboardManagerOpen=!dashboardManagerOpen;
@@ -3797,12 +3813,17 @@ function renderDashboardManager(){
   const el=document.getElementById('dashManager');
   if(!el)return;
   const visible=activeWidgetCount();
-  el.innerHTML=`<div class="dash-manager-head"><div><div class="dash-manager-title">Widgets da dashboard</div><div class="dash-manager-sub">${visible} visíveis de ${WIDGET_DEFS.length} disponíveis</div></div><button class="btn btn-g btn-sm" onclick="toggleDashboardManager()">${dashboardManagerOpen?'Fechar editor':'Editar widgets'}</button></div>${dashboardManagerOpen?`<div class="dash-manager-panel"><div class="dash-manager-actions"><button class="btn btn-g btn-sm" onclick="resetWidgetOrder()">Restaurar ordem</button><button class="btn btn-g btn-sm" onclick="resetDashboardWidgets()">Voltar ao padrão</button></div><div class="dash-manager-list">${widgetOrder.map((id,idx)=>{const w=widgetById(id);if(!w)return'';const on=isWidgetOn(id);return `<div class="dash-manager-row ${on?'is-on':'is-off'}"><div class="dash-manager-info"><span class="dash-manager-ico">${w.ico}</span><div><strong>${esc(w.name)}</strong><small>${esc(w.desc)}</small></div></div><div class="dash-manager-controls"><button class="btn btn-g btn-sm" ${idx===0?'disabled':''} onclick="moveWidgetOrder('${id}',-1)">↑</button><button class="btn btn-g btn-sm" ${idx===widgetOrder.length-1?'disabled':''} onclick="moveWidgetOrder('${id}',1)">↓</button><button class="btn ${on?'btn-d':'btn-g'} btn-sm" onclick="toggleWidget('${id}')">${on?'Remover':'Adicionar'}</button></div></div>`;}).join('')}</div></div>`:''}`;
+  el.innerHTML=`<div class="dash-manager-head"><div><div class="dash-manager-title">Widgets da dashboard</div><div class="dash-manager-sub">${visible} visíveis de ${WIDGET_DEFS.length} disponíveis</div></div><button class="btn btn-g btn-sm" onclick="toggleDashboardManager()">${dashboardManagerOpen?'Fechar editor':'Editar widgets'}</button></div>${dashboardManagerOpen?`<div class="dash-manager-panel"><div class="dash-manager-actions"><button class="btn btn-g btn-sm" onclick="applyFocusedDashboardPreset()">Foco em gastos</button><button class="btn btn-g btn-sm" onclick="resetWidgetOrder()">Restaurar ordem</button><button class="btn btn-g btn-sm" onclick="resetDashboardWidgets()">Voltar ao padrão</button></div><div class="dash-manager-list">${widgetOrder.map((id,idx)=>{const w=widgetById(id);if(!w)return'';const on=isWidgetOn(id);return `<div class="dash-manager-row ${on?'is-on':'is-off'}"><div class="dash-manager-info"><span class="dash-manager-ico">${w.ico}</span><div><strong>${esc(w.name)}</strong><small>${esc(w.desc)}</small></div></div><div class="dash-manager-controls"><button class="btn btn-g btn-sm" ${idx===0?'disabled':''} onclick="moveWidgetOrder('${id}',-1)">↑</button><button class="btn btn-g btn-sm" ${idx===widgetOrder.length-1?'disabled':''} onclick="moveWidgetOrder('${id}',1)">↓</button><button class="btn ${on?'btn-d':'btn-g'} btn-sm" onclick="toggleWidget('${id}')">${on?'Remover':'Adicionar'}</button></div></div>`;}).join('')}</div></div>`:''}`;
 }
 
 // ─── RENDER WIDGETS INDIVIDUAIS ──────────────────────────────
 
-function renderDash() {
+function renderDash(force=false) {
+  dashDirty = true;
+  if(!force && !isDashboardActive()){
+    renderDashboardManager();
+    return;
+  }
   const isDark = document.documentElement.dataset.theme === 'dark';
   const ids=WIDGET_DEFS.map(w=>w.id);
   widgetPrefs=asObj(widgetPrefs);
@@ -3831,6 +3852,7 @@ function renderDash() {
 
   const container = document.getElementById('dashWidgets');
   if (container) container.innerHTML = sections.join('');
+  dashDirty = false;
   renderDashboardManager();
 
   // Render sub-widgets que precisam de DOM pronto
