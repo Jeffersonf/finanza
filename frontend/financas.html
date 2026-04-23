@@ -332,6 +332,13 @@
     <div class="ss-r"><div><div class="ss-l">Auditoria leve</div><div class="ss-s">Criações, importações, migração e ações que mexem no estado principal</div></div></div>
     <div class="sync-history" id="activityHistoryList"></div>
   </div>
+  <div class="ss"><div class="ss-t">Changelog</div>
+    <div class="ss-r changelog-head">
+      <div><div class="ss-l">Finanza 4.0.0</div><div class="ss-s">Resumo das entregas já consolidadas no app</div></div>
+      <button class="btn btn-g btn-sm" onclick="copyChangelog()">Copiar</button>
+    </div>
+    <div class="changelog-list" id="settingsChangelog"></div>
+  </div>
   <div class="ss"><div class="ss-t">Avançado</div>
     <div class="ss-r"><div><div class="ss-l" style="color:var(--dan)">Limpar cache</div><div class="ss-s">Remove dados locais (banco OK)</div></div><button class="btn btn-d btn-sm" onclick="clearCache()">Limpar</button></div>
   </div>
@@ -511,7 +518,8 @@
   <button class="mc" onclick="closeM('txModal')">✕</button>
   <div class="mt" id="mTit">Nova Transação</div><div class="ms" id="mSub">Registre uma receita ou despesa</div>
   <div class="typetog"><button class="ttb active expense" id="tExp" onclick="setTyp('expense')">⬇ Despesa</button><button class="ttb income" id="tInc" onclick="setTyp('income')">⬆ Receita</button></div>
-  <div class="frow"><div class="fg" style="flex:1.8"><label class="fl">Lançamento rápido</label><input type="text" class="fi" id="txQuickText" placeholder="Ex: mercado 82,40 hoje" onkeydown="if(event.key==='Enter'){event.preventDefault();fillAndSaveTxFromText();}"></div><div class="fg" style="flex:.7;justify-content:flex-end;display:flex;gap:6px"><button class="btn btn-g" type="button" onclick="fillTxFromText()">Preencher</button><button class="btn btn-p" type="button" onclick="fillAndSaveTxFromText()">Preencher + salvar</button></div></div>
+  <div class="frow"><div class="fg" style="flex:1.8"><label class="fl">Lançamento rápido</label><input type="text" class="fi" id="txQuickText" placeholder="Ex: mercado 82,40 hoje nubank" oninput="previewTxFromText()" onkeydown="if(event.key==='Enter'){event.preventDefault();fillAndSaveTxFromText();}"></div><div class="fg" style="flex:.7;justify-content:flex-end;display:flex;gap:6px"><button class="btn btn-g" type="button" onclick="fillTxFromText()">Preencher</button><button class="btn btn-p" type="button" onclick="fillAndSaveTxFromText()">Preencher + salvar</button></div></div>
+  <div class="quick-preview" id="txQuickPreview">Digite uma frase para ver a prévia antes de salvar.</div>
   <div class="frow"><div class="fg"><label class="fl">Descrição</label><input type="text" class="fi" id="txDesc" placeholder="Ex: Aluguel..."></div><div class="fg"><label class="fl">Valor (R$)</label><input type="number" class="fi" id="txAmt" placeholder="0,00" min="0" step="0.01" oninput="updIPrev()"></div></div>
   <div class="frow"><div class="fg"><label class="fl">Categoria</label><select class="fi" id="txCat"></select></div><div class="fg"><label class="fl">Conta</label><select class="fi" id="txAcc"></select></div></div>
   <div class="frow"><div class="fg"><label class="fl">Data</label><input type="date" class="fi" id="txDt"></div><div class="fg"><label class="fl">Observação</label><input type="text" class="fi" id="txNote" placeholder="Opcional..."></div></div>

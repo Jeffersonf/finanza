@@ -1152,6 +1152,7 @@ function openModal(id=null,futDate=false){
   document.getElementById('mTit').textContent=tx?'Editar Transação':'Nova Transação';
   document.getElementById('mSub').textContent=tx?'Edite os dados':'Registre uma receita ou despesa';
   const quick=document.getElementById('txQuickText');if(quick)quick.value='';
+  const quickPrev=document.getElementById('txQuickPreview');if(quickPrev)quickPrev.textContent='Digite uma frase para ver a prévia antes de salvar.';
   document.getElementById('txDesc').value=tx?.desc||'';
   document.getElementById('txAmt').value=tx?.amount||'';
   document.getElementById('txDt').value=tx?.date||(futDate?addM(today(),1):today());
@@ -1185,6 +1186,12 @@ function parseTextAmount(text){
   const n=parseFloat(raw);
   return Number.isFinite(n)?n:0;
 }
+function titleCleanText(text){
+  return String(text||'')
+    .replace(/\b(hoje|ontem|amanh[aã]|paguei|gastei|comprei|recebi|receita|despesa|fixo|fixa|mensal|todo mes|todo mês|vence|vencimento|dia|no|na|em|pelo|pela|com|cartao|cartão)\b/gi,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
 function inferTxCategory(text,type){
   const n=normalizeTxText(text);
   const rules=[
@@ -1202,20 +1209,75 @@ function inferTxCategory(text,type){
   if(type==='income')return allCats().find(c=>normalizeTxText(c.name).includes('salario'))?.name||'Salário';
   return 'A classificar';
 }
+function inferTxAccount(text,desc='',category=''){
+  const source=normalizeTxText([text,desc,category].join(' '));
+  const explicit=S.accounts.find(a=>source.includes(normalizeTxText(a.name)));
+  if(explicit)return explicit.id;
+  const recent=[...S.transactions]
+    .filter(t=>t.accountId&&(normalizeTxText(t.desc).includes(normalizeTxText(desc))||normalizeTxText(t.category)===normalizeTxText(category)))
+    .sort((a,b)=>b.date.localeCompare(a.date));
+  return recent[0]?.accountId||S.accounts[0]?.id||'';
+}
+function parseTxDate(text){
+  const n=normalizeTxText(text);
+  if(n.includes('ontem'))return offD(new Date(),-1);
+  if(n.includes('amanha'))return offD(new Date(),1);
+  const inDays=n.match(/\b(?:em|daqui)\s+(\d{1,2})\s+dias?\b/);
+  if(inDays)return offD(new Date(),parseInt(inDays[1],10));
+  const day=n.match(/\b(?:dia|vence(?:\s+dia)?|vencimento(?:\s+dia)?)\s+(\d{1,2})\b/);
+  if(day){
+    const now=new Date();
+    const d=new Date(now.getFullYear(),now.getMonth(),Math.min(parseInt(day[1],10),31),12);
+    if(d.toISOString().slice(0,10)<today())d.setMonth(d.getMonth()+1);
+    return d.toISOString().slice(0,10);
+  }
+  return today();
+}
+function inferTxRecurrence(text,desc,amount,type){
+  const n=normalizeTxText(text);
+  if(/\b(mensal|todo mes|todo mês|recorrente|fixo|fixa|assinatura)\b/.test(n))return true;
+  if(type==='income')return false;
+  const similar=S.transactions.filter(t=>t.type===type&&Math.abs(t.amount-amount)<0.01&&normalizeTxText(t.desc).includes(normalizeTxText(desc).slice(0,8))).length;
+  return similar>=2;
+}
 function parseTxText(text){
   const amount=parseTextAmount(text);
   if(!amount)return null;
   const n=normalizeTxText(text);
   const type=/(recebi|receita|salario|pix recebido|entrada|ganhei|freela|freelance)/.test(n)?'income':'expense';
-  let date=today();
-  if(n.includes('ontem'))date=offD(new Date(),-1);
-  else if(n.includes('amanha'))date=offD(new Date(),1);
-  const desc=String(text||'')
+  const date=parseTxDate(text);
+  const pending=/(vence|vencimento|a pagar|boleto|conta fixa|fixo|fixa)/.test(n)||date>today();
+  const category=inferTxCategory(text,type);
+  const accountNames=S.accounts.map(a=>String(a.name||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).filter(Boolean);
+  let desc=String(text||'')
     .replace(/(?:r\$\s*)?\d{1,3}(?:\.\d{3})*,\d{1,2}|(?:r\$\s*)?\d+(?:[.,]\d{1,2})?/i,'')
-    .replace(/\b(hoje|ontem|amanh[aã]|paguei|gastei|comprei|recebi|receita|despesa|no|na|em)\b/gi,'')
-    .replace(/\s+/g,' ')
+    .replace(/\b(?:em|daqui)\s+\d{1,2}\s+dias?\b/gi,'')
+    .replace(/\b(?:dia|vence(?:\s+dia)?|vencimento(?:\s+dia)?)\s+\d{1,2}\b/gi,'')
     .trim();
-  return {type,amount,date,desc:desc||inferTxCategory(text,type),category:inferTxCategory(text,type)};
+  if(accountNames.length)desc=desc.replace(new RegExp(accountNames.join('|'),'gi'),'').trim();
+  const clean=titleCleanText(desc);
+  const finalDesc=clean||category;
+  const accountId=inferTxAccount(text,finalDesc,category);
+  return {type,amount,date,desc:finalDesc,category,accountId,pending,recurring:inferTxRecurrence(text,finalDesc,amount,type)};
+}
+function previewTxFromText(){
+  const el=document.getElementById('txQuickPreview');if(!el)return;
+  const text=document.getElementById('txQuickText')?.value||'';
+  const parsed=parseTxText(text);
+  if(!text.trim()){el.className='quick-preview';el.textContent='Digite uma frase para ver a prévia antes de salvar.';return;}
+  if(!parsed){el.className='quick-preview warn';el.textContent='Ainda falta um valor. Ex: mercado 82,40 hoje nubank';return;}
+  const acc=S.accounts.find(a=>a.id===parsed.accountId);
+  const bits=[
+    parsed.type==='income'?'Receita':'Despesa',
+    rawFmt(parsed.amount),
+    parsed.category,
+    fmtD(parsed.date),
+    acc?`${acc.icon} ${acc.name}`:'',
+    parsed.pending?'futuro/pendente':'',
+    parsed.recurring?'recorrente sugerido':''
+  ].filter(Boolean);
+  el.className='quick-preview ok';
+  el.innerHTML=`<strong>Prévia:</strong> ${bits.map(esc).join(' • ')}`;
 }
 function fillTxFromText(){
   const input=document.getElementById('txQuickText');
@@ -1228,7 +1290,15 @@ function fillTxFromText(){
   popCatSels();
   const cat=document.getElementById('txCat');
   if([...cat.options].some(o=>o.value===parsed.category))cat.value=parsed.category;
+  popAccSels();
+  const acc=document.getElementById('txAcc');
+  if(parsed.accountId&&[...acc.options].some(o=>o.value===parsed.accountId))acc.value=parsed.accountId;
+  document.getElementById('recChk').checked=!!parsed.recurring;
+  togRec();
+  if(parsed.recurring)document.getElementById('recN').value=document.getElementById('recN').value||12;
+  if(parsed.pending)document.getElementById('txNote').value='Lançamento sugerido pelo texto rápido';
   updIPrev();
+  previewTxFromText();
   toast('Campos preenchidos','success');
 }
 function fillAndSaveTxFromText(){
@@ -2586,6 +2656,30 @@ function renderCar(){
   }).join(''):`<div class="empty"><span class="ei">🚗</span><p>Nenhum registro neste filtro.</p></div>`;
 }
 // SETTINGS
+const CHANGELOG_ITEMS=[
+  {tag:'Produto',items:['Linha 4.0 consolidada como web + Capacitor + API','Modo local e modo online com login, usuários e sincronização','Navegação desktop/mobile, tema escuro e privacidade de valores']},
+  {tag:'Finanças',items:['Transações com filtros, busca, visual compacta, gráficos e edição inline','Entrada rápida por texto com prévia, categoria, conta e recorrência sugeridas','Recorrências, parcelamentos, pendências e lançamentos futuros','Orçamentos por categoria, metas, contas, transferências e rendimento']},
+  {tag:'Planejamento',items:['Dashboard com widgets configuráveis, reordenáveis e restauráveis','Comparativo mensal, projeção até o fim do mês e central de pendências','Vencimentos com contas fixas, atrasados, a pagar, a receber e notificações locais']},
+  {tag:'Módulos',items:['Lista de compras com múltiplas listas, categorias e progresso','Carro com abastecimentos, manutenções, custo por km, gráficos e importação CSV deduplicada','Busca global cobrindo transações, vencimentos, carro e compras']},
+  {tag:'Dados',items:['Backup completo, JSON, CSV, importação com prévia e deduplicação','Fila offline visível, status de conexão e sincronização manual','Backend PostgreSQL multiusuário com estado remoto, resumo financeiro e backup SQL']}
+];
+function renderChangelogSettings(){
+  const el=document.getElementById('settingsChangelog');if(!el)return;
+  el.innerHTML=CHANGELOG_ITEMS.map(section=>`
+    <div class="changelog-group">
+      <div class="changelog-tag">${esc(section.tag)}</div>
+      <div class="changelog-lines">${section.items.map(item=>`<div class="changelog-line"><span>✓</span><p>${esc(item)}</p></div>`).join('')}</div>
+    </div>
+  `).join('');
+}
+function getChangelogText(){
+  return [`Finanza ${APP_VERSION} - Changelog`,...CHANGELOG_ITEMS.flatMap(section=>['',section.tag,...section.items.map(item=>`- ${item}`)])].join('\n');
+}
+async function copyChangelog(){
+  const txt=getChangelogText();
+  try{await navigator.clipboard.writeText(txt);toast('Changelog copiado','success');}
+  catch{toast('Changelog pronto para copiar no arquivo CHANGELOG-COMPLETO.md','info');}
+}
 function renderSet(){
   const isDark=document.documentElement.dataset.theme==='dark';
   renderWidgetToggles();
@@ -2605,6 +2699,7 @@ function renderSet(){
   const pM=document.getElementById('popMig');if(pM)pM.style.display=loc?'':'none';
   updateTrustPanel();
   renderDiag();
+  renderChangelogSettings();
 }
 function getDiagText(){
   const syncPending=Array.isArray(syncQ)?syncQ.length:0;

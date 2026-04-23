@@ -4,6 +4,7 @@ android/
 ios/
 backup/*.sql.gz
 backup/*.log
+backups/
 dados-locais.json
 .gradle-user/
 .android-user/
