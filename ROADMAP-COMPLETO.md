@@ -60,7 +60,7 @@ Status de implementacao: fechamento funcional aplicado nesta rodada com cadastro
 
 ## 4.2 - Inteligencia financeira pessoal
 
-Status de implementacao: fechamento funcional aplicado com widget `Inteligência 4.2` no dashboard, reunindo simuladores de meta, previsoes 30/60/90/180, cenarios conservador/base/otimista, explicacao de previsao, risco de caixa, calendario financeiro, assinaturas, gastos esquecidos, mes atipico, benchmark, ranking, acoes do dia, sugestoes sem moralismo e diario por notas.
+Status de implementacao: linha marcada no roadmap, mas o widget experimental de inteligencia financeira foi removido do app por decisao de foco e qualidade.
 
 - [x] Simulador de metas: "se eu guardar X por mes, chego quando?".
 - [x] Simulador inverso: "quanto preciso guardar por mes para chegar ate tal data?".
