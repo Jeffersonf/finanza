@@ -1,5 +1,5 @@
 ﻿'use strict';
-const APP_VERSION='4.3.0';
+const APP_VERSION='4.3.1';
 const DEFAULT_API_URL='https://finanza-api.onrender.com';
 const CK='fz_cfg',LK='fz_local',CCK='fz_cats',VK='fz_view',AVK='fz_avatar',PRIVK='fz_privacy',CAR_KEY='fz_car';
 const RATES_KEY='fz_rates', WIDGET_ORDER_KEY='fz_widget_order', WIDGET_FILTER_KEY='fz_widget_filters', DUE_KEY='fz_due_items', TX_FILTERS_KEY='fz_tx_filters';
@@ -672,7 +672,7 @@ function renderImportToolbar(){
 }
 function renderImportSourceTabs(){
   const el=document.getElementById('importSourceTabs');if(!el)return;
-  const tabs=[['csv','CSV'],['ofx','OFX'],['pdf','PDF'],['ocr','OCR'],['pix','Pix'],['qr','QR/NFC-e'],['text','Texto'],['folder','Pasta local']];
+  const tabs=[['csv','▦ CSV'],['ofx','◇ OFX'],['pdf','▤ PDF'],['ocr','⌕ OCR'],['pix','Pix'],['qr','QR/NFC-e'],['text','Texto'],['folder','Pasta']];
   el.innerHTML=tabs.map(([id,label])=>`<button class="cat-filter-chip ${importDraft.source===id?'active':''}" onclick="setImportSource('${id}')">${label}</button>`).join('');
 }
 function setImportSource(src){
