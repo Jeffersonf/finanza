@@ -1,5 +1,7 @@
 .env
 node_modules/
+__pycache__/
+*.pyc
 android/
 ios/
 backup/*.sql.gz

@@ -7,7 +7,8 @@
     "android": "npx cap open android",
     "ios": "npx cap open ios",
     "build:apk": "npx cap sync android && cd android && gradlew.bat assembleDebug",
-    "migrate": "node migrate-local-to-db.js"
+    "migrate": "node migrate-local-to-db.js",
+    "migrate:fisiosaas": "python tools/fisiosaas_to_finanza.py"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",
