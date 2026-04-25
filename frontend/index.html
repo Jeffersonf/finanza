@@ -58,55 +58,133 @@
   </div>
 </div>
 <div id="setup">
-  <div class="setup-box">
-    <div class="slogo"><span style="color:var(--ac)">fin</span><span style="color:var(--tx);font-weight:700">anza</span></div><div class="stag">Controle financeiro pessoal</div>
-    <div id="sMain"><div style="font-size:12px;color:var(--mt);margin-bottom:14px">Como você quer usar o Finanza?</div>
-      <button class="mode-btn" onclick="showS('online')"><span class="mode-emo">☁️</span><div><div class="mode-lbl">Online</div><div class="mode-sub">Sincroniza entre dispositivos</div></div><span style="margin-left:auto;color:var(--mt)">›</span></button>
-      <button class="mode-btn" onclick="showS('local')"><span class="mode-emo">💾</span><div><div class="mode-lbl">Local</div><div class="mode-sub">Dados neste dispositivo</div></div><span style="margin-left:auto;color:var(--mt)">›</span></button>
-    </div>
-    <div id="sOnline" style="display:none">
-      <button class="back-btn" onclick="showS('main')">← Voltar</button>
-      <div class="auth-title">Entrar</div>
-      <div id="sErr" class="serr"></div>
-      <label class="slbl">Usuário</label><input type="text" class="sinp" id="sUser" placeholder="jefferson" autocomplete="username">
-      <label class="slbl">Senha</label><input type="password" class="sinp" id="sPass" placeholder="Sua senha" autocomplete="current-password">
-      <div class="shint">Seus dados ficam salvos no Supabase e sincronizam entre dispositivos.</div>
-      <button class="sbtn" id="sBtn" onclick="doSetup()"><span id="sBtnTxt">Entrar →</span></button>
-      <div class="slinks"><a onclick="showS('newuser')">Criar usuário</a><span></span><a onclick="showS('reset')">Esqueci a senha</a></div>
-    </div>
-    <div id="sNewUser" style="display:none">
-      <button class="back-btn" onclick="showS('online')">← Voltar</button>
-      <div class="auth-title">Criar usuário</div>
-      <div style="font-size:11px;color:var(--mt);margin-bottom:12px;line-height:1.5">Escolha um usuário e uma senha. A chave admin é opcional.</div>
-      <div id="nuErr" class="serr"></div>
-      <label class="slbl">Nome</label><input type="text" class="sinp" id="nuName" placeholder="Jefferson">
-      <label class="slbl">Usuário</label><input type="text" class="sinp" id="nuUser" placeholder="jefferson" autocomplete="username">
-      <label class="slbl">Senha</label><input type="password" class="sinp" id="nuPass" placeholder="Crie uma senha" autocomplete="new-password">
-      <label class="slbl">Chave admin (opcional)</label><input type="password" class="sinp" id="nuAdmin" placeholder="API_SECRET se o cadastro estiver fechado">
-      <button class="sbtn" onclick="createUser()">Criar usuário →</button>
-      <div id="nuRes" class="auth-ok" style="display:none">
-        <strong>Usuário criado.</strong>
-        <span>Entre com o usuário e a senha.</span>
-        <button class="sbtn secondary" onclick="useNewUserKey()">Entrar agora</button>
+  <div class="setup-box setup-shell">
+    <section class="setup-story">
+      <div class="setup-head">
+        <div class="setup-copy-block">
+          <div class="setup-badge">Finanças pessoais sem fricção</div>
+          <div class="slogo"><span style="color:var(--ac)">fin</span><span style="color:var(--tx);font-weight:700">anza</span></div>
+          <div class="stag">Registro rápido, visão do mês e clareza para decidir antes do aperto virar bagunça.</div>
+          <h1 class="setup-title">Seu dinheiro organizado antes que o mês aperte.</h1>
+          <p class="setup-copy">O Finanza reúne gastos, vencimentos, metas, compras e carro em um fluxo simples para registrar, revisar e decidir com clareza.</p>
+          <div class="setup-inline-preview">
+            <div class="setup-inline-head">
+              <strong>O que você acompanha sem sair do fluxo</strong>
+              <span>Decisão diária</span>
+            </div>
+            <div class="setup-inline-grid">
+              <div class="setup-inline-card">
+                <span>Hoje</span>
+                <strong>2 contas vencem</strong>
+                <small>aluguel e internet</small>
+              </div>
+              <div class="setup-inline-card">
+                <span>Mês</span>
+                <strong>Saldo previsto positivo</strong>
+                <small>+R$ 1.263 no fechamento</small>
+              </div>
+              <div class="setup-inline-card">
+                <span>Meta</span>
+                <strong>Viagem em andamento</strong>
+                <small>42% concluído</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="setup-preview">
+          <div class="setup-preview-head">
+            <span class="setup-dot"></span><span class="setup-dot"></span><span class="setup-dot"></span>
+            <strong>Resumo financeiro</strong>
+          </div>
+          <div class="setup-kpis">
+            <div class="setup-kpi"><span>Entradas do mês</span><strong>R$ 5.500</strong></div>
+            <div class="setup-kpi"><span>Saídas do mês</span><strong>R$ 2.817</strong></div>
+            <div class="setup-kpi"><span>A pagar</span><strong>R$ 1.420</strong></div>
+          </div>
+          <div class="setup-rail">
+            <div class="setup-rail-card">
+              <div class="setup-rail-title">Hoje no controle</div>
+              <div class="setup-rail-line"><span>3 lançamentos novos</span><strong>Caixa em dia</strong></div>
+              <div class="setup-rail-line"><span>2 vencimentos</span><strong>Esta semana</strong></div>
+              <div class="setup-rail-line"><span>Meta ativa</span><strong>Viagem 42%</strong></div>
+            </div>
+            <div class="setup-rail-card accent">
+              <div class="setup-rail-title">Fluxo principal</div>
+              <div class="setup-flow"><span>Capturar</span><span>Filtrar</span><span>Decidir</span></div>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-    <div id="sReset" style="display:none">
-      <button class="back-btn" onclick="showS('online')">← Voltar</button>
-      <div class="auth-title">Redefinir senha</div>
-      <div style="font-size:11px;color:var(--mt);margin-bottom:12px;line-height:1.5">Por segurança, a senha antiga não pode ser recuperada. Crie uma nova usando a chave admin do servidor.</div>
-      <div id="rpErr" class="serr"></div>
-      <label class="slbl">Usuário</label><input type="text" class="sinp" id="rpUser" autocomplete="username">
-      <label class="slbl">Nova senha</label><input type="password" class="sinp" id="rpPass" autocomplete="new-password">
-      <label class="slbl">Chave admin</label><input type="password" class="sinp" id="rpAdmin" placeholder="API_SECRET do Render">
-      <button class="sbtn" onclick="resetPassword()">Redefinir senha →</button>
-    </div>
-    <div id="sLocal" style="display:none">
-      <button class="back-btn" onclick="showS('main')">← Voltar</button>
-      <div style="font-size:13px;font-weight:700;margin-bottom:10px">Modo local</div>
-      <div style="font-size:11px;color:var(--mt);margin-bottom:14px;line-height:1.6">Dados salvos neste dispositivo. Exporte um backup JSON a qualquer momento.</div>
-      <button class="mode-btn" onclick="startLocal()"><span class="mode-emo">✨</span><div><div class="mode-lbl">Começar do zero</div></div><span style="margin-left:auto;color:var(--mt)">›</span></button>
-      <label class="mode-btn" for="impFile"><span class="mode-emo">📂</span><div><div class="mode-lbl">Importar backup JSON</div></div><span style="margin-left:auto;color:var(--mt)">›</span><input type="file" id="impFile" accept=".json" style="display:none" onchange="importLocal(this)"></label>
-    </div>
+      <div class="setup-feature-grid">
+        <article class="setup-feature-card">
+          <strong>Registro rápido</strong>
+          <p>Lance gastos, receitas, parcelas e recorrências sem sair do fluxo.</p>
+        </article>
+        <article class="setup-feature-card">
+          <strong>Visão do que vem</strong>
+          <p>Acompanhe vencimentos, contas futuras e alertas antes do aperto chegar.</p>
+        </article>
+        <article class="setup-feature-card">
+          <strong>Operação do dia a dia</strong>
+          <p>Transações, compras, carro, metas e contas conectados na mesma rotina.</p>
+        </article>
+      </div>
+    </section>
+    <aside class="setup-auth">
+      <div id="sMain" class="setup-auth-panel" style="display:none"><div class="setup-section-note">Como você quer usar o Finanza?</div>
+        <button class="mode-btn" onclick="showS('online')"><span class="mode-emo">☁️</span><div><div class="mode-lbl">Online</div><div class="mode-sub">Sincroniza entre dispositivos</div></div><span style="margin-left:auto;color:var(--mt)">›</span></button>
+        <button class="mode-btn" onclick="showS('local')"><span class="mode-emo">💾</span><div><div class="mode-lbl">Local</div><div class="mode-sub">Dados neste dispositivo</div></div><span style="margin-left:auto;color:var(--mt)">›</span></button>
+      </div>
+      <div id="sOnline" class="setup-auth-panel" style="display:none">
+        <div class="setup-auth-badge">Acesse sua conta</div>
+        <button class="back-btn" onclick="showS('main')">← Voltar</button>
+        <div class="auth-title">Entrar</div>
+        <div class="setup-auth-intro">Entre para sincronizar seus dados e continuar de onde parou em qualquer dispositivo.</div>
+        <div id="sErr" class="serr"></div>
+        <label class="slbl">Usuário</label><input type="text" class="sinp" id="sUser" placeholder="Digite seu usuário" autocomplete="username">
+        <label class="slbl">Senha</label><input type="password" class="sinp" id="sPass" placeholder="Digite sua senha" autocomplete="current-password">
+        <div class="shint">Seus dados ficam salvos no Supabase e sincronizam entre dispositivos.</div>
+        <button class="sbtn" id="sBtn" onclick="doSetup()"><span id="sBtnTxt">Entrar →</span></button>
+        <div class="slinks"><a onclick="showS('newuser')">Criar usuário</a><span></span><a onclick="showS('reset')">Esqueci a senha</a></div>
+        <div class="setup-auth-note">Prefere usar sem conta? <a onclick="showS('local')">Entrar no modo local</a></div>
+      </div>
+      <div id="sNewUser" class="setup-auth-panel" style="display:none">
+        <div class="setup-auth-badge">Novo acesso</div>
+        <button class="back-btn" onclick="showS('online')">← Voltar</button>
+        <div class="auth-title">Criar usuário</div>
+        <div class="setup-section-note">Escolha um nome de exibição, um usuário e uma senha. A chave admin é opcional.</div>
+        <div id="nuErr" class="serr"></div>
+        <label class="slbl">Nome</label><input type="text" class="sinp" id="nuName" placeholder="Como seu nome aparece">
+        <label class="slbl">Usuário</label><input type="text" class="sinp" id="nuUser" placeholder="Crie seu usuário" autocomplete="username">
+        <label class="slbl">Senha</label><input type="password" class="sinp" id="nuPass" placeholder="Crie uma senha" autocomplete="new-password">
+        <label class="slbl">Chave admin (opcional)</label><input type="password" class="sinp" id="nuAdmin" placeholder="API_SECRET se o cadastro estiver fechado">
+        <button class="sbtn" onclick="createUser()">Criar usuário →</button>
+        <div id="nuRes" class="auth-ok" style="display:none">
+          <strong>Usuário criado.</strong>
+          <span>Entre com o usuário e a senha.</span>
+          <button class="sbtn secondary" onclick="useNewUserKey()">Entrar agora</button>
+        </div>
+      </div>
+      <div id="sReset" class="setup-auth-panel" style="display:none">
+        <div class="setup-auth-badge">Recuperação</div>
+        <button class="back-btn" onclick="showS('online')">← Voltar</button>
+        <div class="auth-title">Redefinir senha</div>
+        <div class="setup-section-note">Por segurança, a senha antiga não pode ser recuperada. Crie uma nova usando a chave admin do servidor.</div>
+        <div id="rpErr" class="serr"></div>
+        <label class="slbl">Usuário</label><input type="text" class="sinp" id="rpUser" placeholder="Digite seu usuário" autocomplete="username">
+        <label class="slbl">Nova senha</label><input type="password" class="sinp" id="rpPass" placeholder="Digite a nova senha" autocomplete="new-password">
+        <label class="slbl">Chave admin</label><input type="password" class="sinp" id="rpAdmin" placeholder="API_SECRET do Render">
+        <button class="sbtn" onclick="resetPassword()">Redefinir senha →</button>
+      </div>
+      <div id="sLocal" class="setup-auth-panel" style="display:none">
+        <div class="setup-auth-badge">Modo local</div>
+        <button class="back-btn" onclick="showS('main')">← Voltar</button>
+        <div class="auth-title auth-title-local">Modo local</div>
+        <div class="setup-section-note">Seus dados ficam só neste dispositivo. Você pode começar do zero ou importar um backup JSON existente.</div>
+        <button class="mode-btn" onclick="startLocal()"><span class="mode-emo">✨</span><div><div class="mode-lbl">Começar do zero</div></div><span style="margin-left:auto;color:var(--mt)">›</span></button>
+        <label class="mode-btn" for="impFile"><span class="mode-emo">📂</span><div><div class="mode-lbl">Importar backup JSON</div></div><span style="margin-left:auto;color:var(--mt)">›</span><input type="file" id="impFile" accept=".json" style="display:none" onchange="importLocal(this)"></label>
+      </div>
+    </aside>
   </div>
 </div>
 <aside class="sidebar">
@@ -168,48 +246,50 @@
     </div>
   </div>
 </div>
-<div class="page" id="page-transactions">
-  <div class="ph"><div><div class="pt">Transações</div><div class="ps">Histórico completo</div></div><div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="btn btn-g btn-sm" onclick="openImportCenter()">Importar</button><button class="btn btn-p" onclick="openModal()">+ Nova</button></div></div>
-  <div class="pbar" id="txPbar">
+<div class="page tx-page" id="page-transactions">
+  <div class="ph tx-head"><div><div class="pt">Transações</div><div class="ps">Histórico completo</div></div><div class="tx-head-actions"><button class="btn btn-g btn-sm" onclick="openImportCenter()">Importar</button><button class="btn btn-p" onclick="openModal()">+ Nova</button></div></div>
+  <div class="pbar tx-period-bar" id="txPbar">
     <button class="pb" data-p="7d-p">7 dias</button>
     <button class="pb active" data-p="1m-p">1 mês</button>
     <button class="pb" data-p="3m-p">3 meses</button>
     <button class="pb" data-p="6m-p">6 meses</button>
     <button class="pb" data-p="all-p">Tudo</button>
   </div>
-  <div class="box">
-    <div class="fr">
+  <div class="box tx-surface">
+    <div class="fr tx-toolbar">
       <input type="text" class="sb" id="txSrch" placeholder="🔍 Buscar...">
-      <select class="sel" id="fTyp"><option value="all">Todos</option><option value="income">Receitas</option><option value="expense">Despesas</option></select>
-      <select class="sel" id="fCat"><option value="all">Categoria</option></select>
-      <select class="sel" id="fAcc"><option value="all">Conta</option></select>
-      <select class="sel" id="fSort"><option value="dd">Data ↓</option><option value="da">Data ↑</option><option value="ad">Valor ↓</option><option value="aa">Valor ↑</option></select>
+      <select class="sel tx-sel-sm" id="fTyp"><option value="all">Todos</option><option value="income">Receitas</option><option value="expense">Despesas</option></select>
+      <select class="sel tx-sel-md" id="fCat"><option value="all">Categoria</option></select>
+      <select class="sel tx-sel-md" id="fAcc"><option value="all">Conta</option></select>
+      <select class="sel tx-sel-sm" id="fSort"><option value="dd">Data ↓</option><option value="da">Data ↑</option><option value="ad">Valor ↓</option><option value="aa">Valor ↑</option></select>
+      <div class="tx-range-row">
+        <span class="tx-range-label">Valor</span>
+        <div class="tx-range-fields">
+          <input type="number" class="fi tx-range-input" id="fMin" placeholder="Mín" oninput="renderTxDebounced()">
+          <span class="tx-range-sep">até</span>
+          <input type="number" class="fi tx-range-input" id="fMax" placeholder="Máx" oninput="renderTxDebounced()">
+        </div>
+      </div>
       <div class="vtog"><button class="vbtn active" id="vN" onclick="setView('n')" title="Normal">☰</button><button class="vbtn" id="vC" onclick="setView('c')" title="Compacto">≡</button><button class="vbtn" id="vChart" onclick="setView('chart')" title="Gráficos">📊</button></div>
     </div>
     <div class="cat-filter-row" id="catFilterChips"></div>
-    <div style="display:flex;gap:7px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">
-      <span style="font-size:10px;color:var(--mt)">Valor:</span>
-      <input type="number" class="fi" id="fMin" placeholder="Mín" style="width:80px;padding:5px 8px;font-size:11px;" oninput="renderTxDebounced()">
-      <span style="font-size:10px;color:var(--mt)">até</span>
-      <input type="number" class="fi" id="fMax" placeholder="Máx" style="width:80px;padding:5px 8px;font-size:11px;" oninput="renderTxDebounced()">
-    </div>
-    <div id="txSum" style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;font-size:11px;"></div>
+    <div id="txSum" class="tx-summary-strip"></div>
     <div class="insight-grid" id="txInsightCards"></div>
-    <div id="txChartWrap" style="display:none;margin-bottom:16px;">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div class="cc-box" style="padding:14px 16px;">
-          <div class="ct" style="margin-bottom:2px;font-size:12px;">Por categoria</div>
-          <div class="cs" style="margin-bottom:10px;font-size:10px;">Total de despesas</div>
+    <div id="txChartWrap" class="tx-chart-wrap" style="display:none;">
+      <div class="tx-chart-grid">
+        <div class="cc-box tx-chart-card">
+          <div class="ct tx-chart-title">Por categoria</div>
+          <div class="cs tx-chart-sub">Total de despesas</div>
           <canvas id="txCatChart" style="max-height:160px;"></canvas>
         </div>
-        <div class="cc-box" style="padding:14px 16px;">
-          <div class="ct" style="margin-bottom:2px;font-size:12px;">Evolução</div>
-          <div class="cs" style="margin-bottom:10px;font-size:10px;">Dia a dia no período</div>
+        <div class="cc-box tx-chart-card">
+          <div class="ct tx-chart-title">Evolução</div>
+          <div class="cs tx-chart-sub">Dia a dia no período</div>
           <canvas id="txLineChart" style="max-height:160px;"></canvas>
         </div>
       </div>
     </div>
-    <div id="txView"></div>
+    <div id="txView" class="tx-list-host"></div>
   </div>
 </div>
 <div class="page" id="page-future">

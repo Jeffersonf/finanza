@@ -1,7 +1,7 @@
 ﻿'use strict';
 const APP_VERSION='4.3.1';
 const DEFAULT_API_URL='https://finanza-api.onrender.com';
-const CK='fz_cfg',LK='fz_local',CCK='fz_cats',VK='fz_view',AVK='fz_avatar',PRIVK='fz_privacy',CAR_KEY='fz_car';
+const CK='fz_cfg',LK='fz_local',CCK='fz_cats',VK='fz_view',AVK='fz_avatar',PRIVK='fz_privacy',CAR_KEY='fz_car',PAGE_KEY='fz_page';
 const RATES_KEY='fz_rates', WIDGET_ORDER_KEY='fz_widget_order', WIDGET_FILTER_KEY='fz_widget_filters', DUE_KEY='fz_due_items', TX_FILTERS_KEY='fz_tx_filters';
 const SAVE_STATE_KEY='fz_save_state', SYNC_HISTORY_KEY='fz_sync_history', AUDIT_HISTORY_KEY='fz_audit_history';
 let monthlyIncomeCents=0;
@@ -173,7 +173,7 @@ function renderQACats(){
   const el=document.getElementById('qaCats');if(!el)return;
   el.innerHTML=allCats().filter(c=>!['Salário','Freelance','Investimentos','Outros'].includes(c.name)).slice(0,10).map(c=>`<div class="qa-cat${qaSelCat===c.name?' sel':''}" onclick="qaSelC('${c.name}')">${c.ico} ${c.name}</div>`).join('');
 }
-function showSetup(){document.getElementById('setup').classList.add('visible');showS('main');}
+function showSetup(){document.getElementById('setup').classList.add('visible');showS('online');}
 function hideSetup(){document.getElementById('setup').classList.remove('visible');}
 function showS(s){['Main','Online','NewUser','Reset','Local'].forEach(n=>{const e=document.getElementById('s'+n);if(e)e.style.display=n.toLowerCase()===s?'block':'none';});}
 async function doSetup(){
@@ -194,6 +194,13 @@ async function doSetup(){
     hideSetup();await initApp();toast(`Bem-vindo, ${u.name}! OK`,'success');
   }catch(e){err.textContent='Falha: '+e.message;err.classList.add('show');btn.disabled=false;txt.textContent='Entrar →';}
 }
+['sUser','sPass'].forEach(id=>{
+  document.getElementById(id)?.addEventListener('keydown',e=>{
+    if(e.key!=='Enter')return;
+    e.preventDefault();
+    doSetup();
+  });
+});
 async function createUser(){
   const url=(document.getElementById('nuUrl')?.value.trim()||cfg.url||DEFAULT_API_URL).replace(/\/$/,'');
   const admin=document.getElementById('nuAdmin').value.trim();
@@ -2254,6 +2261,7 @@ function showPage(id){
   document.getElementById('page-'+id)?.classList.add('active');
   document.querySelectorAll('.nav-item,.fn-item,[data-page]').forEach(n=>n.classList.toggle('active',n.dataset.page===id));
   if(prev&&prev!==id)pgHist.push(prev);
+  localStorage.setItem(PAGE_KEY,id);
   window.scrollTo({top:0,behavior:'smooth'});
   if(id==='dashboard')renderDash(true);
   else if(id==='accounts'){renderAccs();popAccSels();}
@@ -2349,7 +2357,7 @@ function renderTx(){
   const fE=txs.filter(t=>t.type==='expense'&&isFut(t.date)).reduce((s,t)=>s+t.amount,0);
   const pnd=txs.filter(t=>t.pending).length;
   const inboxCt=txs.filter(t=>t.category==='A classificar'&&(getTxImportMeta(t.id).imported||t.pending)).length;
-  document.getElementById('txSum').innerHTML=`<span style="color:var(--ac)">⬆ ${fmt(tI)}</span><span style="color:var(--dan)">⬇ ${fmt(tE)}</span>${fE>0?`<span style="color:var(--fut)">🔮 ${fmt(fE)}</span>`:''}${pnd>0?`<span style="color:var(--warn)">❓ ${pnd} pendente${pnd>1?'s':''}</span>`:''}${inboxCt>0?`<button class="btn btn-g btn-sm" onclick="openImportInbox()">📥 Caixa de entrada ${inboxCt}</button>`:''}<span style="color:var(--mt)">${txs.length} lançamento${txs.length!==1?'s':''}</span>`;
+  document.getElementById('txSum').innerHTML=`<span class="tx-sum-pill pos">Entradas ${fmt(tI)}</span><span class="tx-sum-pill neg">Saídas ${fmt(tE)}</span>${fE>0?`<span class="tx-sum-pill fut">Futuro ${fmt(fE)}</span>`:''}${pnd>0?`<span class="tx-sum-pill warn">${pnd} pendente${pnd>1?'s':''}</span>`:''}${inboxCt>0?`<button class="btn btn-g btn-sm" onclick="openImportInbox()">📥 Caixa de entrada ${inboxCt}</button>`:''}<span class="tx-sum-pill muted">${txs.length} lançamento${txs.length!==1?'s':''}</span>`;
   renderTxInsights(txs);
   const el=document.getElementById('txView');
   const renderLimit=curView==='c'?400:250;
@@ -2382,7 +2390,7 @@ function renderTxInsights(txs){
   const topCat=Object.entries(cats).sort((a,b)=>b[1]-a[1])[0];
   el.innerHTML=`
     <div class="insight-card"><div class="insight-k">Saldo no filtro</div><div class="insight-v" style="color:${inc-exp>=0?'var(--ac)':'var(--dan)'}">${fmt(inc-exp)}</div></div>
-    <div class="insight-card"><div class="insight-k">Ticket mdio</div><div class="insight-v" style="color:var(--warn)">${fmt(avg)}</div><div class="cc">${expenses.length} despesas</div></div>
+    <div class="insight-card"><div class="insight-k">Ticket médio</div><div class="insight-v" style="color:var(--warn)">${fmt(avg)}</div><div class="cc">${expenses.length} despesas</div></div>
     <div class="insight-card"><div class="insight-k">Maior gasto</div><div class="insight-v" style="color:var(--dan)">${top?fmt(top.amount):''}</div><div class="cc">${top?top.desc:'sem dados'}</div></div>
     <div class="insight-card"><div class="insight-k">Categoria líder</div><div class="insight-v" style="font-size:16px">${topCat?getCat(topCat[0]).ico+' '+topCat[0]:''}</div><div class="cc">${topCat?fmt(topCat[1]):'sem dados'}</div></div>`;
 }
@@ -3612,6 +3620,8 @@ async function initApp(){
   document.getElementById('uName').textContent=name;
   applyAvatar();
   const sv=localStorage.getItem(VK)||'n';setView(sv);
+  const savedPage=localStorage.getItem(PAGE_KEY)||'dashboard';
+  if(savedPage!=='dashboard')showPage(savedPage);
   applySavedTxFilters();
   loadSyncQ();
   loadSyncHistory();
@@ -3714,16 +3724,6 @@ function showConnBar(state,msg,duration=3000){
 const BK_KEY='fz_last_backup';
 const BK_INTERVAL_DAYS=3;
 function checkAutoBackup(){
-  const last=parseInt(localStorage.getItem(BK_KEY)||'0');
-  const daysSince=(Date.now()-last)/(1000*60*60*24);
-  if(daysSince>=BK_INTERVAL_DAYS||!last){
-    // Silencioso: s avisa se > 3 dias
-    if(last>0){
-      const el=document.getElementById('backupStatusTxt');
-      if(el)el.textContent='Backup automtico...';
-    }
-    setTimeout(()=>autoBackupNow(),2000);
-  }
   updBackupStatus();
 }
 function autoBackupNow(){
