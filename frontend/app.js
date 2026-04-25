@@ -18,6 +18,7 @@ let privacyMode=false;
 let syncHistory=[];
 let auditHistory=[];
 let adminUsers=[];
+let adminOverviewState={loading:false,loaded:false,data:null,error:''};
 let undoState=null;
 let importPreviewState=null;
 const IMPORT_CENTER_KEY='fz_import_center';
@@ -190,7 +191,9 @@ async function doSetup(){
     if(!login.ok){const er=await login.json().catch(()=>({}));throw new Error(er.error||'Login inválido');}
     const u=await login.json();
     cfg={url,key:u.api_key,mode:'api',userName:u.name,userId:u.id,loginName:username,role:u.role||''};
+    adminOverviewState={loading:false,loaded:false,data:null,error:''};
     localStorage.setItem(CK,JSON.stringify(cfg));
+    sessionStorage.setItem(PAGE_KEY,'dashboard');
     hideSetup();await initApp();toast(`Bem-vindo, ${u.name}! OK`,'success');
   }catch(e){err.textContent='Falha: '+e.message;err.classList.add('show');btn.disabled=false;txt.textContent='Entrar →';}
 }
@@ -244,33 +247,98 @@ async function resetPassword(){
   }catch(e){err.textContent='Erro: '+e.message;err.classList.add('show');}
 }
 function canManageUsers(){return cfg.mode==='api'&&cfg.role==='admin';}
-function canSeeAdminPanel(){return cfg.mode!=='api'||cfg.role==='admin';}
+function canSeeAdminPanel(){return cfg.mode==='api'&&cfg.role==='admin';}
+function fmtCompactDateTime(ts){
+  if(!ts)return'—';
+  return new Date(ts).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+}
+function fmtFileSize(bytes){
+  const value=Number(bytes)||0;
+  if(value<=0)return'0 B';
+  const units=['B','KB','MB','GB','TB'];
+  const idx=Math.min(units.length-1,Math.floor(Math.log(value)/Math.log(1024)));
+  const sized=value/1024**idx;
+  return `${sized>=10||idx===0?sized.toFixed(0):sized.toFixed(1)} ${units[idx]}`;
+}
+function adminRoleBreakdownText(byRole={}){
+  const labels={admin:'admin',editor:'editor',read:'leitura',guest:'convidado'};
+  const parts=Object.entries(labels)
+    .map(([role,label])=>({label,total:Number(byRole?.[role])||0}))
+    .filter(item=>item.total>0)
+    .map(item=>`${item.total} ${item.label}${item.total===1?'':'s'}`);
+  return parts.length?parts.join(' • '):'Nenhum papel carregado';
+}
 function applyAdminPanelVisibility(){
   document.querySelectorAll('[data-admin-only]').forEach(el=>{
-    el.style.display=canSeeAdminPanel()?'':'none';
+    el.style.display=canSeeAdminPanel()?(el.dataset.adminDisplay||''):'none';
   });
+}
+function updateAdminOverview(){
+  const account=document.getElementById('adminAccountName');if(account)account.textContent=cfg.userName||'—';
+  const mode=document.getElementById('adminServerMode');if(mode)mode.textContent=cfg.mode==='api'?'Online (API + PostgreSQL)':'Local';
+  const server=document.getElementById('adminServerUrl');if(server)server.textContent=cfg.url||'Modo local';
+  const users=document.getElementById('adminUsersMeta');
+  const roles=document.getElementById('adminRolesMeta');
+  const health=document.getElementById('adminHealthMeta');
+  const audit=document.getElementById('adminAuditMeta');
+  const backup=document.getElementById('adminBackupMeta');
+  const transactions=document.getElementById('adminTransactionsMeta');
+  if(users){
+    if(!canManageUsers())users.textContent='Disponível apenas para administradores online';
+    else if(adminOverviewState.loading&&!adminOverviewState.data)users.textContent='Carregando usuários...';
+    else if(adminOverviewState.data?.users?.total>=0)users.textContent=`${adminOverviewState.data.users.total} conta${adminOverviewState.data.users.total===1?'':'s'} cadastrada${adminOverviewState.data.users.total===1?'':'s'}`;
+    else users.textContent=adminUsers.length?`${adminUsers.length} conta${adminUsers.length===1?'':'s'} carregada${adminUsers.length===1?'':'s'}`:'Carregando usuários...';
+  }
+  if(roles)roles.textContent=!canManageUsers()?'Disponível apenas para administradores online':(adminOverviewState.data?.users?adminRoleBreakdownText(adminOverviewState.data.users.byRole):adminOverviewState.loading?'Carregando distribuição...':'Sem dados disponíveis');
+  if(health)health.textContent=!canManageUsers()?'Disponível apenas para administradores online':(adminOverviewState.data?.server?`${adminOverviewState.data.server.status==='ok'?'Operacional':'Com alerta'} • verificado em ${fmtCompactDateTime(adminOverviewState.data.server.checkedAt)}`:adminOverviewState.loading?'Verificando...':(adminOverviewState.error?`Falha: ${adminOverviewState.error}`:'Sem diagnóstico disponível'));
+  if(audit)audit.textContent=!canManageUsers()?'Disponível apenas para administradores online':(adminOverviewState.data?.activity?`${adminOverviewState.data.activity.auditCount} evento${adminOverviewState.data.activity.auditCount===1?'':'s'} • última atividade em ${fmtCompactDateTime(adminOverviewState.data.activity.lastAuditAt)}`:adminOverviewState.loading?'Carregando auditoria...':'Sem dados de auditoria');
+  if(backup)backup.textContent=!canManageUsers()?'Disponível apenas para administradores online':(adminOverviewState.data?.backup?.available?`${adminOverviewState.data.backup.last.filename} • ${fmtFileSize(adminOverviewState.data.backup.last.sizeBytes)} • ${fmtCompactDateTime(adminOverviewState.data.backup.last.createdAt)}`:adminOverviewState.loading?'Buscando backups...':'Nenhum backup SQL registrado');
+  if(transactions)transactions.textContent=!canManageUsers()?'Disponível apenas para administradores online':(adminOverviewState.data?.transactions?`${adminOverviewState.data.transactions.total} transaç${adminOverviewState.data.transactions.total===1?'ão':'ões'} no ambiente online`:adminOverviewState.loading?'Contando transações...':'Sem contagem disponível');
+}
+async function loadAdminOverview(force=false){
+  if(!canSeeAdminPanel()){
+    adminOverviewState={loading:false,loaded:false,data:null,error:''};
+    updateAdminOverview();
+    return;
+  }
+  if(adminOverviewState.loading)return;
+  if(adminOverviewState.loaded&&!force){
+    updateAdminOverview();
+    return;
+  }
+  adminOverviewState={...adminOverviewState,loading:true,error:''};
+  updateAdminOverview();
+  try{
+    const data=await api('GET','/api/admin/overview');
+    adminOverviewState={loading:false,loaded:true,data,error:''};
+  }catch(err){
+    adminOverviewState={loading:false,loaded:false,data:null,error:err.message};
+  }
+  updateAdminOverview();
 }
 function roleLabel(role){
   return {admin:'Admin',editor:'Editor',read:'Leitura',guest:'Convidado'}[role]||role||'Editor';
 }
 async function loadAdminUsers(){
   const box=document.getElementById('adminUsersBox');
-  if(!canManageUsers()){if(box)box.style.display='none';return;}
+  if(!canManageUsers()){if(box)box.style.display='none';updateAdminOverview();return;}
   if(box)box.style.display='block';
   const list=document.getElementById('adminUsersList');
   if(list)list.innerHTML='<div class="sync-empty">Carregando usuários...</div>';
+  updateAdminOverview();
   try{
     adminUsers=await api('GET','/api/users');
     renderAdminUsers();
   }catch(err){
     if(list)list.innerHTML=`<div class="sync-empty">Não foi possível carregar usuários: ${esc(err.message)}</div>`;
+    updateAdminOverview();
   }
 }
 function renderAdminUsers(){
   const box=document.getElementById('adminUsersBox');
   if(box)box.style.display=canManageUsers()?'block':'none';
   const list=document.getElementById('adminUsersList');if(!list)return;
-  if(!canManageUsers()){list.innerHTML='';return;}
+  if(!canManageUsers()){list.innerHTML='';updateAdminOverview();return;}
   const roleOptions=['admin','editor','read','guest'];
   list.innerHTML=adminUsers.length?adminUsers.map(u=>`
     <div class="admin-user-row">
@@ -286,6 +354,7 @@ function renderAdminUsers(){
       </div>
     </div>
   `).join(''):'<div class="sync-empty">Nenhum usuário encontrado.</div>';
+  updateAdminOverview();
 }
 async function createAdminUser(){
   if(!canManageUsers()){toast('Apenas admin online pode criar usuários','error');return;}
@@ -298,6 +367,7 @@ async function createAdminUser(){
     await api('POST','/api/users',{name,username,password,role});
     ['adminNewName','adminNewUser','adminNewPass'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     toast('Usuário criado','success');
+    await loadAdminOverview(true);
     await loadAdminUsers();
     await loadPersistentAuditHistory();
     updateTrustPanel();
@@ -313,6 +383,7 @@ async function updateAdminUserRole(id,role){
     if(i>=0)adminUsers[i]=updated;
     renderAdminUsers();
     toast('Papel atualizado','success');
+    await loadAdminOverview(true);
     await loadPersistentAuditHistory();
     updateTrustPanel();
   }catch(err){
@@ -331,12 +402,13 @@ async function deleteAdminUser(id){
   try{
     await api('DELETE',`/api/users/${id}`);
     toast('Usuário removido','success');
+    await loadAdminOverview(true);
     await loadAdminUsers();
     await loadPersistentAuditHistory();
     updateTrustPanel();
   }catch(err){toast('Erro: '+err.message,'error');}
 }
-function startLocal(){cfg={url:'',key:'',mode:'local',userName:'Eu',userId:'',role:''};localStorage.setItem(CK,JSON.stringify(cfg));hideSetup();initApp();}
+function startLocal(){cfg={url:'',key:'',mode:'local',userName:'Eu',userId:'',role:''};adminOverviewState={loading:false,loaded:false,data:null,error:''};localStorage.setItem(CK,JSON.stringify(cfg));sessionStorage.setItem(PAGE_KEY,'dashboard');hideSetup();initApp();}
 function normalizeBackupData(d){
   const data=d?.app==='Finanza'||d?.version?d:{...d};
   if(!Array.isArray(data.transactions))throw new Error('Arquivo inválido: não parece um backup do Finanza');
@@ -1140,7 +1212,7 @@ function openImportInbox(){
     renderTx();
   },120);
 }
-function logout(){if(!confirm('Sair da conta?'))return;localStorage.removeItem(CK);localStorage.removeItem(LK);location.reload();}
+function logout(){if(!confirm('Sair da conta?'))return;adminOverviewState={loading:false,loaded:false,data:null,error:''};localStorage.removeItem(CK);localStorage.removeItem(LK);location.reload();}
 function setConn(s){
   const dot=document.getElementById('connDot');if(dot)dot.className='conn-dot '+s;
   const L={online:'Dados sincronizados',offline:'Dados locais',error:'Sem conexao'};
@@ -2256,12 +2328,16 @@ document.getElementById('prevM').onclick=()=>{curDt=new Date(curDt.getFullYear()
 document.getElementById('nextM').onclick=()=>{curDt=new Date(curDt.getFullYear(),curDt.getMonth()+1,1);updM();renderDash();};
 let pgHist=[];
 function showPage(id){
+  if(id==='admin'&&!canSeeAdminPanel()){
+    toast('Painel admin disponível apenas para contas administradoras','error');
+    id='settings';
+  }
   const prev=document.querySelector('.page.active')?.id?.replace('page-','');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id)?.classList.add('active');
   document.querySelectorAll('.nav-item,.fn-item,[data-page]').forEach(n=>n.classList.toggle('active',n.dataset.page===id));
   if(prev&&prev!==id)pgHist.push(prev);
-  localStorage.setItem(PAGE_KEY,id);
+  sessionStorage.setItem(PAGE_KEY,id);
   window.scrollTo({top:0,behavior:'smooth'});
   if(id==='dashboard')renderDash(true);
   else if(id==='accounts'){renderAccs();popAccSels();}
@@ -2271,7 +2347,7 @@ function showPage(id){
   else if(id==='goals')renderGoals();
   else if(id==='shopping'){loadSL();renderShopping();}
   else if(id==='car'){loadCar();renderCar();}
-  else if(id==='settings')renderSet();
+  else if(id==='settings'||id==='admin')renderSet();
 }
 document.querySelectorAll('.nav-item,.fn-item,[data-page]').forEach(n=>{n.onclick=()=>showPage(n.dataset.page);});
 function refreshAll(){renderDash();const id=currentPageId();if(id&&id!=='dashboard')showPage(id);}
@@ -3488,6 +3564,7 @@ async function copyChangelog(){
 function renderSet(){
   const isDark=document.documentElement.dataset.theme==='dark';
   applyAdminPanelVisibility();
+  updateAdminOverview();
   const cdi=document.getElementById('setCDI');if(cdi)cdi.value=RATES.cdi;
   const selic=document.getElementById('setSelic');if(selic)selic.value=RATES.selic;
   const income=document.getElementById('setIncome');if(income)income.value=formatCentsInput(monthlyIncomeCents);
@@ -3500,7 +3577,10 @@ function renderSet(){
   const jRow=document.getElementById('setJsonRow');if(jRow)jRow.style.display=loc?'flex':'none';
   const mRow=document.getElementById('setMigRow');if(mRow)mRow.style.display=loc?'flex':'none';
   renderAdminUsers();
-  if(canManageUsers())loadAdminUsers().catch(()=>{});
+  if(canManageUsers()){
+    loadAdminOverview().catch(()=>{});
+    loadAdminUsers().catch(()=>{});
+  }
   renderCatChips();
   const pJ=document.getElementById('popJsonExp');if(pJ)pJ.style.display=loc?'':'none';
   const pM=document.getElementById('popMig');if(pM)pM.style.display=loc?'':'none';
@@ -3618,9 +3698,10 @@ async function initApp(){
   await loadAll();if(cfg.mode==='local')loadCC();loadCar();popCatSels();popAccSels();updM();renderDash();
   const name=cfg.userName||'Eu';
   document.getElementById('uName').textContent=name;
+  applyAdminPanelVisibility();
   applyAvatar();
   const sv=localStorage.getItem(VK)||'n';setView(sv);
-  const savedPage=localStorage.getItem(PAGE_KEY)||'dashboard';
+  const savedPage=sessionStorage.getItem(PAGE_KEY)||'dashboard';
   if(savedPage!=='dashboard')showPage(savedPage);
   applySavedTxFilters();
   loadSyncQ();

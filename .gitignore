@@ -11,3 +11,4 @@ dados-locais.json
 .gradle-user/
 .android-user/
 .android-build-home/
+.vscode/

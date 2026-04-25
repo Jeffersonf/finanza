@@ -14,9 +14,28 @@ function userRole(user) {
   return normalizeRole(user?.role, !!user?.is_admin);
 }
 
+function isAdmin(user) {
+  return !!user && userRole(user) === 'admin';
+}
+
 function canWrite(user) {
   if (!user) return false;
   return ['admin', 'editor'].includes(userRole(user));
+}
+
+function getAdminMutationError(actor, targetUserId, options = {}) {
+  const action = cleanText(options.action, 'manage');
+  const nextRole = normalizeRole(options.nextRole, false);
+
+  if (!actor?.id || !targetUserId) return '';
+  if (String(actor.id) !== String(targetUserId)) return '';
+
+  if (action === 'delete') return 'Use outra conta admin para remover sua própria conta';
+  if (action === 'role' && nextRole !== 'admin') {
+    return 'Use outra conta admin para alterar seu próprio papel';
+  }
+
+  return '';
 }
 
 function publicUser(user = {}) {
@@ -30,4 +49,4 @@ function publicUser(user = {}) {
   };
 }
 
-module.exports = { cleanText, normalizeRole, userRole, canWrite, publicUser };
+module.exports = { cleanText, normalizeRole, userRole, isAdmin, canWrite, getAdminMutationError, publicUser };
