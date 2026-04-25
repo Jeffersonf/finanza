@@ -191,6 +191,7 @@ async function doSetup(){
     const u=await login.json();
     cfg={url,key:u.api_key,mode:'api',userName:u.name,userId:u.id,loginName:username,role:u.role||''};
     localStorage.setItem(CK,JSON.stringify(cfg));
+    sessionStorage.setItem(PAGE_KEY,'dashboard');
     hideSetup();await initApp();toast(`Bem-vindo, ${u.name}! OK`,'success');
   }catch(e){err.textContent='Falha: '+e.message;err.classList.add('show');btn.disabled=false;txt.textContent='Entrar →';}
 }
@@ -244,33 +245,46 @@ async function resetPassword(){
   }catch(e){err.textContent='Erro: '+e.message;err.classList.add('show');}
 }
 function canManageUsers(){return cfg.mode==='api'&&cfg.role==='admin';}
-function canSeeAdminPanel(){return cfg.mode!=='api'||cfg.role==='admin';}
+function canSeeAdminPanel(){return cfg.mode==='api'&&cfg.role==='admin';}
 function applyAdminPanelVisibility(){
   document.querySelectorAll('[data-admin-only]').forEach(el=>{
-    el.style.display=canSeeAdminPanel()?'':'none';
+    el.style.display=canSeeAdminPanel()?(el.dataset.adminDisplay||''):'none';
   });
+}
+function updateAdminOverview(){
+  const account=document.getElementById('adminAccountName');if(account)account.textContent=cfg.userName||'—';
+  const mode=document.getElementById('adminServerMode');if(mode)mode.textContent=cfg.mode==='api'?'Online (API + PostgreSQL)':'Local';
+  const server=document.getElementById('adminServerUrl');if(server)server.textContent=cfg.url||'Modo local';
+  const users=document.getElementById('adminUsersMeta');
+  if(users){
+    users.textContent=canManageUsers()
+      ?(adminUsers.length?`${adminUsers.length} conta${adminUsers.length===1?'':'s'} carregada${adminUsers.length===1?'':'s'}`:'Carregando usuários...')
+      :'Disponível apenas para administradores online';
+  }
 }
 function roleLabel(role){
   return {admin:'Admin',editor:'Editor',read:'Leitura',guest:'Convidado'}[role]||role||'Editor';
 }
 async function loadAdminUsers(){
   const box=document.getElementById('adminUsersBox');
-  if(!canManageUsers()){if(box)box.style.display='none';return;}
+  if(!canManageUsers()){if(box)box.style.display='none';updateAdminOverview();return;}
   if(box)box.style.display='block';
   const list=document.getElementById('adminUsersList');
   if(list)list.innerHTML='<div class="sync-empty">Carregando usuários...</div>';
+  updateAdminOverview();
   try{
     adminUsers=await api('GET','/api/users');
     renderAdminUsers();
   }catch(err){
     if(list)list.innerHTML=`<div class="sync-empty">Não foi possível carregar usuários: ${esc(err.message)}</div>`;
+    updateAdminOverview();
   }
 }
 function renderAdminUsers(){
   const box=document.getElementById('adminUsersBox');
   if(box)box.style.display=canManageUsers()?'block':'none';
   const list=document.getElementById('adminUsersList');if(!list)return;
-  if(!canManageUsers()){list.innerHTML='';return;}
+  if(!canManageUsers()){list.innerHTML='';updateAdminOverview();return;}
   const roleOptions=['admin','editor','read','guest'];
   list.innerHTML=adminUsers.length?adminUsers.map(u=>`
     <div class="admin-user-row">
@@ -286,6 +300,7 @@ function renderAdminUsers(){
       </div>
     </div>
   `).join(''):'<div class="sync-empty">Nenhum usuário encontrado.</div>';
+  updateAdminOverview();
 }
 async function createAdminUser(){
   if(!canManageUsers()){toast('Apenas admin online pode criar usuários','error');return;}
@@ -336,7 +351,7 @@ async function deleteAdminUser(id){
     updateTrustPanel();
   }catch(err){toast('Erro: '+err.message,'error');}
 }
-function startLocal(){cfg={url:'',key:'',mode:'local',userName:'Eu',userId:'',role:''};localStorage.setItem(CK,JSON.stringify(cfg));hideSetup();initApp();}
+function startLocal(){cfg={url:'',key:'',mode:'local',userName:'Eu',userId:'',role:''};localStorage.setItem(CK,JSON.stringify(cfg));sessionStorage.setItem(PAGE_KEY,'dashboard');hideSetup();initApp();}
 function normalizeBackupData(d){
   const data=d?.app==='Finanza'||d?.version?d:{...d};
   if(!Array.isArray(data.transactions))throw new Error('Arquivo inválido: não parece um backup do Finanza');
@@ -2256,12 +2271,16 @@ document.getElementById('prevM').onclick=()=>{curDt=new Date(curDt.getFullYear()
 document.getElementById('nextM').onclick=()=>{curDt=new Date(curDt.getFullYear(),curDt.getMonth()+1,1);updM();renderDash();};
 let pgHist=[];
 function showPage(id){
+  if(id==='admin'&&!canSeeAdminPanel()){
+    toast('Painel admin disponível apenas para contas administradoras','error');
+    id='settings';
+  }
   const prev=document.querySelector('.page.active')?.id?.replace('page-','');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id)?.classList.add('active');
   document.querySelectorAll('.nav-item,.fn-item,[data-page]').forEach(n=>n.classList.toggle('active',n.dataset.page===id));
   if(prev&&prev!==id)pgHist.push(prev);
-  localStorage.setItem(PAGE_KEY,id);
+  sessionStorage.setItem(PAGE_KEY,id);
   window.scrollTo({top:0,behavior:'smooth'});
   if(id==='dashboard')renderDash(true);
   else if(id==='accounts'){renderAccs();popAccSels();}
@@ -2271,7 +2290,7 @@ function showPage(id){
   else if(id==='goals')renderGoals();
   else if(id==='shopping'){loadSL();renderShopping();}
   else if(id==='car'){loadCar();renderCar();}
-  else if(id==='settings')renderSet();
+  else if(id==='settings'||id==='admin')renderSet();
 }
 document.querySelectorAll('.nav-item,.fn-item,[data-page]').forEach(n=>{n.onclick=()=>showPage(n.dataset.page);});
 function refreshAll(){renderDash();const id=currentPageId();if(id&&id!=='dashboard')showPage(id);}
@@ -3488,6 +3507,7 @@ async function copyChangelog(){
 function renderSet(){
   const isDark=document.documentElement.dataset.theme==='dark';
   applyAdminPanelVisibility();
+  updateAdminOverview();
   const cdi=document.getElementById('setCDI');if(cdi)cdi.value=RATES.cdi;
   const selic=document.getElementById('setSelic');if(selic)selic.value=RATES.selic;
   const income=document.getElementById('setIncome');if(income)income.value=formatCentsInput(monthlyIncomeCents);
@@ -3618,9 +3638,10 @@ async function initApp(){
   await loadAll();if(cfg.mode==='local')loadCC();loadCar();popCatSels();popAccSels();updM();renderDash();
   const name=cfg.userName||'Eu';
   document.getElementById('uName').textContent=name;
+  applyAdminPanelVisibility();
   applyAvatar();
   const sv=localStorage.getItem(VK)||'n';setView(sv);
-  const savedPage=localStorage.getItem(PAGE_KEY)||'dashboard';
+  const savedPage=sessionStorage.getItem(PAGE_KEY)||'dashboard';
   if(savedPage!=='dashboard')showPage(savedPage);
   applySavedTxFilters();
   loadSyncQ();
