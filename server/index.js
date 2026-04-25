@@ -9,9 +9,10 @@ const { Pool } = require('pg');
 const crypto  = require('crypto');
 const fs      = require('fs');
 const path    = require('path');
-const { cleanText, normalizeRole, userRole, canWrite, publicUser } = require('./permissions');
+const { cleanText, normalizeRole, userRole, isAdmin, canWrite, getAdminMutationError, publicUser } = require('./permissions');
 const { parseTransactionText } = require('./transactionParser');
 const { normalizeBackupPayload, backupImportCounts } = require('./backupSchema');
+const { buildAdminOverview } = require('./adminOverview');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -250,6 +251,7 @@ function adminAuth(req, res, next) {
   if (key === ADMIN_KEY) {
     return pool.query('SELECT * FROM users WHERE is_admin = TRUE LIMIT 1')
       .then(({ rows }) => {
+        req.user = rows[0] || null;
         req.adminActor = rows[0] || { name: 'admin-key', role: 'admin', is_admin: true };
         next();
       })
@@ -259,7 +261,7 @@ function adminAuth(req, res, next) {
   return pool.query('SELECT * FROM users WHERE api_key = $1', [key])
     .then(({ rows }) => {
       if (!rows.length) return res.status(401).json({ error: 'Chave invalida' });
-      if (userRole(rows[0]) !== 'admin') return res.status(403).json({ error: 'Apenas admin pode gerenciar usuarios' });
+      if (!isAdmin(rows[0])) return res.status(403).json({ error: 'Apenas admin pode gerenciar usuarios' });
       req.user = rows[0];
       req.adminActor = rows[0];
       next();
@@ -447,10 +449,35 @@ app.get('/api/users', adminAuth, async (req, res) => {
   }
 });
 
+app.get('/api/admin/overview', adminAuth, async (req, res) => {
+  try {
+    const [roleRows, auditRows, transactionRows, backupRows, healthRows] = await Promise.all([
+      pool.query('SELECT role, COUNT(*)::int AS total FROM users GROUP BY role'),
+      pool.query('SELECT COUNT(*)::int AS total, MAX(created_at) AS last_at FROM audit_events'),
+      pool.query('SELECT COUNT(*)::int AS total FROM transactions'),
+      pool.query('SELECT filename, size_bytes, created_at FROM backup_log ORDER BY created_at DESC LIMIT 1')
+        .catch(() => ({ rows: [] })),
+      pool.query('SELECT NOW() AS checked_at')
+    ]);
+
+    res.json(buildAdminOverview({
+      roleRows: roleRows.rows,
+      auditRow: auditRows.rows[0],
+      transactionRow: transactionRows.rows[0],
+      lastBackupRow: backupRows.rows[0] || null,
+      checkedAt: healthRows.rows[0]?.checked_at || null
+    }));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Deletar usuário (admin)
 app.patch('/api/users/:id/role', adminAuth, async (req, res) => {
   try {
     const role = normalizeRole(req.body?.role, false);
+    const mutationError = getAdminMutationError(req.adminActor, req.params.id, { action: 'role', nextRole: role });
+    if (mutationError) return res.status(403).json({ error: mutationError });
     const { rows } = await pool.query(
       `UPDATE users
        SET role=$1, is_admin=$2
@@ -468,6 +495,8 @@ app.patch('/api/users/:id/role', adminAuth, async (req, res) => {
 
 app.delete('/api/users/:id', adminAuth, async (req, res) => {
   try {
+    const mutationError = getAdminMutationError(req.adminActor, req.params.id, { action: 'delete' });
+    if (mutationError) return res.status(403).json({ error: mutationError });
     const { rows } = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id, name, username, role, is_admin', [req.params.id]);
     if (rows.length) await auditEvent(pool, req.adminActor, 'usuario_removido', 'user', rows[0].id, rows[0].username || rows[0].name);
     res.json({ success: true });
@@ -834,7 +863,7 @@ app.get('/api/summary', userAuth, async (req, res) => {
 // ════════════════════════════════════════════
 
 app.post('/api/backup', userAuth, async (req, res) => {
-  if (!req.user.is_admin) return res.status(403).json({ error: 'Apenas admin pode fazer backup' });
+  if (!isAdmin(req.user)) return res.status(403).json({ error: 'Apenas admin pode fazer backup' });
   try {
     const { execSync } = require('child_process');
     const dir  = process.env.BACKUP_DIR || './backups';

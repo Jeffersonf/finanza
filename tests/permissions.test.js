@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeRole, userRole, canWrite, publicUser } = require('../server/permissions');
+const { normalizeRole, userRole, isAdmin, canWrite, getAdminMutationError, publicUser } = require('../server/permissions');
 
 test('normaliza papeis conhecidos e usa editor como padrao seguro', () => {
   assert.equal(normalizeRole('admin'), 'admin');
@@ -16,6 +16,8 @@ test('normaliza papeis conhecidos e usa editor como padrao seguro', () => {
 test('is_admin legado sempre prevalece como admin', () => {
   assert.equal(normalizeRole('guest', true), 'admin');
   assert.equal(userRole({ role: 'read', is_admin: true }), 'admin');
+  assert.equal(isAdmin({ role: 'read', is_admin: true }), true);
+  assert.equal(isAdmin({ role: 'editor', is_admin: false }), false);
 });
 
 test('somente admin e editor podem escrever', () => {
@@ -57,4 +59,23 @@ test('publicUser aceita usuario ausente sem vazar dados', () => {
     is_admin: false,
     created_at: undefined
   });
+});
+
+test('bloqueia auto-rebaixamento e auto-remocao do admin autenticado', () => {
+  assert.equal(
+    getAdminMutationError({ id: 'u1', role: 'admin' }, 'u1', { action: 'role', nextRole: 'editor' }),
+    'Use outra conta admin para alterar seu próprio papel'
+  );
+  assert.equal(
+    getAdminMutationError({ id: 'u1', role: 'admin' }, 'u1', { action: 'delete' }),
+    'Use outra conta admin para remover sua própria conta'
+  );
+  assert.equal(
+    getAdminMutationError({ id: 'u1', role: 'admin' }, 'u1', { action: 'role', nextRole: 'admin' }),
+    ''
+  );
+  assert.equal(
+    getAdminMutationError({ id: 'u1', role: 'admin' }, 'u2', { action: 'role', nextRole: 'editor' }),
+    ''
+  );
 });
