@@ -470,18 +470,18 @@ body::before {
 }
 .sidebar-shortcut-menu{
   position:absolute;
-  top:44px;
-  left:14px;
-  width:calc(100% - 28px);
-  max-width:calc(100% - 28px);
+  top:calc(100% + 10px);
+  left:-1px;
+  width:calc(100% + 2px);
+  max-width:none;
   box-sizing:border-box;
   padding:12px;
-  border:1px solid var(--bd);
-  border-radius:16px;
-  background:var(--sf);
-  box-shadow:0 18px 42px rgba(0,0,0,.22);
+  border:1px solid color-mix(in srgb, var(--bd) 94%, rgba(200,245,90,.18));
+  border-radius:18px;
+  background:var(--sf-solid);
+  box-shadow:0 22px 44px rgba(0,0,0,.28);
   display:none;
-  z-index:40;
+  z-index:120;
   overflow:hidden;
 }
 .sidebar-shortcut-menu.open{
@@ -489,17 +489,23 @@ body::before {
 }
 .sidebar-shortcut-menu-head{
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   justify-content:space-between;
   gap:10px;
   margin-bottom:10px;
 }
+.sidebar-shortcut-menu-head > div{
+  flex:1;
+  min-width:0;
+}
 .sidebar-shortcut-menu-head strong{
-  font-size:12px;
+  font-size:13px;
   color:var(--tx);
 }
 .sidebar-shortcut-menu-head span{
-  font-size:10px;
+  display:block;
+  margin-top:2px;
+  font-size:11px;
   color:var(--mt);
 }
 .sb-bottom { margin-top: auto; }
@@ -1209,19 +1215,23 @@ select.sel {
 .commit-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
 .sidebar-shortcut-editor{
   display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:10px;
+  grid-template-columns:1fr;
+  gap:8px;
   margin-top:0;
 }
 .sidebar-shortcut-slot{
   display:flex;
   flex-direction:column;
-  gap:6px;
+  gap:5px;
 }
 .sidebar-shortcut-slot span{
   font-size:11px;
   color:var(--mt);
   font-weight:700;
+}
+.sidebar-shortcut-menu .fi{
+  padding:8px 10px;
+  font-size:12px;
 }
 .frow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .ma { display: flex; gap: 8px; margin-top: 20px; }
@@ -2260,19 +2270,21 @@ select:focus-visible,
   align-items:center;
   justify-content:space-between;
   gap:12px;
-  padding:10px 14px;
+  padding:8px 14px;
   border:1px solid var(--bd);
   border-radius:16px;
   background:var(--sf);
 }
 .dash-manager-title{
-  font-size:13px;
+  font-size:15px;
   font-weight:800;
+  line-height:1.2;
 }
 .dash-manager-sub{
-  margin-top:2px;
-  font-size:11px;
+  margin-top:1px;
+  font-size:12px;
   color:var(--mt);
+  line-height:1.2;
 }
 .dash-manager-tag{
   display:inline-flex;
