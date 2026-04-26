@@ -520,7 +520,7 @@ class FinanzaRepository(
         val settings = appSettingsDao.get()?.toJson() ?: JSONObject().put("theme", "dark")
         return JSONObject()
             .put("app", "Finanza")
-            .put("version", "4.0.0-alpha.1")
+            .put("version", "4.3.1")
             .put("exported_at", java.time.Instant.now().toString())
             .put("accounts", accounts)
             .put("transactions", transactions)

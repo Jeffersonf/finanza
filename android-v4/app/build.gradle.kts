@@ -13,8 +13,8 @@ android {
         applicationId = "com.finanza.v4"
         minSdk = 26
         targetSdk = 36
-        versionCode = 400
-        versionName = "4.0.0-alpha.1"
+        versionCode = 431
+        versionName = "4.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
