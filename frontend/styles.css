@@ -472,9 +472,9 @@ body::before {
   position:absolute;
   top:44px;
   left:14px;
-  right:14px;
-  width:auto;
+  width:calc(100% - 28px);
   max-width:calc(100% - 28px);
+  box-sizing:border-box;
   padding:12px;
   border:1px solid var(--bd);
   border-radius:16px;
@@ -482,6 +482,7 @@ body::before {
   box-shadow:0 18px 42px rgba(0,0,0,.22);
   display:none;
   z-index:40;
+  overflow:hidden;
 }
 .sidebar-shortcut-menu.open{
   display:block;
