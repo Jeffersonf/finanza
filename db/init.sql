@@ -10,6 +10,9 @@ CREATE TABLE IF NOT EXISTS users (
     name        VARCHAR(100) NOT NULL DEFAULT 'Usuario',
     username    VARCHAR(100) UNIQUE,
     password_hash TEXT,
+    recovery_code_hash TEXT,
+    two_factor_secret TEXT,
+    two_factor_enabled BOOLEAN DEFAULT FALSE,
     api_key     VARCHAR(128) NOT NULL UNIQUE,
     role        VARCHAR(20) NOT NULL DEFAULT 'editor',
     is_admin    BOOLEAN DEFAULT FALSE,
@@ -18,6 +21,9 @@ CREATE TABLE IF NOT EXISTS users (
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(100) UNIQUE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_code_hash TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_secret TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT FALSE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'editor';
 UPDATE users SET role = 'admin' WHERE is_admin = TRUE AND role <> 'admin';
 
@@ -38,6 +44,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     installment_num   INT,
     installment_total INT,
     recur_group       TEXT,
+    split_meta        JSONB DEFAULT '{}'::jsonb,
     created_at        TIMESTAMPTZ DEFAULT NOW(),
     updated_at        TIMESTAMPTZ DEFAULT NOW()
 );
@@ -45,6 +52,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS account_id TEXT;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS paid BOOLEAN DEFAULT FALSE;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS pending BOOLEAN DEFAULT FALSE;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS split_meta JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE transactions ALTER COLUMN installment_group TYPE TEXT USING installment_group::TEXT;
 ALTER TABLE transactions ALTER COLUMN recur_group TYPE TEXT USING recur_group::TEXT;
 
@@ -53,10 +61,10 @@ CREATE TABLE IF NOT EXISTS budgets (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     category    VARCHAR(50) NOT NULL,
+    scope       VARCHAR(20) NOT NULL DEFAULT 'personal',
     "limit"     NUMERIC(12, 2) NOT NULL CHECK ("limit" > 0),
     created_at  TIMESTAMPTZ DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(user_id, category)
+    updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- METAS por usuario

@@ -1,21 +1,28 @@
 # Finanza - Roadmap completo para sonhar sem pedir licenca
 
-Use este arquivo como quadro de decisao. Marque o que voce quiser manter, deixe vazio o que ainda esta em analise e risque/remova o que quiser descartar.
+Use este arquivo como quadro de decisao e acompanhamento. Marque com check o que ja foi entregue, deixe vazio o que ainda falta e risque/remova o que quiser descartar.
 
 Legenda sugerida:
 
-- `[ ]` ainda nao escolhido
-- `[x]` quero fazer
+- `[ ]` ainda nao feito
+- `[x]` entregue / concluido
 - `[-]` descartar
-- `[~]` talvez / incubar
+- `[~]` parcial / incubando
 
 ## Status atual de versao
 
-- Versao publicada do app: `4.0.0` (`package.json`, `frontend/app.js` e `frontend/index.html`).
+- [x] Versao atual alinhada em frontend, pacotes e Android: `4.3.1`.
 - Ciclo em andamento no roadmap: `4.11 - Performance e foco no controle de gastos`.
 - Escopo do ciclo `4.11`: reduzir re-render da dashboard, priorizar widgets essenciais, diminuir duplicacao estrutural no frontend e manter a home orientada a captura, revisao e decisao de gasto.
 - Linha futura planejada: `5.0 - Android nativo premium`.
-- Observacao: neste roadmap, `[x]` significa "quero fazer", nao "feito".
+
+## Leitura rapida de onde estamos
+
+- [x] Base web principal ativa e em uso, com frontend separado em multiplos arquivos e dashboard reorganizada para foco no dia a dia.
+- [x] Ciclos `4.1`, `4.3`, `4.10` e `4.11` tem evidencias fortes no codigo atual.
+- [x] `4.4` fechado na base atual com papeis, auditoria, espaco compartilhado, acertos, convite por link, recuperacao por codigo e 2FA opcional.
+- [~] `4.5`, `4.6` e `4.9` tem partes implementadas, mas ainda pedem fechamento de escopo.
+- [ ] `4.2`, `4.7`, `4.8`, `5.0` e boa parte de `6.0` ainda estao mais como direcao do que como entrega fechada.
 
 ## Norte do produto
 
@@ -60,29 +67,29 @@ Status de implementacao: fechamento funcional aplicado nesta rodada com cadastro
 
 ## 4.2 - Inteligencia financeira pessoal
 
-Status de implementacao: linha marcada no roadmap, mas o widget experimental de inteligencia financeira foi removido do app por decisao de foco e qualidade.
+Status de implementacao: frente ainda em aberto. Houve experimento de inteligencia financeira, mas ele nao esta consolidado no app atual.
 
-- [x] Simulador de metas: "se eu guardar X por mes, chego quando?".
-- [x] Simulador inverso: "quanto preciso guardar por mes para chegar ate tal data?".
-- [x] Projecao por categoria com sazonalidade.
-- [x] Detectar anomalias: gasto subiu muito contra media de 3/6/12 meses.
-- [x] Alertas inteligentes por categoria.
-- [x] Calendario financeiro mensal com entradas, vencimentos, parcelas e metas.
-- [x] Planejamento por objetivo: viagem, reserva, carro, reforma, curso, computador.
-- [x] Resumo semanal automatico em linguagem humana.
-- [x] Resumo mensal automatico com aprendizados e proximas decisoes.
-- [x] Benchmark pessoal: melhor mes, pior mes, media de 12 meses, recordes.
-- [x] Ranking de categorias que mais estao drenando dinheiro.
-- [x] Detector de assinaturas recorrentes.
-- [x] Detector de gastos esquecidos.
-- [x] Detector de "mes atipico".
-- [x] Detector de risco de fechar o mes negativo.
-- [x] Previsao de saldo para 30, 60, 90 e 180 dias.
-- [x] Modo conservador, realista e otimista nas projecoes.
-- [x] Explicacao do motivo de cada previsao.
-- [x] Painel "o que posso fazer hoje?".
-- [x] Sugestoes de corte sem moralismo: trocar, pausar, renegociar, planejar.
-- [x] Diario financeiro: notas e eventos que explicam o mes.
+- [ ] Simulador de metas: "se eu guardar X por mes, chego quando?".
+- [ ] Simulador inverso: "quanto preciso guardar por mes para chegar ate tal data?".
+- [ ] Projecao por categoria com sazonalidade.
+- [ ] Detectar anomalias: gasto subiu muito contra media de 3/6/12 meses.
+- [ ] Alertas inteligentes por categoria.
+- [ ] Calendario financeiro mensal com entradas, vencimentos, parcelas e metas.
+- [ ] Planejamento por objetivo: viagem, reserva, carro, reforma, curso, computador.
+- [ ] Resumo semanal automatico em linguagem humana.
+- [ ] Resumo mensal automatico com aprendizados e proximas decisoes.
+- [ ] Benchmark pessoal: melhor mes, pior mes, media de 12 meses, recordes.
+- [ ] Ranking de categorias que mais estao drenando dinheiro.
+- [ ] Detector de assinaturas recorrentes.
+- [ ] Detector de gastos esquecidos.
+- [ ] Detector de "mes atipico".
+- [ ] Detector de risco de fechar o mes negativo.
+- [ ] Previsao de saldo para 30, 60, 90 e 180 dias.
+- [ ] Modo conservador, realista e otimista nas projecoes.
+- [ ] Explicacao do motivo de cada previsao.
+- [ ] Painel "o que posso fazer hoje?".
+- [ ] Sugestoes de corte sem moralismo: trocar, pausar, renegociar, planejar.
+- [ ] Diario financeiro: notas e eventos que explicam o mes.
 
 ## 4.3 - Dados, importadores e reconciliacao
 
@@ -112,6 +119,8 @@ Status de implementacao: centro de importacao consolidado com CSV, OFX, texto co
 - [x] Tela de conflito: manter local, manter servidor, mesclar manualmente.
 
 ## 4.4 - Multiusuario, familia e colaboracao
+
+Status de implementacao: ciclo fechado nesta base com papeis online, auditoria persistente, log de atividade, divisao de despesas, acertos, convite por link para espaco compartilhado, recuperacao por codigo e 2FA opcional para a conta.
 
 - [x] Papeis: admin, editor, leitura, convidado.
 - [x] Perfis separados dentro da mesma familia.
@@ -154,6 +163,7 @@ Status de implementacao: centro de importacao consolidado com CSV, OFX, texto co
 - [x] Importar abastecimento por foto do recibo.
 - [x] Exportar relatorio do carro.
 - [x] Linha do tempo visual do veiculo.
+- [x] Modo de gastos por areas, como cachorro, eletrodomesticos, casa, filhos e outros contextos dedicados.
 
 ## 4.6 - Investimentos e patrimonio
 
@@ -177,49 +187,49 @@ Status de implementacao: centro de importacao consolidado com CSV, OFX, texto co
 
 ## 4.7 - Assinaturas, dividas e contratos
 
-- [x] Central de assinaturas.
-- [x] Detector automatico de assinaturas recorrentes.
-- [x] Alertar antes de renovacoes.
-- [x] Comparar assinatura usada vs esquecida.
-- [x] Cadastrar dividas.
-- [x] Parcelas de dividas.
-- [x] Juros e CET manual.
-- [x] Plano de quitacao.
-- [x] Simulador bola de neve.
-- [x] Simulador avalanche.
-- [x] Contratos: aluguel, internet, seguro, financiamento.
-- [x] Arquivos anexos por contrato.
-- [x] Alertas de reajuste.
-- [x] Historico de renegociacao.
-- [x] Painel de "dinheiro comprometido".
+- [ ] Central de assinaturas.
+- [ ] Detector automatico de assinaturas recorrentes.
+- [ ] Alertar antes de renovacoes.
+- [ ] Comparar assinatura usada vs esquecida.
+- [ ] Cadastrar dividas.
+- [ ] Parcelas de dividas.
+- [ ] Juros e CET manual.
+- [ ] Plano de quitacao.
+- [ ] Simulador bola de neve.
+- [ ] Simulador avalanche.
+- [ ] Contratos: aluguel, internet, seguro, financiamento.
+- [ ] Arquivos anexos por contrato.
+- [ ] Alertas de reajuste.
+- [ ] Historico de renegociacao.
+- [ ] Painel de "dinheiro comprometido".
 
 ## 4.8 - Automacao e assistente
 
-- [x] Assistente dentro do app para perguntar sobre os dados.
-- [x] Perguntas: "quanto gastei com mercado este mes?".
-- [x] Perguntas: "posso comprar X agora?".
-- [x] Perguntas: "qual categoria piorou?".
-- [x] Perguntas: "o que vence essa semana?".
-- [x] Criar transacao por comando natural.
-- [x] Criar meta por comando natural.
-- [x] Criar vencimento por comando natural.
-- [x] Gerar resumo semanal automatico.
-- [x] Gerar plano de corte por prioridade.
-- [x] Explicar financas sem julgamento.
-- [x] Modo "coach": me cutuca.
-- [x] Modo "contador": seco e objetivo.
-- [x] Modo "familia": linguagem simples.
-- [x] Comandos por voz.
-- [x] Resposta por voz.
-- [x] Automacoes: se salario caiu, separar percentuais.
-- [x] Automacoes: se gasto passou limite, sugerir ajuste.
-- [x] Automacoes: se sobrou dinheiro, sugerir aporte/meta.
+- [ ] Assistente dentro do app para perguntar sobre os dados.
+- [ ] Perguntas: "quanto gastei com mercado este mes?".
+- [ ] Perguntas: "posso comprar X agora?".
+- [ ] Perguntas: "qual categoria piorou?".
+- [ ] Perguntas: "o que vence essa semana?".
+- [ ] Criar transacao por comando natural.
+- [ ] Criar meta por comando natural.
+- [ ] Criar vencimento por comando natural.
+- [ ] Gerar resumo semanal automatico.
+- [ ] Gerar plano de corte por prioridade.
+- [ ] Explicar financas sem julgamento.
+- [ ] Modo "coach": me cutuca.
+- [ ] Modo "contador": seco e objetivo.
+- [ ] Modo "familia": linguagem simples.
+- [ ] Comandos por voz.
+- [ ] Resposta por voz.
+- [ ] Automacoes: se salario caiu, separar percentuais.
+- [ ] Automacoes: se gasto passou limite, sugerir ajuste.
+- [ ] Automacoes: se sobrou dinheiro, sugerir aporte/meta.
 
 ## 4.9 - Experiencia, design e personalizacao
 
 - [x] Temas visuais.
 - [x] Tema claro polido.
-- [ ] Tema alto contraste.
+- [~] Tema alto contraste.
 - [x] Icones configuraveis por categoria.
 - [x] Cores configuraveis por categoria.
 - [x] Dashboard por contexto: dia a dia, familia, carro, metas, patrimonio.
@@ -237,21 +247,21 @@ Status de implementacao: centro de importacao consolidado com CSV, OFX, texto co
 
 ## 4.10 - Fundacao confiavel
 
-Este ciclo organiza itens da fundacao tecnica continua sem mudar a versao publicada `4.0.0` ainda.
+Este ciclo organiza itens da fundacao tecnica continua sem mudar a linha principal do produto, e hoje ja tem entregas objetivas no codigo e nos testes.
 
 Itens puxados para este ciclo:
 
-- Criar testes para permissoes de usuario.
-- Criar suite de testes para parser de transacao. Entregas atuais: valores com `R$`, salario, conta composta, categorias de saude, recorrencia por texto e entradas invalidas.
-- Criar testes para importacao JSON. Entregas atuais: campos estruturais invalidos, vencimentos em `settings.rates`, contadores completos e fixture demo importavel.
-- Formalizar schema de backup.
-- Criar migracoes de backup por versao.
-- Criar fixtures de dados demo. Entrega atual: backup demo com transacoes, vencimento recorrente, lista de compras, meta, orcamento, conta e estado basico de carro.
-- Adicionar CI para testes.
-- Adicionar validacao de deploy.
-- Padronizar comandos `npm run check` e `npm test`.
-- Endurecer permissoes defensivas. Entrega atual: `canWrite(null)` bloqueia escrita e `publicUser()` nao quebra nem vaza campos sensiveis.
-- Melhorar retorno de importacao. Entrega atual: backend informa contagem de categorias, listas, itens de compra e vencimentos alem de transacoes, orcamentos, metas e contas.
+- [x] Criar testes para permissoes de usuario.
+- [x] Criar suite de testes para parser de transacao. Entregas atuais: valores com `R$`, salario, conta composta, categorias de saude, recorrencia por texto e entradas invalidas.
+- [x] Criar testes para importacao JSON. Entregas atuais: campos estruturais invalidos, vencimentos em `settings.rates`, contadores completos e fixture demo importavel.
+- [x] Formalizar schema de backup.
+- [x] Criar migracoes de backup por versao.
+- [x] Criar fixtures de dados demo. Entrega atual: backup demo com transacoes, vencimento recorrente, lista de compras, meta, orcamento, conta e estado basico de carro.
+- [x] Adicionar CI para testes.
+- [x] Adicionar validacao de deploy.
+- [x] Padronizar comandos `npm run check` e `npm test`.
+- [x] Endurecer permissoes defensivas. Entrega atual: `canWrite(null)` bloqueia escrita e `publicUser()` nao quebra nem vaza campos sensiveis.
+- [x] Melhorar retorno de importacao. Entrega atual: backend informa contagem de categorias, listas, itens de compra e vencimentos alem de transacoes, orcamentos, metas e contas.
 
 ## 4.11 - Performance e foco no controle de gastos (ciclo atual)
 
@@ -269,24 +279,24 @@ Status de implementacao: dashboard reorganizada para priorizar o fluxo diario, c
 ## 5.0 - Android nativo premium
 
 - [x] Definir se `android-v4/` vira base oficial da linha `5.0`.
-- [x] Migrar modelo de dados mantendo compatibilidade com backup 4.x.
-- [x] App Android nativo com performance e UX de primeira classe.
-- [x] Widgets Android na tela inicial.
-- [x] Widget de saldo.
-- [x] Widget de vencimentos.
-- [x] Widget de lancamento rapido.
-- [x] Quick Settings tile para lancar despesa.
-- [x] Notificacoes com acoes: pagar, adiar, abrir.
-- [x] Offline-first real com banco local.
-- [x] Sincronizacao em background.
-- [x] Biometria.
-- [x] Bloqueio por PIN.
-- [x] Atalhos de app.
-- [x] Compartilhar texto/recibo para o Finanza.
-- [x] OCR local ou hibrido para comprovantes.
-- [x] Integracao com calendario Android.
-- [x] Backup local criptografado.
-- [x] Experiencia tablet/dobravels.
+- [ ] Migrar modelo de dados mantendo compatibilidade com backup 4.x.
+- [ ] App Android nativo com performance e UX de primeira classe.
+- [ ] Widgets Android na tela inicial.
+- [ ] Widget de saldo.
+- [ ] Widget de vencimentos.
+- [ ] Widget de lancamento rapido.
+- [ ] Quick Settings tile para lancar despesa.
+- [ ] Notificacoes com acoes: pagar, adiar, abrir.
+- [ ] Offline-first real com banco local.
+- [ ] Sincronizacao em background.
+- [ ] Biometria.
+- [ ] Bloqueio por PIN.
+- [ ] Atalhos de app.
+- [ ] Compartilhar texto/recibo para o Finanza.
+- [ ] OCR local ou hibrido para comprovantes.
+- [ ] Integracao com calendario Android.
+- [ ] Backup local criptografado.
+- [ ] Experiencia tablet/dobravels.
 - [ ] Wear OS: ver vencimentos e lancar gasto rapido.
 
 ## 6.0 - Plataforma e produto grande
@@ -294,24 +304,24 @@ Status de implementacao: dashboard reorganizada para priorizar o fluxo diario, c
 - [x] App web com frontend modular moderno.
 - [x] Separar HTML/CSS/JS em arquitetura mais sustentavel.
 - [x] Testes unitarios.
-- [x] Testes e2e.
-- [x] Storybook ou catalogo de componentes.
-- [x] Design system proprio.
-- [x] API versionada.
-- [x] Migrations formais de banco.
-- [x] Observabilidade: logs, metricas, tracing.
+- [ ] Testes e2e.
+- [ ] Storybook ou catalogo de componentes.
+- [ ] Design system proprio.
+- [ ] API versionada.
+- [ ] Migrations formais de banco.
+- [ ] Observabilidade: logs, metricas, tracing.
 - [x] Painel admin.
-- [x] Exportacao LGPD: baixar todos os dados.
-- [x] Exclusao definitiva de conta.
-- [x] Criptografia de dados sensiveis.
-- [x] Backups automaticos agendados.
-- [x] Multi-tenant serio.
-- [x] Plano gratuito/premium, se virar produto.
-- [x] Landing page publica.
+- [ ] Exportacao LGPD: baixar todos os dados.
+- [ ] Exclusao definitiva de conta.
+- [ ] Criptografia de dados sensiveis.
+- [ ] Backups automaticos agendados.
+- [ ] Multi-tenant serio.
+- [ ] Plano gratuito/premium, se virar produto.
+- [ ] Landing page publica.
 - [x] Documentacao publica.
-- [x] Modo self-hosted.
-- [x] Docker Compose completo.
-- [x] Instalador local.
+- [~] Modo self-hosted.
+- [ ] Docker Compose completo.
+- [ ] Instalador local.
 
 ## Sonhos deliberadamente irrealistas
 
@@ -338,27 +348,27 @@ Status de implementacao: dashboard reorganizada para priorizar o fluxo diario, c
 
 ## Fundacao tecnica continua
 
-- [ ] Criar suite de testes para parser de transacao.
-- [ ] Criar testes para importacao JSON.
+- [x] Criar suite de testes para parser de transacao.
+- [x] Criar testes para importacao JSON.
 - [ ] Criar testes para importacao CSV de carro.
 - [ ] Criar testes para projecoes.
 - [ ] Criar testes para recorrencias e parcelamentos.
 - [ ] Criar testes para sync offline.
-- [ ] Criar testes para permissoes de usuario.
-- [ ] Separar `frontend/app.js` em modulos menores.
-- [ ] Separar componentes de dashboard.
+- [x] Criar testes para permissoes de usuario.
+- [~] Separar `frontend/app.js` em modulos menores.
+- [x] Separar componentes de dashboard.
 - [ ] Separar modulo de carro.
 - [ ] Separar modulo de compras.
 - [ ] Separar modulo de vencimentos.
-- [ ] Criar camada unica de storage.
-- [ ] Criar camada unica de API.
-- [ ] Formalizar schema de backup.
-- [ ] Criar migracoes de backup por versao.
-- [ ] Criar fixtures de dados demo.
+- [x] Criar camada unica de storage.
+- [x] Criar camada unica de API.
+- [x] Formalizar schema de backup.
+- [x] Criar migracoes de backup por versao.
+- [x] Criar fixtures de dados demo.
 - [ ] Adicionar lint/format.
-- [ ] Adicionar CI para testes.
-- [ ] Adicionar build Android em CI.
-- [ ] Adicionar validacao de deploy.
+- [x] Adicionar CI para testes.
+- [x] Adicionar build Android em CI.
+- [x] Adicionar validacao de deploy.
 
 ## Criterios para escolher o proximo ciclo
 

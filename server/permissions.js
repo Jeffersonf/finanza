@@ -45,6 +45,7 @@ function publicUser(user = {}) {
     username: user.username,
     role: userRole(user),
     is_admin: !!user.is_admin,
+    two_factor_enabled: !!user.two_factor_enabled,
     created_at: user.created_at
   };
 }

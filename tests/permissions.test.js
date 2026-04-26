@@ -46,6 +46,7 @@ test('publicUser nao expõe api_key nem hash de senha', () => {
     username: 'jefferson',
     role: 'admin',
     is_admin: true,
+    two_factor_enabled: false,
     created_at: '2026-04-22'
   });
 });
@@ -57,6 +58,7 @@ test('publicUser aceita usuario ausente sem vazar dados', () => {
     username: undefined,
     role: 'editor',
     is_admin: false,
+    two_factor_enabled: false,
     created_at: undefined
   });
 });

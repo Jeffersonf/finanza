@@ -1,13 +1,13 @@
 {
   "name": "finanza",
-  "version": "4.0.0",
+  "version": "4.3.1",
   "description": "App de controle financeiro pessoal",
   "scripts": {
     "sync": "npx cap sync",
     "android": "npx cap open android",
     "ios": "npx cap open ios",
     "build:apk": "npx cap sync android && cd android && gradlew.bat assembleDebug",
-    "check": "node --check server/index.js && node --check server/permissions.js && node --check server/transactionParser.js && node --check server/backupSchema.js && node --check server/backupMigrations.js && node --check frontend/app.js",
+    "check": "node --check server/index.js && node --check server/permissions.js && node --check server/transactionParser.js && node --check server/backupSchema.js && node --check server/backupMigrations.js && node --check frontend/app.js && node --check frontend/dashboard.js",
     "test": "node --test tests/*.test.js",
     "migrate": "node migrate-local-to-db.js",
     "migrate:fisiosaas": "python tools/fisiosaas_to_finanza.py"

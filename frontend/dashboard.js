@@ -1,0 +1,374 @@
+function dashboardWidgetRenderers(){
+  return {
+    cards:widgetCards,
+    quickactions:widgetQuickActions,
+    ministats:widgetMiniStats,
+    accounts:widgetAccounts,
+    vehicles:widgetVehicles,
+    shopping:widgetShoppingDash,
+    compare:()=>'<div class="dash-section" id="monthCompare"></div>',
+    projection:()=>'<div class="dash-section" id="projCard"></div>',
+    weekly:()=>'<div class="dash-section" id="wsum"></div>',
+    anomaly:()=>'<div class="dash-section" id="anom"></div>',
+    budalerts:()=>'<div class="dash-section" id="budAlerts"></div>',
+    saverate:widgetSaveRate,
+    goals:widgetGoals,
+    budgets:widgetBudgets,
+    barcats:widgetBarCats,
+    charts:widgetCharts,
+    recent:widgetRecent
+  };
+}
+function dashboardVisibleWidgetIds(){
+  return widgetOrder.filter(id=>isWidgetOn(id)&&dashboardWidgetRenderers()[id]);
+}
+function dashboardWidgetMarkup(id,isDark=document.documentElement.dataset.theme==='dark'){
+  const renderers=dashboardWidgetRenderers();
+  const render=renderers[id];
+  if(!render||!isWidgetOn(id))return '';
+  const html=render();
+  if(!html)return '';
+  const menuOpen=activeWidgetMenuId===id;
+  const menu=`<div class="widget-menu-shell"><button class="widget-menu-btn" onclick="event.stopPropagation();toggleWidgetMenu('${id}')" aria-label="Abrir menu do widget" title="Ajustar widget">⋯</button>${menuOpen?`<div class="widget-menu-panel" onclick="event.stopPropagation()">${renderWidgetMenuPanel(id)}</div>`:''}</div>`;
+  return `<div class="dash-section-wrap" data-widget-id="${id}" data-theme-snapshot="${isDark?'dark':'light'}">${menu}${html}</div>`;
+}
+function dashboardWidgetPostRender(id,isDark=document.documentElement.dataset.theme==='dark'){
+  if(id==='compare')renderMonthCompare();
+  if(id==='projection')renderProjection();
+  if(id==='weekly'||id==='anomaly')renderWeekly();
+  if(id==='budalerts')renderBudAlerts();
+  if(id==='charts')renderCharts(isDark);
+}
+function replaceDashboardWidget(id){
+  const container=document.getElementById('dashWidgets');
+  if(!container||!isDashboardActive())return;
+  const isDark=document.documentElement.dataset.theme==='dark';
+  const markup=dashboardWidgetMarkup(id,isDark);
+  const existing=container.querySelector(`.dash-section-wrap[data-widget-id="${id}"]`);
+  if(!markup){
+    if(existing)existing.remove();
+    return;
+  }
+  const temp=document.createElement('div');
+  temp.innerHTML=markup.trim();
+  const nextId=dashboardVisibleWidgetIds().slice(dashboardVisibleWidgetIds().indexOf(id)+1).find(candidate=>container.querySelector(`.dash-section-wrap[data-widget-id="${candidate}"]`));
+  const nextNode=nextId?container.querySelector(`.dash-section-wrap[data-widget-id="${nextId}"]`):null;
+  const replacement=temp.firstElementChild;
+  if(existing)existing.replaceWith(replacement);
+  else if(nextNode)container.insertBefore(replacement,nextNode);
+  else container.appendChild(replacement);
+  dashboardWidgetPostRender(id,isDark);
+}
+function rerenderDashboardWidgets(ids=[]){
+  [...new Set(ids.filter(Boolean))].forEach(id=>replaceDashboardWidget(id));
+}
+function widgetSelectControl(widget,key,label,options,fallback){
+  const current=String(getWidgetFilter(widget,key,fallback));
+  return `<label class="widget-menu-field"><span>${label}</span><select class="widget-filter" onchange="setWidgetFilter('${widget}','${key}',this.value)">${options.map(opt=>`<option value="${esc(opt.value)}" ${current===String(opt.value)?'selected':''}>${esc(opt.label)}</option>`).join('')}</select></label>`;
+}
+function widgetMenuAction(label,fn,tone='ghost'){
+  const cls=tone==='danger'?'btn btn-d btn-sm':'btn btn-g btn-sm';
+  return `<button class="${cls}" onclick="${fn}">${label}</button>`;
+}
+function renderWidgetMenuPanel(id){
+  const sections=[];
+  sections.push(`<div class="widget-menu-head"><strong>${esc(widgetById(id)?.name||'Widget')}</strong><small>Ajuste os dados mostrados e a posicao deste bloco.</small></div>`);
+  switch(id){
+    case 'cards':
+      sections.push(widgetSelectControl('cards','future','Cartao futuro',[{value:'on',label:'Mostrar a pagar'},{value:'off',label:'Ocultar a pagar'}],'on'));
+      break;
+    case 'quickactions':
+      sections.push(widgetSelectControl('quickactions','limit','Atalhos',[{value:'4',label:'4 atalhos'},{value:'6',label:'6 atalhos'}],'6'));
+      break;
+    case 'charts':
+      sections.push(widgetSelectControl('charts','mode','Grafico principal',[{value:'bars',label:'Barras'},{value:'line',label:'Linha acumulada'}],'bars'));
+      break;
+    case 'accounts':
+      sections.push(widgetSelectControl('accounts','limit','Contas',[{value:'3',label:'3 contas'},{value:'5',label:'5 contas'},{value:'all',label:'Todas'}],'5'));
+      sections.push(widgetSelectControl('accounts','sort','Ordem',[{value:'manual',label:'Ordem cadastrada'},{value:'balance_desc',label:'Maior saldo'},{value:'balance_asc',label:'Menor saldo'}],'manual'));
+      break;
+    case 'goals':
+      sections.push(widgetSelectControl('goals','limit','Metas',[{value:'3',label:'3 metas'},{value:'4',label:'4 metas'},{value:'6',label:'6 metas'}],'4'));
+      sections.push(widgetSelectControl('goals','status','Mostrar',[{value:'active',label:'Em andamento'},{value:'all',label:'Todas'}],'active'));
+      break;
+    case 'budgets':
+      sections.push(widgetSelectControl('budgets','limit','Orçamentos',[{value:'3',label:'3 categorias'},{value:'6',label:'6 categorias'},{value:'8',label:'8 categorias'}],'6'));
+      sections.push(widgetSelectControl('budgets','status','Recorte',[{value:'all',label:'Todos'},{value:'risk',label:'So em risco'},{value:'overflow',label:'So estourados'}],'all'));
+      break;
+    case 'recent':
+      sections.push(widgetSelectControl('recent','type','Tipo',[{value:'all',label:'Tudo'},{value:'expense',label:'Só despesas'},{value:'income',label:'Só receitas'}],'all'));
+      sections.push(widgetSelectControl('recent','limit','Linhas',[{value:'4',label:'4 linhas'},{value:'6',label:'6 linhas'},{value:'10',label:'10 linhas'}],'6'));
+      sections.push(widgetSelectControl('recent','scope','Escopo',[{value:'all',label:'Historico recente'},{value:'month',label:'So mes atual'}],'all'));
+      break;
+    case 'ministats':
+      sections.push(widgetSelectControl('ministats','scope','Base',[{value:'month',label:'Mes atual'},{value:'30d',label:'Ultimos 30 dias'}],'month'));
+      break;
+    case 'vehicles':
+      sections.push(widgetSelectControl('vehicles','period','Período',[{value:'30d',label:'30 dias'},{value:'90d',label:'90 dias'},{value:'year',label:'Ano'},{value:'all',label:'Tudo'}],'90d'));
+      sections.push(widgetSelectControl('vehicles','limit','Histórico',[{value:'3',label:'3 eventos'},{value:'5',label:'5 eventos'}],'3'));
+      sections.push(widgetSelectControl('vehicles','scope','Veiculo',[{value:'active',label:'Ativo'},{value:'all',label:'Todos'}],'active'));
+      break;
+    case 'shopping':
+      sections.push(widgetSelectControl('shopping','limit','Itens',[{value:'3',label:'3 itens'},{value:'5',label:'5 itens'},{value:'8',label:'8 itens'}],'5'));
+      sections.push(widgetSelectControl('shopping','scope','Lista',[{value:'active',label:'Lista ativa'},{value:'all',label:'Todas as listas'}],'active'));
+      break;
+    case 'saverate':
+      sections.push(widgetSelectControl('saverate','months','Meses',[{value:'3',label:'3 meses'},{value:'6',label:'6 meses'},{value:'12',label:'12 meses'}],'3'));
+      sections.push(widgetSelectControl('saverate','focus','Indicador',[{value:'current',label:'Mes atual'},{value:'average',label:'Media do periodo'}],'current'));
+      break;
+    case 'barcats':
+      sections.push(widgetSelectControl('barcats','limit','Categorias',[{value:'4',label:'Top 4'},{value:'6',label:'Top 6'},{value:'8',label:'Top 8'}],'6'));
+      sections.push(widgetSelectControl('barcats','scope','Base',[{value:'month',label:'Mes atual'},{value:'30d',label:'Ultimos 30 dias'}],'month'));
+      break;
+    default:
+      sections.push('<div class="widget-menu-empty">Esse widget segue a visão principal da dashboard por enquanto.</div>');
+      break;
+  }
+  sections.push(`<div class="widget-inline-actions">${widgetMenuAction('Abrir area',`openWidgetTarget('${id}')`)}${widgetMenuAction('Topo',`moveWidgetToEdge('${id}','start')`)}${widgetMenuAction('Base',`moveWidgetToEdge('${id}','end')`)}</div>`);
+  sections.push(`<div class="widget-inline-actions">${widgetMenuAction('Subir',`moveWidgetOrder('${id}',-1)`)}${widgetMenuAction('Descer',`moveWidgetOrder('${id}',1)`)}${widgetMenuAction('Remover',`toggleWidget('${id}')`,'danger')}</div>`);
+  return sections.join('');
+}
+function renderDashboardManager(){
+  const el=document.getElementById('dashManager');
+  if(!el)return;
+  const activeIds=WIDGET_DEFS.filter(w=>isWidgetOn(w.id)).map(w=>w.id);
+  const coreVisible=activeIds.filter(id=>widgetById(id)?.group==='core').length;
+  const supportVisible=activeIds.filter(id=>widgetById(id)?.group==='support').length;
+  const analysisVisible=activeIds.filter(id=>widgetById(id)?.group==='analysis').length;
+  const allActive=activeIds.length===WIDGET_DEFS.length;
+  el.innerHTML=`<div class="dash-manager-head"><div><div class="dash-manager-title">Dashboard essencial primeiro</div><div class="dash-manager-sub">${coreVisible} essenciais • ${supportVisible} de apoio • ${analysisVisible} analíticos ativos</div></div><button class="btn btn-g btn-sm" onclick="toggleDashboardManager()">${dashboardManagerOpen?'Fechar editor':'Editar widgets'}</button></div>${dashboardManagerOpen?`<div class="dash-manager-panel"><div class="dash-manager-actions"><button class="btn btn-g btn-sm" onclick="applyFocusedDashboardPreset()">Só o essencial</button><button class="btn btn-g btn-sm" ${allActive?'disabled':''} onclick="enableAllDashboardWidgets()">Selecionar todos</button><button class="btn btn-g btn-sm" onclick="resetWidgetOrder()">Restaurar ordem</button><button class="btn btn-g btn-sm" onclick="resetDashboardWidgets()">Voltar ao padrão</button></div><div class="dash-manager-tip">A home agora prioriza capturar, revisar e decidir gastos. Widgets analíticos continuam disponíveis, mas podem ficar desligados para manter o fluxo leve. Arraste aqui para reorganizar sem mexer nos cards da tela.</div><div class="dash-manager-list">${widgetOrder.map((id,idx)=>{const w=widgetById(id);if(!w)return'';const on=isWidgetOn(id);return `<div class="dash-manager-row ${on?'is-on':'is-off'}" data-widget-id="${id}" draggable="true" ondragstart="onDashboardManagerDragStart('${id}')" ondragend="onDashboardManagerDragEnd()" ondragover="onDashboardManagerDragOver('${id}',event)" ondrop="onDashboardManagerDrop('${id}',event)"><div class="dash-manager-info"><span class="dash-manager-grab" aria-hidden="true">⋮⋮</span><span class="dash-manager-ico">${w.ico}</span><div><strong>${esc(w.name)} <span class="dash-manager-tag tag-${esc(w.group||'analysis')}">${widgetGroupLabel(w.group)}</span></strong><small>${esc(w.desc)}</small></div></div><div class="dash-manager-controls"><button class="btn btn-g btn-sm" ${idx===0?'disabled':''} onclick="moveWidgetOrder('${id}',-1)">↑</button><button class="btn btn-g btn-sm" ${idx===widgetOrder.length-1?'disabled':''} onclick="moveWidgetOrder('${id}',1)">↓</button><button class="btn ${on?'btn-d':'btn-g'} btn-sm" onclick="toggleWidget('${id}')">${on?'Remover':'Adicionar'}</button></div></div>`;}).join('')}</div></div>`:''}`;
+}
+
+function widgetRangeDate(scope='month'){
+  if(scope==='30d')return iso(offD(new Date(),-29));
+  return '';
+}
+function widgetCards(){
+  const txM=getMonthTx(curDt);
+  const showFuture=((widgetFilters?.cards?.future)||'on')!=='off';
+  const inc=txM.filter(t=>t.type==='income'&&!isFut(t.date)&&!t.paid).reduce((s,t)=>s+t.amount,0);
+  const exp=txM.filter(t=>t.type==='expense'&&!isFut(t.date)&&!t.paid).reduce((s,t)=>s+t.amount,0);
+  const fut=S.transactions.filter(t=>t.type==='expense'&&isFut(t.date)&&!t.paid).reduce((s,t)=>s+t.amount,0);
+  const income=monthlyIncomeCents/100;
+  const base=income||inc;
+  const remaining=base-exp;
+  const now=new Date();
+  const sameMonthView=curDt.getMonth()===now.getMonth()&&curDt.getFullYear()===now.getFullYear();
+  const daysInMonth=new Date(curDt.getFullYear(),curDt.getMonth()+1,0).getDate();
+  const daysLeft=sameMonthView?Math.max(daysInMonth-now.getDate()+1,1):daysInMonth;
+  const safeDay=base?Math.max(remaining/daysLeft,0):0;
+  const burnPct=base?Math.min(Math.round(exp/base*100),999):0;
+  window._dashInc=inc;
+  window._dashExp=exp;
+  return `<div class="g4 summary-grid dash-section">
+    <div class="sc sc-glow-ac2" style="cursor:pointer" onclick="showPage('settings')"><span class="ci">💼</span><div class="cl">Salario base</div><div class="cv ${base?'pos':'neu'}">${base?fmt(base):'Definir'}</div><div class="cc">${income?'renda mensal configurada':'toque para configurar'}</div></div>
+    <div class="sc sc-glow-dan" style="cursor:pointer" onclick="showPage('transactions')"><span class="ci">⬇️</span><div class="cl">Gasto no mes</div><div class="cv neg">${fmt(exp)}</div><div class="cc dn">${base?`${burnPct}% do salario`:'sem salario definido'}</div></div>
+    <div class="sc sc-glow-ac" style="cursor:pointer" onclick="showPage('transactions')"><span class="ci">🧭</span><div class="cl">Seguro por dia</div><div class="cv ${safeDay>0?'pos':'neg'}">${fmt(safeDay)}</div><div class="cc">${daysLeft} dia${daysLeft===1?'':'s'} ate fechar</div></div>
+    <div class="sc sc-glow-ac" style="cursor:pointer" onclick="showPage('transactions')"><span class="ci">🌱</span><div class="cl">Sobra projetada</div><div class="cv ${remaining>=0?'pos':'neg'}">${fmt(remaining)}</div><div class="cc">${fmt(inc)} recebido no mes</div></div>
+    ${showFuture?`<div class="sc sc-glow-fut" style="cursor:pointer" onclick="showPage('future')"><span class="ci">🔮</span><div class="cl">A pagar</div><div class="cv fut">${fmt(fut)}</div><div class="cc" style="color:var(--fut)">ver contas futuras</div></div>`:''}
+  </div>`;
+}
+function widgetMiniStats(){
+  const scope=(widgetFilters?.ministats?.scope)||'month';
+  const txM=(scope==='30d'?S.transactions.filter(t=>t.date>=widgetRangeDate('30d')):getMonthTx(curDt)).filter(t=>!isFut(t.date)&&!t.paid&&t.type==='expense');
+  if(!txM.length)return '';
+  const total=txM.reduce((s,t)=>s+t.amount,0);
+  const dias=new Set(txM.map(t=>t.date)).size;
+  const media=total/Math.max(dias,1);
+  const maior=Math.max(...txM.map(t=>t.amount));
+  const diasMes=new Date(curDt.getFullYear(),curDt.getMonth()+1,0).getDate();
+  const diasRest=diasMes-curDt.getDate();
+  return `<div class="mini-stats dash-section">
+    <div class="mini-stat"><div class="ms-ico">📊</div><div class="ms-val" style="color:var(--warn)">${fmt(media)}</div><div class="ms-lbl">Media/dia</div></div>
+    <div class="mini-stat"><div class="ms-ico">🔺</div><div class="ms-val" style="color:var(--dan)">${fmt(maior)}</div><div class="ms-lbl">Maior gasto</div></div>
+    <div class="mini-stat"><div class="ms-ico">🗓️</div><div class="ms-val" style="color:var(--ac2)">${diasRest}</div><div class="ms-lbl">${scope==='30d'?'Dias do mes':'Dias restantes'}</div></div>
+  </div>`;
+}
+function widgetQuickActions(){
+  const limit=Number((widgetFilters?.quickactions?.limit)||6);
+  const actions=[
+    {icon:'+',title:'Nova transação',hint:'Lançar gasto ou receita',className:'primary',fn:'openModal()'},
+    {icon:'📥',title:'Importar',hint:'CSV, OFX, Pix, OCR e texto',className:'primary',fn:'openImportCenter()'},
+    {icon:'📌',title:'Vencimento',hint:'Conta futura ou fixa',fn:'openDueModal()'},
+    {icon:'🎯',title:'Orçamento',hint:'Definir limite mensal',fn:'openBudModal()'},
+    {icon:'🏦',title:'Conta',hint:'Saldo ou carteira',fn:'openAccModal()'},
+    {icon:'🏆',title:'Meta',hint:'Objetivo financeiro',fn:'openGoalModal()'}
+  ].slice(0,Math.max(limit,4));
+  return `<div class="quick-actions-widget dash-section">
+    <div class="bh"><div><div class="ct">Ações rápidas</div><div class="cs">Capture, importe e organize sem sair da dashboard</div></div></div>
+    <div class="quick-actions-grid">${actions.map(a=>`<button class="quick-action-card ${a.className||''}" onclick="${a.fn}"><span class="quick-action-ico">${a.icon}</span><strong>${esc(a.title)}</strong><small>${esc(a.hint)}</small></button>`).join('')}</div>
+  </div>`;
+}
+function widgetAccounts(){
+  if(!S.accounts.length)return '';
+  const limit=(widgetFilters?.accounts?.limit)||'5';
+  const sort=(widgetFilters?.accounts?.sort)||'manual';
+  let accounts=[...S.accounts];
+  if(sort==='balance_desc')accounts.sort((a,b)=>getAccBal(b.id)-getAccBal(a.id));
+  if(sort==='balance_asc')accounts.sort((a,b)=>getAccBal(a.id)-getAccBal(b.id));
+  accounts=limit==='all'?accounts:accounts.slice(0,Number(limit));
+  return `<div class="box dash-section">
+    <div class="bh"><div class="ct">Contas</div><button class="btn btn-g btn-sm" onclick="showPage('accounts')">Ver →</button></div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      ${accounts.map(a=>{const bal=getAccBal(a.id);const y=getAccYield(a,1);return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px;border-bottom:1px solid var(--bd2)"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">${a.icon}</span><span style="font-size:13px;font-weight:500">${a.name}</span>${y>0?`<span class="yield-pill">+${fmt(y)}</span>`:''}</div><span style="font-family:var(--font-money);font-weight:700;font-size:14px;color:${bal>=0?'var(--ac)':'var(--dan)'}">${fmt(bal)}</span></div>`;}).join('')}
+    </div>
+  </div>`;
+}
+function widgetGoals(){
+  const limit=Number((widgetFilters?.goals?.limit)||4);
+  const status=(widgetFilters?.goals?.status)||'active';
+  const goals=S.goals.filter(g=>status==='all'||(g.current/g.target)<1).slice(0,limit);
+  if(!goals.length)return '';
+  return `<div class="goals-widget dash-section">
+    <div class="bh"><div class="ct">🏆 Metas</div><button class="btn btn-g btn-sm" onclick="showPage('goals')">Ver todas →</button></div>
+    <div class="goals-widget-list">
+      ${goals.map(g=>{const pct=Math.min((g.current/g.target)*100,100);const col=pct>=80?'var(--ac)':pct>=50?'var(--ac2)':'var(--warn)';return `<div class="gw-item"><span class="gw-icon">${g.icon}</span><div class="gw-info"><div class="gw-name">${g.name}</div><div class="gw-bar"><div class="gw-fill" style="width:${pct}%;background:${col}"></div></div></div><span class="gw-pct" style="color:${col}">${Math.round(pct)}%</span></div>`;}).join('')}
+    </div>
+  </div>`;
+}
+function widgetBudgets(){
+  const limit=Number((widgetFilters?.budgets?.limit)||6);
+  const status=(widgetFilters?.budgets?.status)||'all';
+  const now=new Date();
+  const buds=S.budgets.map(b=>{const spent=S.transactions.filter(t=>{if(t.type!=='expense'||isFut(t.date)||t.paid)return false;const d=new Date(t.date+'T12:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()&&t.category===b.category;}).reduce((s,t)=>s+t.amount,0);return {...b,spent,pct:Math.min((spent/b.limit)*100,100)};}).filter(b=>status==='all'||(status==='risk'?b.pct>=80:b.pct>=100)).sort((a,b)=>b.pct-a.pct).slice(0,limit);
+  if(!buds.length)return '';
+  return `<div class="budget-widget dash-section">
+    <div class="bh"><div class="ct">🎯 Orcamentos</div><button class="btn btn-g btn-sm" onclick="showPage('budget')">Ver todos →</button></div>
+    <div class="bw-list">
+      ${buds.map(b=>{const cat=getCat(b.category);const col=b.pct>=100?'var(--dan)':b.pct>=80?'var(--warn)':'var(--ac)';return `<div class="bw-item"><span class="bw-cat">${cat.ico}</span><div class="bw-info"><div class="bw-top"><span class="bw-name">${b.category}</span><span class="bw-vals">${fmt(b.spent)} / ${fmt(b.limit)}</span></div><div class="bw-bar"><div class="bw-fill" style="width:${b.pct}%;background:${col}"></div></div></div></div>`;}).join('')}
+    </div>
+  </div>`;
+}
+function widgetCharts(){
+  const preferredMode=(widgetFilters?.charts?.mode)||'bars';
+  if(preferredMode!==chartMode&&typeof setChartMode==='function')setTimeout(()=>setChartMode(preferredMode),0);
+  return `<div class="cr dash-section">
+    <div class="cc-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+        <div class="ct">Fluxo de Caixa</div>
+        <div style="display:flex;gap:3px;">
+          <button class="vbtn ${chartMode==='bars'?'active':''}" id="cBars" onclick="setChartMode('bars')" title="Barras">▦</button>
+          <button class="vbtn ${chartMode==='line'?'active':''}" id="cLine" onclick="setChartMode('line')" title="Acumulado">📈</button>
+        </div>
+      </div>
+      <div class="cs" id="chartSub">${chartMode==='bars'?'Receitas vs despesas - ultimos 6 meses':'Saldo acumulado - ultimos 6 meses'}</div>
+      <canvas id="flowChart"></canvas>
+    </div>
+    <div class="cc-box"><div class="ct">Categorias</div><div class="cs">Clique para filtrar</div><canvas id="catChart" style="cursor:pointer"></canvas></div>
+  </div>`;
+}
+function widgetRecent(){
+  const type=(widgetFilters?.recent?.type)||'all';
+  const limit=Number((widgetFilters?.recent?.limit)||6);
+  const scope=(widgetFilters?.recent?.scope)||'all';
+  const sorted=[...S.transactions].filter(t=>!isFut(t.date)&&!t.paid&&(type==='all'||t.type===type)).filter(t=>{if(scope!=='month')return true;const d=new Date(t.date+'T12:00:00');return d.getMonth()===curDt.getMonth()&&d.getFullYear()===curDt.getFullYear();}).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,limit);
+  return `<div class="box dash-section"><div class="bh"><div class="ct">Ultimas transacoes</div><div class="widget-header-actions"><button class="btn btn-g btn-sm" onclick="openImportCenter()">📥 Importar</button><button class="btn btn-g btn-sm" onclick="showPage('transactions')">Ver todas</button></div></div><div class="recent-list" id="recList">${sorted.length?sorted.map(recentTxHTML).join(''):'<div class="empty"><span class="ei">💸</span><p>Nenhuma transacao ainda.</p></div>'}</div></div>`;
+}
+function widgetShoppingDash(){
+  let data={lists:[],items:[]};
+  try{data=JSON.parse(localStorage.getItem('fz_shopping')||'{}');}catch{}
+  const lists=data.lists||[];
+  const items=data.items||[];
+  const limit=Number((widgetFilters?.shopping?.limit)||5);
+  const scope=(widgetFilters?.shopping?.scope)||'active';
+  const pending=items.filter(i=>!i.bought);
+  const list=lists[0];
+  const listItems=scope==='all'?items:items.filter(i=>i.listId===list?.id);
+  const bought=listItems.filter(i=>i.bought).length;
+  const pct=listItems.length?Math.round(bought/listItems.length*100):0;
+  const visiblePending=scope==='all'?pending:pending.filter(i=>i.listId===list?.id);
+  return `<div class="box dash-section"><div class="bh"><div><div class="ct">🛒 ${list?.ico||'🛒'} ${scope==='all'?'Listas de compras':(list?.name||'Lista de Compras')}</div><div class="cs">${visiblePending.length} pendente${visiblePending.length!==1?'s':''}</div></div><button class="btn btn-g btn-sm" onclick="showPage('shopping')">Abrir →</button></div><div class="sl-prog-bar" style="margin-bottom:12px"><div class="sl-prog-fill" style="width:${pct}%"></div></div>${visiblePending.slice(0,limit).map(i=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid var(--bd2)"><div style="width:16px;height:16px;border-radius:5px;border:2px solid var(--bd);flex-shrink:0"></div><span style="font-size:13px;flex:1;min-width:0">${i.name}</span>${i.qty?`<span style="font-size:11px;color:var(--mt)">${i.qty}</span>`:''}</div>`).join('')||'<div class="empty" style="padding:18px"><p>Lista sem pendencias.</p></div>'}</div>`;
+}
+function widgetSaveRate(){
+  const monthsCount=Number((widgetFilters?.saverate?.months)||3);
+  const focus=(widgetFilters?.saverate?.focus)||'current';
+  const months=[];
+  for(let i=monthsCount-1;i>=0;i--){
+    const d=new Date(curDt.getFullYear(),curDt.getMonth()-i,1);
+    const txs=getMonthTx(d).filter(t=>!isFut(t.date)&&!t.paid);
+    const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    if(inc>0)months.push({label:['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][d.getMonth()],rate:Math.round((1-exp/inc)*100),inc,exp});
+  }
+  if(!months.length)return '';
+  const cur=focus==='average'?{...months[months.length-1],rate:Math.round(months.reduce((s,m)=>s+m.rate,0)/months.length)}:months[months.length-1];
+  const col=cur.rate>=20?'var(--grn)':cur.rate>=0?'var(--warn)':'var(--dan)';
+  return `<div class="box dash-section"><div class="bh"><div class="ct">💹 Taxa de economia</div></div><div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="text-align:center"><div style="font-family:var(--font-money);font-size:42px;font-weight:800;color:${col};letter-spacing:0">${cur.rate}%</div><div style="font-size:11px;color:var(--mt)">${focus==='average'?'media do periodo':'este mes'}</div></div><div style="flex:1;min-width:120px">${months.map(m=>{const c=m.rate>=20?'var(--grn)':m.rate>=0?'var(--warn)':'var(--dan)';return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:11px;color:var(--mt);width:28px">${m.label}</span><div style="flex:1;height:8px;background:var(--sf2);border-radius:99px;overflow:hidden"><div style="width:${Math.min(Math.abs(m.rate),100)}%;height:100%;background:${c};border-radius:99px"></div></div><span style="font-size:11px;font-weight:700;color:${c};width:34px;text-align:right">${m.rate}%</span></div>`;}).join('')}</div></div></div>`;
+}
+function widgetBarCats(){
+  const limit=Number((widgetFilters?.barcats?.limit)||6);
+  const scope=(widgetFilters?.barcats?.scope)||'month';
+  const txM=(scope==='30d'?S.transactions.filter(t=>t.date>=widgetRangeDate('30d')):getMonthTx(curDt)).filter(t=>t.type==='expense'&&!isFut(t.date)&&!t.paid);
+  const cats={};
+  txM.forEach(t=>cats[t.category]=(cats[t.category]||0)+t.amount);
+  const sorted=Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,limit);
+  if(!sorted.length)return '';
+  const max=sorted[0][1];
+  return `<div class="box dash-section"><div class="bh"><div><div class="ct">📉 Top categorias</div><div class="cs">${scope==='30d'?'Maiores gastos dos ultimos 30 dias':'Maiores gastos do mes'}</div></div></div><div style="display:flex;flex-direction:column;gap:10px">${sorted.map(([cat,val],i)=>{const c=getCat(cat);const pct=(val/max*100).toFixed(0);const cols=['var(--dan)','var(--warn)','var(--ac)','var(--ac2)','var(--fut)','var(--grn)'];const col=cols[i]||'var(--mt)';return `<div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:13px">${c.ico} ${cat}</span><span style="font-family:var(--font-money);font-size:13px;font-weight:700;color:${col}">${fmt(val)}</span></div><div style="height:6px;background:var(--sf2);border-radius:99px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${col};border-radius:99px"></div></div></div>`;}).join('')}</div></div>`;
+}
+function widgetVehicles(){
+  loadCar();
+  const vehicles=carVehicles();
+  if(!vehicles.length)return '';
+  const period=(widgetFilters?.vehicles?.period)||'90d';
+  const limit=Number((widgetFilters?.vehicles?.limit)||3);
+  const scope=(widgetFilters?.vehicles?.scope)||'active';
+  const previousFilter={...carFilters};
+  const activeId=carState.activeVehicleId||vehicles[0]?.id||'all';
+  carFilters.vehicle=scope==='all'?'all':(activeId||'all');
+  carFilters.period=period;
+  carFilters.type='all';
+  carFilters.kind='all';
+  carFilters.query='';
+  carFilters.sort='date_desc';
+  const stats=carStats();
+  const maint=carMaintenanceInsights(stats.events);
+  Object.assign(carFilters,previousFilter);
+  const usesFallbackMetrics=stats.metricSource==='fallback_latest_pair';
+  const fuelNote=stats.liters?(usesFallbackMetrics?`calculado pelo ultimo intervalo valido (${stats.liters.toLocaleString('pt-BR',{maximumFractionDigits:1})} L)`:`${stats.liters.toLocaleString('pt-BR',{maximumFractionDigits:1})} L medidos`):'precisa de pelo menos 2 abastecimentos';
+  const distanceNote=stats.distance?(usesFallbackMetrics?`ultimo intervalo valido: ${Math.round(stats.distance).toLocaleString('pt-BR')} km`:`${Math.round(stats.distance).toLocaleString('pt-BR')} km calculados`):'sem distancia suficiente';
+  const activeVehicle=carVehicle(activeId);
+  const recent=[...carState.events].filter(e=>scope==='all'||e.vehicleId===activeId).sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt).slice(0,limit);
+  const dueTone=maint.upcomingStatus==='urgent'?'var(--dan)':maint.upcomingStatus==='warn'?'var(--warn)':'var(--ac)';
+  const dueText=maint.kmLeft!==null?`${Math.round(maint.kmLeft).toLocaleString('pt-BR')} km restantes`:maint.nextOilDate?`proxima revisao ate ${fmtD(maint.nextOilDate)}`:'cadastre uma troca de oleo ou revisao';
+  const headerMeta=[scope==='all'?'todos os veiculos':activeVehicle?.model,activeVehicle?.plate,activeVehicle?.odometer?`${Math.round(activeVehicle.odometer).toLocaleString('pt-BR')} km`:'' ].filter(Boolean).join(' • ');
+  return `<div class="vehicle-widget dash-section">
+    <div class="bh"><div><div class="ct">Veiculos</div><div class="cs">${vehicles.length} veiculo${vehicles.length!==1?'s':''} • ${scope==='all'?'visao consolidada':'foco no ativo'}</div></div><button class="btn btn-g btn-sm" onclick="showPage('car')">Abrir modulo</button></div>
+    <div class="vehicle-widget-hero" onclick="showPage('car')"><div><div class="vehicle-widget-name">${esc(scope==='all'?'Frota pessoal':(activeVehicle?.name||'Meu carro'))}</div><div class="vehicle-widget-meta">${esc(headerMeta||'Consumo, manutencao e historico')}</div></div><div class="vehicle-widget-kpi"><span class="vehicle-widget-kpi-label">Gasto ${period==='30d'?'30 dias':period==='year'?'ano':period==='all'?'total':'90 dias'}</span><strong>${fmt(stats.total)}</strong></div></div>
+    <div class="vehicle-widget-grid">
+      <div class="vehicle-widget-card"><div class="vehicle-widget-label">Consumo medio</div><div class="vehicle-widget-value" style="color:var(--ac2)">${stats.kmPerLiter?`${stats.kmPerLiter.toFixed(1).replace('.',',')} km/l`:'—'}</div><div class="vehicle-widget-note">${fuelNote}</div></div>
+      <div class="vehicle-widget-card"><div class="vehicle-widget-label">Custo por km</div><div class="vehicle-widget-value" style="color:var(--warn)">${stats.costPerKm?fmt(stats.costPerKm):'—'}</div><div class="vehicle-widget-note">${distanceNote}</div></div>
+      <div class="vehicle-widget-card"><div class="vehicle-widget-label">Proxima manutencao</div><div class="vehicle-widget-value" style="color:${dueTone}">${maint.nextOilKm?`${Math.round(maint.nextOilKm).toLocaleString('pt-BR')} km`:'Revisar'}</div><div class="vehicle-widget-note">${esc(dueText)}</div></div>
+    </div>
+    <div class="vehicle-widget-list">${recent.length?recent.map(e=>{const icon=e.type==='fuel'?'⛽':'🔧';const title=e.type==='fuel'?(e.fuelType||'Abastecimento'):(e.title||carExpenseLabel(e.category));const meta=[scope==='all'?vehicleName(e.vehicleId):'',fmtD(e.date),e.odometer?`${Math.round(e.odometer).toLocaleString('pt-BR')} km`:'',e.note].filter(Boolean).join(' • ');return `<button class="vehicle-widget-row" onclick="openSearchTarget('car-event','${e.id}','car')"><span class="vehicle-widget-row-ico">${icon}</span><span class="vehicle-widget-row-main"><strong>${esc(title)}</strong><small>${esc(meta||'Sem detalhes')}</small></span><span class="vehicle-widget-row-amt">${fmt(e.amount)}</span></button>`;}).join(''):`<div class="vehicle-widget-empty">Adicione abastecimentos ou despesas para montar os insights do veiculo.</div>`}</div>
+  </div>`;
+}
+
+function renderDash(force=false) {
+  dashDirty = true;
+  if(!force && !isDashboardActive()){
+    renderDashboardManager();
+    return;
+  }
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  const ids=WIDGET_DEFS.map(w=>w.id);
+  widgetPrefs=asObj(widgetPrefs);
+  widgetOrder=asArr(widgetOrder);
+  widgetFilters=asObj(widgetFilters);
+  const fallbackOrder=defaultDashboardWidgetOrder();
+  widgetOrder=[...widgetOrder.filter(id=>ids.includes(id)),...fallbackOrder.filter(id=>!widgetOrder.includes(id))];
+  ensureAtLeastOneWidget();
+  const sections=dashboardVisibleWidgetIds().map(id=>dashboardWidgetMarkup(id,isDark)).filter(Boolean);
+
+  const container = document.getElementById('dashWidgets');
+  if (container) container.innerHTML = sections.join('');
+  dashDirty = false;
+  renderDashboardManager();
+
+  dashboardVisibleWidgetIds().forEach(id=>dashboardWidgetPostRender(id,isDark));
+}
+document.addEventListener('click',e=>{
+  if(!activeWidgetMenuId)return;
+  if(e.target.closest('.widget-menu-shell'))return;
+  closeWidgetMenu();
+});

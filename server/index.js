@@ -31,7 +31,11 @@ pool.connect()
 async function ensureOperationalSchema() {
   await pool.query(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'editor';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_code_hash TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_secret TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT FALSE;
     UPDATE users SET role = 'admin' WHERE is_admin = TRUE AND role <> 'admin';
+    ALTER TABLE transactions ADD COLUMN IF NOT EXISTS split_meta JSONB DEFAULT '{}'::jsonb;
     CREATE TABLE IF NOT EXISTS audit_events (
       id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id     UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -86,6 +90,57 @@ function normalizeCategoryName(v) {
 
 function normalizeUsername(v) {
   return cleanText(v).trim().toLowerCase();
+}
+
+const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+function randomBase32(length = 32) {
+  let out = '';
+  while (out.length < length) {
+    out += BASE32_ALPHABET[crypto.randomInt(0, BASE32_ALPHABET.length)];
+  }
+  return out;
+}
+
+function base32ToBuffer(value = '') {
+  const clean = String(value).toUpperCase().replace(/[^A-Z2-7]/g, '');
+  let bits = '';
+  for (const char of clean) {
+    const idx = BASE32_ALPHABET.indexOf(char);
+    if (idx < 0) continue;
+    bits += idx.toString(2).padStart(5, '0');
+  }
+  const bytes = [];
+  for (let i = 0; i + 8 <= bits.length; i += 8) {
+    bytes.push(parseInt(bits.slice(i, i + 8), 2));
+  }
+  return Buffer.from(bytes);
+}
+
+function totpCode(secret, timestamp = Date.now()) {
+  const key = base32ToBuffer(secret);
+  if (!key.length) return '';
+  const counter = Math.floor(timestamp / 30000);
+  const counterBuf = Buffer.alloc(8);
+  counterBuf.writeBigUInt64BE(BigInt(counter));
+  const hmac = crypto.createHmac('sha1', key).update(counterBuf).digest();
+  const offset = hmac[hmac.length - 1] & 0x0f;
+  const binary = ((hmac[offset] & 0x7f) << 24)
+    | ((hmac[offset + 1] & 0xff) << 16)
+    | ((hmac[offset + 2] & 0xff) << 8)
+    | (hmac[offset + 3] & 0xff);
+  return String(binary % 1000000).padStart(6, '0');
+}
+
+function verifyTotp(secret, code) {
+  const normalized = String(code || '').replace(/\D/g, '');
+  if (normalized.length !== 6 || !secret) return false;
+  const now = Date.now();
+  return [-1, 0, 1].some(step => totpCode(secret, now + step * 30000) === normalized);
+}
+
+function newRecoveryCode() {
+  return `FZ-${crypto.randomBytes(3).toString('hex').toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 }
 
 function requireWrite(req, res, next) {
@@ -328,10 +383,17 @@ app.post('/api/login', async (req, res) => {
   try {
     const username = normalizeUsername(req.body?.username);
     const password = req.body?.password || '';
+    const otp = String(req.body?.otp || '').replace(/\D/g, '');
     if (!username || !password) return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
     const { rows } = await pool.query('SELECT * FROM users WHERE username=$1', [username]);
     if (!rows.length || !verifyPassword(password, rows[0].password_hash)) {
       return res.status(401).json({ error: 'Usuário ou senha inválidos' });
+    }
+    if (rows[0].two_factor_enabled) {
+      if (!otp) return res.status(401).json({ error: 'Informe o codigo 2FA para entrar', requires_2fa: true });
+      if (!verifyTotp(rows[0].two_factor_secret, otp)) {
+        return res.status(401).json({ error: 'Codigo 2FA invalido', requires_2fa: true });
+      }
     }
     res.json({ ...publicUser(rows[0]), api_key: rows[0].api_key });
   } catch (e) {
@@ -357,6 +419,32 @@ app.post('/api/password-reset', adminAuth, async (req, res) => {
 });
 
 // Criar usuário sem admin key apenas no primeiro acesso ou quando ALLOW_SIGNUP=true
+app.post('/api/password-reset/recovery', async (req, res) => {
+  try {
+    const username = normalizeUsername(req.body?.username);
+    const password = req.body?.password || '';
+    const recoveryCode = String(req.body?.recovery_code || '').trim().toUpperCase();
+    if (!username || !password || !recoveryCode) return res.status(400).json({ error: 'Usuario, nova senha e codigo de recuperacao sao obrigatorios' });
+    const { rows } = await pool.query('SELECT * FROM users WHERE username=$1', [username]);
+    if (!rows.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
+    if (!rows[0].recovery_code_hash || !verifyPassword(recoveryCode, rows[0].recovery_code_hash)) {
+      return res.status(401).json({ error: 'Codigo de recuperacao invalido' });
+    }
+    const { rows: updated } = await pool.query(
+      `UPDATE users
+          SET password_hash=$1,
+              recovery_code_hash=$2
+        WHERE id=$3
+        RETURNING id, name, username, role, is_admin, two_factor_enabled, created_at`,
+      [hashPassword(password), hashPassword(newRecoveryCode()), rows[0].id]
+    );
+    await auditEvent(pool, updated[0], 'senha_redefinida_recuperacao', 'user', updated[0].id, updated[0].username || updated[0].name);
+    res.json({ success: true, user: publicUser(updated[0]) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/register', async (req, res) => {
   try {
     const { rows: totalRows } = await pool.query('SELECT COUNT(*)::int AS total FROM users');
@@ -521,6 +609,69 @@ app.post('/api/me/regenerate-key', userAuth, async (req, res) => {
 // TRANSACOES
 // ════════════════════════════════════════════
 
+app.post('/api/me/recovery-code', userAuth, async (req, res) => {
+  try {
+    const code = newRecoveryCode();
+    await pool.query('UPDATE users SET recovery_code_hash=$1 WHERE id=$2', [hashPassword(code), req.user.id]);
+    await auditEvent(pool, req.user, 'codigo_recuperacao_gerado', 'user', req.user.id);
+    res.json({ recovery_code: code });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/me/2fa/setup', userAuth, async (req, res) => {
+  try {
+    const secret = randomBase32(32);
+    await pool.query('UPDATE users SET two_factor_secret=$1, two_factor_enabled=FALSE WHERE id=$2', [secret, req.user.id]);
+    const issuer = encodeURIComponent('Finanza');
+    const label = encodeURIComponent(req.user.username || req.user.name || 'usuario');
+    res.json({
+      secret,
+      otpauth_url: `otpauth://totp/${issuer}:${label}?secret=${secret}&issuer=${issuer}&digits=6&period=30`
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/me/2fa/confirm', userAuth, async (req, res) => {
+  try {
+    const code = String(req.body?.code || '').replace(/\D/g, '');
+    const { rows } = await pool.query('SELECT id, name, username, role, is_admin, two_factor_secret, two_factor_enabled, created_at FROM users WHERE id=$1', [req.user.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
+    if (!rows[0].two_factor_secret) return res.status(400).json({ error: 'Configure o segredo 2FA antes de confirmar' });
+    if (!verifyTotp(rows[0].two_factor_secret, code)) return res.status(400).json({ error: 'Codigo 2FA invalido' });
+    const { rows: updated } = await pool.query(
+      'UPDATE users SET two_factor_enabled=TRUE WHERE id=$1 RETURNING id, name, username, role, is_admin, two_factor_enabled, created_at',
+      [req.user.id]
+    );
+    await auditEvent(pool, req.user, '2fa_ativado', 'user', req.user.id);
+    res.json({ success: true, user: publicUser(updated[0]) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/me/2fa', userAuth, async (req, res) => {
+  try {
+    const code = String(req.body?.code || '').replace(/\D/g, '');
+    const { rows } = await pool.query('SELECT id, name, username, role, is_admin, two_factor_secret, two_factor_enabled, created_at FROM users WHERE id=$1', [req.user.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
+    if (rows[0].two_factor_enabled && !verifyTotp(rows[0].two_factor_secret, code)) {
+      return res.status(400).json({ error: 'Confirme com um codigo 2FA valido para desativar' });
+    }
+    const { rows: updated } = await pool.query(
+      'UPDATE users SET two_factor_secret=NULL, two_factor_enabled=FALSE WHERE id=$1 RETURNING id, name, username, role, is_admin, two_factor_enabled, created_at',
+      [req.user.id]
+    );
+    await auditEvent(pool, req.user, '2fa_desativado', 'user', req.user.id);
+    res.json({ success: true, user: publicUser(updated[0]) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/transactions/parse', userAuth, async (req, res) => {
   const parsed = parseTransactionText(req.body?.text);
   if (!parsed) return res.status(400).json({ error: 'Texto nÃ£o reconhecido' });
@@ -577,18 +728,18 @@ app.post('/api/transactions', userAuth, requireWrite, async (req, res) => {
   try {
     const { type, description, amount, category, date, note = '',
             account_id, paid=false, pending=false,
-            installment_group, installment_num, installment_total, recur_group } = req.body;
+            installment_group, installment_num, installment_total, recur_group, split_meta = {} } = req.body;
     if (!type || !description || !amount || !category || !date)
       return res.status(400).json({ error: 'Campos obrigatórios faltando' });
 
     const { rows } = await pool.query(
       `INSERT INTO transactions
         (user_id, type, description, amount, category, date, note,
-         account_id, paid, pending, installment_group, installment_num, installment_total, recur_group)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+         account_id, paid, pending, installment_group, installment_num, installment_total, recur_group, split_meta)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb) RETURNING *`,
       [req.user.id, type, description, amount, normalizeCategoryName(category), date, note,
        account_id||null, !!paid, !!pending,
-       installment_group||null, installment_num||null, installment_total||null, recur_group||null]
+       installment_group||null, installment_num||null, installment_total||null, recur_group||null, toJsonb(split_meta, {})]
     );
     await auditEvent(pool, req.user, 'transacao_criada', 'transaction', rows[0].id, rows[0].description, { amount: rows[0].amount, category: rows[0].category });
     res.status(201).json(rows[0]);
@@ -597,15 +748,16 @@ app.post('/api/transactions', userAuth, requireWrite, async (req, res) => {
 
 app.put('/api/transactions/:id', userAuth, requireWrite, async (req, res) => {
   try {
-    const { type, description, amount, category, date, note, account_id, paid, pending } = req.body;
+    const { type, description, amount, category, date, note, account_id, paid, pending, split_meta = {} } = req.body;
     const { rows } = await pool.query(
       `UPDATE transactions
        SET type=$1,description=$2,amount=$3,category=$4,date=$5,note=$6,
-           account_id=$7,paid=COALESCE($8,paid),pending=COALESCE($9,pending)
-       WHERE id=$10 AND user_id=$11 RETURNING *`,
+           account_id=$7,paid=COALESCE($8,paid),pending=COALESCE($9,pending),split_meta=$10::jsonb
+       WHERE id=$11 AND user_id=$12 RETURNING *`,
       [type, description, amount, normalizeCategoryName(category), date, note, account_id||null,
        typeof paid === 'boolean' ? paid : null,
        typeof pending === 'boolean' ? pending : null,
+       toJsonb(split_meta, {}),
        req.params.id, req.user.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
@@ -676,13 +828,14 @@ app.put('/api/import', userAuth, requireWrite, async (req, res) => {
     await replaceRows(client, 'transactions', uid, data.transactions || [],
       `INSERT INTO transactions
         (user_id,type,description,amount,category,date,note,account_id,paid,pending,
-         installment_group,installment_num,installment_total,recur_group)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+         installment_group,installment_num,installment_total,recur_group,split_meta)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb)`,
       (t, userId) => [userId, cleanText(t.type, 'expense'), cleanText(t.desc || t.description, 'Lançamento'),
         Number(t.amount)||0, normalizeCategoryName(cleanText(t.category, 'A classificar')), t.date, cleanText(t.note),
         t.accountId || t.account_id || null, !!t.paid, !!t.pending,
         t.installmentGroup || t.installment_group || null, t.installmentNum || t.installment_num || null,
-        t.installmentTotal || t.installment_total || null, t.recurGroup || t.recur_group || null]
+        t.installmentTotal || t.installment_total || null, t.recurGroup || t.recur_group || null,
+        toJsonb(t.splitMeta || t.split_meta || {}, {})]
     );
 
     await replaceRows(client, 'budgets', uid, data.budgets || [],
