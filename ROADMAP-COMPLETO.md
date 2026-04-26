@@ -187,21 +187,23 @@ Status de implementacao: ciclo fechado nesta base com papeis online, auditoria p
 
 ## 4.7 - Assinaturas, dividas e contratos
 
-- [ ] Central de assinaturas.
-- [ ] Detector automatico de assinaturas recorrentes.
-- [ ] Alertar antes de renovacoes.
-- [ ] Comparar assinatura usada vs esquecida.
-- [ ] Cadastrar dividas.
-- [ ] Parcelas de dividas.
-- [ ] Juros e CET manual.
-- [ ] Plano de quitacao.
-- [ ] Simulador bola de neve.
-- [ ] Simulador avalanche.
-- [ ] Contratos: aluguel, internet, seguro, financiamento.
+Status de implementacao: parcial bem avancado nesta base com central nova para assinaturas, dividas e contratos, detector automatico de recorrencias, alertas de renovacao/reajuste, painel de dinheiro comprometido e ordem sugerida para quitacao; ainda faltam anexos e historico formal de renegociacao.
+
+- [x] Central de assinaturas.
+- [x] Detector automatico de assinaturas recorrentes.
+- [x] Alertar antes de renovacoes.
+- [x] Comparar assinatura usada vs esquecida.
+- [x] Cadastrar dividas.
+- [x] Parcelas de dividas.
+- [x] Juros e CET manual.
+- [x] Plano de quitacao.
+- [~] Simulador bola de neve.
+- [~] Simulador avalanche.
+- [x] Contratos: aluguel, internet, seguro, financiamento.
 - [ ] Arquivos anexos por contrato.
-- [ ] Alertas de reajuste.
+- [x] Alertas de reajuste.
 - [ ] Historico de renegociacao.
-- [ ] Painel de "dinheiro comprometido".
+- [x] Painel de "dinheiro comprometido".
 
 ## 4.8 - Automacao e assistente
 

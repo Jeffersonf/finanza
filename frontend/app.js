@@ -2,7 +2,7 @@
 const APP_VERSION='4.3.1';
 const DEFAULT_API_URL='https://finanza-api.onrender.com';
 const CK='fz_cfg',LK='fz_local',CCK='fz_cats',VK='fz_view',AVK='fz_avatar',PRIVK='fz_privacy',CAR_KEY='fz_car',PAGE_KEY='fz_page';
-const RATES_KEY='fz_rates', WIDGET_ORDER_KEY='fz_widget_order', WIDGET_FILTER_KEY='fz_widget_filters', DUE_KEY='fz_due_items', TX_FILTERS_KEY='fz_tx_filters';
+const RATES_KEY='fz_rates', WIDGET_ORDER_KEY='fz_widget_order', WIDGET_FILTER_KEY='fz_widget_filters', DUE_KEY='fz_due_items', TX_FILTERS_KEY='fz_tx_filters', COMMITMENTS_KEY='fz_commitments', SIDEBAR_SHORTCUTS_KEY='fz_sidebar_shortcuts';
 const SAVE_STATE_KEY='fz_save_state', SYNC_HISTORY_KEY='fz_sync_history', AUDIT_HISTORY_KEY='fz_audit_history';
 let monthlyIncomeCents=0;
 let dueItems=[];
@@ -11,6 +11,7 @@ let S={transactions:[],budgets:[],goals:[],accounts:[]};
 let custCats=[];
 let sharedSpace={mode:'couple',name:'',ownerPersonId:'',people:[]};
 let carState={vehicles:[],events:[],activeVehicleId:''};
+let commitmentsState={subscriptions:[],debts:[],contracts:[]};
 let carFilters={vehicle:'active',period:'month',type:'all',kind:'all',query:'',sort:'date_desc',from:'',to:''};
 let curTxP='1m-p',curFP='7d',curDt=new Date();
 let chartMode='bars',curView='n',catFilter=null,carChartMode='bars';
@@ -23,6 +24,7 @@ let adminOverviewState={loading:false,loaded:false,data:null,error:''};
 let undoState=null;
 let importPreviewState=null;
 let pendingTwoFactorSecret='';
+let subscriptionEditId=null,debtEditId=null,contractEditId=null;
 const IMPORT_CENTER_KEY='fz_import_center';
 const IMPORT_BATCH_PREFIX='imp_';
 let importCenterState={profiles:{csv:{}},rules:{categories:[],subscriptions:[]},snapshots:[],txMeta:{}};
@@ -95,12 +97,13 @@ function getInitials(name){
   return (name||'Eu').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'EU';
 }
 function applyAvatar(){
-  const av=document.getElementById('uAvatar');if(!av)return;
   const img=localStorage.getItem(AVK);
-  av.classList.toggle('has-photo',!!img);
-  av.style.backgroundImage=img?`url("${img}")`:'';
-  av.textContent=img?'':getInitials(cfg.userName||'Eu');
-  if(img)av.setAttribute('aria-label','Foto do perfil');else av.removeAttribute('aria-label');
+  document.querySelectorAll('#uAvatar,#uAvatarMobile').forEach(av=>{
+    av.classList.toggle('has-photo',!!img);
+    av.style.backgroundImage=img?`url("${img}")`:'';
+    av.textContent=img?'':getInitials(cfg.userName||'Eu');
+    if(img)av.setAttribute('aria-label','Foto do perfil');else av.removeAttribute('aria-label');
+  });
 }
 function changeAvatar(inp){
   const file=inp?.files?.[0];if(!file)return;
@@ -530,6 +533,7 @@ function normalizeBackupData(d){
   data.shopping={lists:(shopping.lists||[]).map(nShopList),items:(shopping.items||[]).map(nShopItem)};
   data.settings=data.settings||{};
   data.settings.importCenter=normalizeImportCenterState(data.settings.import_center||data.settings.importCenter||{});
+  data.settings.commitments=normalizeCommitmentsState(data.settings.commitments||data.settings.commitmentCenter||{});
   data.car=normalizeCarState(data.car||data.vehicle||data.vehicles||data.settings?.rates?.car||{});
   data.dueItems=(data.dueItems||data.settings?.rates?.dueItems||data.settings?.rates?.due_items||[]).map(nDue).filter(Boolean);
   data.avatarData=(data.settings?.rates?.avatarData??data.settings?.rates?.avatar_data)||'';
@@ -543,12 +547,14 @@ function applyBackupData(data){
   dueItems=data.dueItems||[];
   slActiveList=data.settings?.activeList||data.settings?.active_list||sl.lists[0]?.id||null;
   importCenterState=normalizeImportCenterState(data.settings?.import_center||data.settings?.importCenter||importCenterState);
+  commitmentsState=normalizeCommitmentsState(data.settings?.commitments||data.settings?.commitmentCenter||commitmentsState);
   localStorage.setItem(LK,JSON.stringify(S));
   localStorage.setItem(CCK,JSON.stringify(custCats));
   localStorage.setItem(SL_KEY,JSON.stringify(sl));
   localStorage.setItem(CAR_KEY,JSON.stringify(carState));
   localStorage.setItem(DUE_KEY,JSON.stringify(dueItems));
   localStorage.setItem(IMPORT_CENTER_KEY,JSON.stringify(importCenterState));
+  localStorage.setItem(COMMITMENTS_KEY,JSON.stringify(commitmentsState));
   if(typeof data.avatarData==='string'){
     if(data.avatarData)localStorage.setItem(AVK,data.avatarData);
     else localStorage.removeItem(AVK);
@@ -1720,6 +1726,80 @@ function normalizeImportCenterState(raw={}){
     txMeta:asObj(base.txMeta)
   };
 }
+function nSubscription(item={}){
+  const rawStatus=String(item.status||'active');
+  return {
+    id:String(item.id||uid()),
+    name:String(item.name||'Assinatura').trim()||'Assinatura',
+    amount:Number(item.amount)||0,
+    category:normCatName(item.category||'Assinaturas'),
+    billingDay:Math.min(31,Math.max(1,Number(item.billingDay||item.billing_day||new Date((item.renewalDate||item.renewal_date||today())+'T12:00:00').getDate())||1)),
+    renewalDate:String(item.renewalDate||item.renewal_date||today()).substring(0,10),
+    paymentMethod:String(item.paymentMethod||item.payment_method||'credit'),
+    paymentPlace:String(item.paymentPlace||item.payment_place||''),
+    accountId:item.accountId||item.account_id||'',
+    usage:['high','medium','low'].includes(item.usage)?item.usage:'medium',
+    status:['active','paused','cancelled'].includes(rawStatus)?rawStatus:'active',
+    notes:String(item.notes||item.note||''),
+    linkedDueId:String(item.linkedDueId||item.linked_due_id||'')
+  };
+}
+function nDebt(item={}){
+  const totalAmount=Math.max(0,Number(item.totalAmount||item.total_amount)||0);
+  const outstandingAmount=Math.max(0,Number(item.outstandingAmount||item.outstanding_amount)||totalAmount);
+  const totalInstallments=Math.max(1,Number(item.totalInstallments||item.total_installments)||1);
+  const remainingInstallments=Math.max(0,Math.min(totalInstallments,Number(item.remainingInstallments||item.remaining_installments)||totalInstallments));
+  const rawStatus=String(item.status||'active');
+  return {
+    id:String(item.id||uid()),
+    name:String(item.name||'Divida').trim()||'Divida',
+    totalAmount,
+    outstandingAmount,
+    installmentAmount:Math.max(0,Number(item.installmentAmount||item.installment_amount)||0),
+    totalInstallments,
+    remainingInstallments,
+    interestRate:Math.max(0,Number(item.interestRate||item.interest_rate)||0),
+    nextDueDate:String(item.nextDueDate||item.next_due_date||today()).substring(0,10),
+    accountId:item.accountId||item.account_id||'',
+    strategy:['snowball','avalanche','custom'].includes(item.strategy)?item.strategy:'custom',
+    status:['active','watch','closed'].includes(rawStatus)?rawStatus:(remainingInstallments<=0||outstandingAmount<=0?'closed':'active'),
+    notes:String(item.notes||item.note||''),
+    linkedDueId:String(item.linkedDueId||item.linked_due_id||'')
+  };
+}
+function nContract(item={}){
+  const rawStatus=String(item.status||'active');
+  return {
+    id:String(item.id||uid()),
+    name:String(item.name||'Contrato').trim()||'Contrato',
+    kind:String(item.kind||'service'),
+    monthlyAmount:Math.max(0,Number(item.monthlyAmount||item.monthly_amount)||0),
+    provider:String(item.provider||''),
+    renewalDate:String(item.renewalDate||item.renewal_date||today()).substring(0,10),
+    adjustmentDate:String(item.adjustmentDate||item.adjustment_date||'').substring(0,10),
+    accountId:item.accountId||item.account_id||'',
+    status:['active','watch','ended'].includes(rawStatus)?rawStatus:'active',
+    notes:String(item.notes||item.note||''),
+    linkedDueId:String(item.linkedDueId||item.linked_due_id||'')
+  };
+}
+function normalizeCommitmentsState(raw={}){
+  const base=asObj(raw);
+  return {
+    subscriptions:asArr(base.subscriptions).map(nSubscription).filter(item=>item.name&&item.amount>=0),
+    debts:asArr(base.debts).map(nDebt).filter(item=>item.name&&item.totalAmount>=0),
+    contracts:asArr(base.contracts).map(nContract).filter(item=>item.name)
+  };
+}
+function loadCommitments(){
+  try{commitmentsState=normalizeCommitmentsState(JSON.parse(localStorage.getItem(COMMITMENTS_KEY)||'{}'));}catch{commitmentsState=normalizeCommitmentsState();}
+}
+function saveCommitments(persistRemote=true){
+  commitmentsState=normalizeCommitmentsState(commitmentsState);
+  localStorage.setItem(COMMITMENTS_KEY,JSON.stringify(commitmentsState));
+  noteLocalSave('Compromissos salvos neste dispositivo');
+  if(persistRemote&&cfg.mode==='api')saveRemoteState().catch(e=>toast('Erro ao salvar compromissos: '+e.message,'error'));
+}
 function loadImportCenterState(){
   try{importCenterState=normalizeImportCenterState(JSON.parse(localStorage.getItem(IMPORT_CENTER_KEY)||'{}'));}catch{importCenterState=normalizeImportCenterState();}
 }
@@ -1788,7 +1868,7 @@ function saveCar(){
 }
 function getAppSettings(){
   const avatarData=localStorage.getItem(AVK)||'';
-  return {theme:document.documentElement.dataset.theme||localStorage.getItem('fz_t')||'dark',rates:{cdi:RATES.cdi,selic:RATES.selic,monthlyIncomeCents,monthly_income_cents:monthlyIncomeCents,dueItems,car:carState?.vehicles?.length?carState:normalizeCarState(),sharedSpace,shared_space:sharedSpace,avatarData,avatar_data:avatarData},widgetPrefs,widgetOrder,widgetFilters,txView:curView,activeList:slActiveList,importCenter:importCenterState};
+  return {theme:document.documentElement.dataset.theme||localStorage.getItem('fz_t')||'dark',rates:{cdi:RATES.cdi,selic:RATES.selic,monthlyIncomeCents,monthly_income_cents:monthlyIncomeCents,dueItems,car:carState?.vehicles?.length?carState:normalizeCarState(),sharedSpace,shared_space:sharedSpace,avatarData,avatar_data:avatarData},widgetPrefs,widgetOrder,widgetFilters,sidebarShortcuts:sidebarShortcutPrefs,txView:curView,activeList:slActiveList,importCenter:importCenterState,commitments:commitmentsState};
 }
 function applyRemoteSettings(settings={}){
   if(settings.theme)applyTheme(settings.theme);
@@ -1816,8 +1896,13 @@ function applyRemoteSettings(settings={}){
   widgetPrefs=asObj(settings.widget_prefs||settings.widgetPrefs||widgetPrefs);
   widgetOrder=asArr(settings.widget_order||settings.widgetOrder||widgetOrder);
   widgetFilters=asObj(settings.widget_filters||settings.widgetFilters||widgetFilters);
+  sidebarShortcutPrefs=normalizeSidebarShortcuts(settings.sidebar_shortcuts||settings.sidebarShortcuts||sidebarShortcutPrefs);
   importCenterState=normalizeImportCenterState(settings.import_center||settings.importCenter||importCenterState);
+  commitmentsState=normalizeCommitmentsState(settings.commitments||settings.commitmentCenter||commitmentsState);
   localStorage.setItem(IMPORT_CENTER_KEY,JSON.stringify(importCenterState));
+  localStorage.setItem(COMMITMENTS_KEY,JSON.stringify(commitmentsState));
+  localStorage.setItem(SIDEBAR_SHORTCUTS_KEY,JSON.stringify(sidebarShortcutPrefs));
+  renderSidebarShortcuts();
   if(settings.tx_view||settings.txView)localStorage.setItem(VK,settings.tx_view||settings.txView);
   if(settings.active_list||settings.activeList)slActiveList=settings.active_list||settings.activeList;
 }
@@ -2828,6 +2913,7 @@ function showPage(id){
   else if(id==='accounts'){renderAccs();popAccSels();}
   else if(id==='transactions')renderTx();
   else if(id==='shared')renderShared();
+  else if(id==='commitments')renderCommitments();
   else if(id==='future')renderFut();
   else if(id==='budget')renderBuds();
   else if(id==='goals')renderGoals();
@@ -3029,6 +3115,438 @@ function renderShared(){
     const action=balance===0?'':`<button class="btn btn-g btn-sm" data-write-only="registrar acertos" onclick="openSettlementFromBalance('${person.id}')">${balance>0?'Registrar recebimento':'Registrar pagamento'}</button>`;
     return `<div class="ss-r"><div><div class="ss-l">${esc(person.name)}</div><div class="ss-s">${label}</div></div><div style="display:flex;align-items:center;gap:10px"><strong style="font-family:var(--font-money);color:${tone}">${fmt(Math.abs(balance))}</strong>${action}</div></div>`;
   }).join('');
+  applyWriteAccessUI();
+}
+function commitmentStatusLabel(status){
+  return ({active:'Ativo',paused:'Pausado',cancelled:'Cancelado',watch:'Acompanhar',closed:'Quitada',ended:'Encerrado'}[status]||status||'');
+}
+function commitmentUsageLabel(usage){
+  return ({high:'muito usada',medium:'uso normal',low:'quase esquecida'}[usage]||'uso normal');
+}
+function monthlySubscriptionDueEntries(){
+  const linkedIds=new Set(commitmentsState.subscriptions.map(item=>item.linkedDueId).filter(Boolean));
+  return dueItems
+    .filter(item=>item.active&&item.recurrence==='monthly'&&normalizeTxText(item.category).includes('assin')&&!linkedIds.has(item.id))
+    .map(item=>({
+      ...nSubscription({
+        id:`due-${item.id}`,
+        name:item.name,
+        amount:item.amount,
+        category:item.category,
+        billingDay:item.dueDay,
+        renewalDate:item.nextDueDate,
+        paymentMethod:item.paymentMethod,
+        paymentPlace:item.paymentPlace,
+        accountId:item.accountId,
+        notes:item.notes,
+        linkedDueId:item.id
+      }),
+      source:'due'
+    }));
+}
+function subscriptionCenterItems(){
+  return [
+    ...commitmentsState.subscriptions.map(item=>({...nSubscription(item),source:'manual'})),
+    ...monthlySubscriptionDueEntries()
+  ].sort((a,b)=>{
+    if(a.status!==b.status)return a.status==='active'?-1:1;
+    return (a.renewalDate||'').localeCompare(b.renewalDate||'');
+  });
+}
+function contractCenterItems(){
+  return commitmentsState.contracts.map(item=>nContract(item)).sort((a,b)=>(a.renewalDate||'').localeCompare(b.renewalDate||''));
+}
+function debtCenterItems(){
+  return commitmentsState.debts.map(item=>nDebt(item)).sort((a,b)=>b.outstandingAmount-a.outstandingAmount);
+}
+function commitmentLinkedDue(id){
+  return dueItems.find(item=>item.id===id)||null;
+}
+function daysUntilDate(date){
+  if(!date)return null;
+  return Math.ceil((new Date(date+'T12:00:00')-new Date(today()+'T12:00:00'))/864e5);
+}
+function ensureSubscriptionDue(subscriptionId){
+  const item=commitmentsState.subscriptions.find(entry=>entry.id===subscriptionId);
+  if(!item)return;
+  const linked=commitmentLinkedDue(item.linkedDueId);
+  if(linked){openDueModal(linked.id);return;}
+  const date=item.renewalDate||today();
+  const due=nDue({
+    id:uid(),
+    name:item.name,
+    amount:item.amount,
+    category:item.category,
+    recurrence:'monthly',
+    nextDueDate:date,
+    dueDay:item.billingDay||new Date(date+'T12:00:00').getDate(),
+    paymentMethod:item.paymentMethod,
+    paymentPlace:item.paymentPlace,
+    accountId:item.accountId,
+    notes:item.notes||'Assinatura mensal'
+  });
+  dueItems.push(due);
+  item.linkedDueId=due.id;
+  saveDueItems();
+  saveCommitments();
+  renderCommitments();
+  toast('Assinatura vinculada aos vencimentos','success');
+}
+function ensureDebtDue(debtId){
+  const item=commitmentsState.debts.find(entry=>entry.id===debtId);
+  if(!item)return;
+  const linked=commitmentLinkedDue(item.linkedDueId);
+  if(linked){openDueModal(linked.id);return;}
+  const due=nDue({
+    id:uid(),
+    name:item.name,
+    amount:item.installmentAmount||item.outstandingAmount,
+    category:'Outros',
+    recurrence:item.remainingInstallments>1?'monthly':'once',
+    nextDueDate:item.nextDueDate||today(),
+    dueDay:new Date((item.nextDueDate||today())+'T12:00:00').getDate(),
+    paymentMethod:'financing',
+    paymentPlace:'Contrato / financiamento',
+    accountId:item.accountId,
+    notes:item.notes||'Parcela de divida'
+  });
+  dueItems.push(due);
+  item.linkedDueId=due.id;
+  saveDueItems();
+  saveCommitments();
+  renderCommitments();
+  toast('Divida vinculada aos vencimentos','success');
+}
+function ensureContractDue(contractId){
+  const item=commitmentsState.contracts.find(entry=>entry.id===contractId);
+  if(!item)return;
+  const linked=commitmentLinkedDue(item.linkedDueId);
+  if(linked){openDueModal(linked.id);return;}
+  const due=nDue({
+    id:uid(),
+    name:item.name,
+    amount:item.monthlyAmount,
+    category:'Moradia',
+    recurrence:'monthly',
+    nextDueDate:item.renewalDate||today(),
+    dueDay:new Date((item.renewalDate||today())+'T12:00:00').getDate(),
+    paymentMethod:'boleto',
+    paymentPlace:item.provider,
+    accountId:item.accountId,
+    notes:item.notes||`Contrato • ${item.kind}`
+  });
+  dueItems.push(due);
+  item.linkedDueId=due.id;
+  saveDueItems();
+  saveCommitments();
+  renderCommitments();
+  toast('Contrato vinculado aos vencimentos','success');
+}
+function removeCommitmentLinkFromDeletedDue(id){
+  let changed=false;
+  commitmentsState.subscriptions.forEach(item=>{if(item.linkedDueId===id){item.linkedDueId='';changed=true;}});
+  commitmentsState.debts.forEach(item=>{if(item.linkedDueId===id){item.linkedDueId='';changed=true;}});
+  commitmentsState.contracts.forEach(item=>{if(item.linkedDueId===id){item.linkedDueId='';changed=true;}});
+  if(changed)saveCommitments(false);
+}
+function detectSubscriptionSuggestions(){
+  const manualNames=new Set(subscriptionCenterItems().map(item=>normalizeTxText(item.name)));
+  return detectSubscriptions(recentMonthStats(6))
+    .filter(item=>!manualNames.has(normalizeTxText(item.desc)))
+    .map(item=>({
+      name:item.desc,
+      amount:Number(item.avg.toFixed(2)),
+      category:item.category||'Assinaturas',
+      billingDay:Number(String(item.last||today()).slice(8,10))||1,
+      renewalDate:addM(item.last||today(),1),
+      paymentMethod:'credit',
+      paymentPlace:'',
+      accountId:inferTxAccount(item.desc,item.desc,item.category),
+      usage:'medium',
+      notes:`Sugestao criada a partir de ${item.count} meses semelhantes`
+    }))
+    .slice(0,5);
+}
+function openSubscriptionModal(id=null,preset=null){
+  if(!requireWriteAccess(id?'editar assinaturas':'criar assinaturas'))return;
+  subscriptionEditId=id;
+  const item=id?commitmentsState.subscriptions.find(entry=>entry.id===id):null;
+  const sub=nSubscription(item||preset||{renewalDate:addM(today(),1),billingDay:new Date(addM(today(),1)+'T12:00:00').getDate(),paymentMethod:'credit'});
+  document.getElementById('subId').value=id||'';
+  document.getElementById('subName').value=sub.name==='Assinatura'&&!id&&preset===null?'':sub.name;
+  document.getElementById('subAmount').value=sub.amount||'';
+  document.getElementById('subCategory').value=sub.category||'Assinaturas';
+  document.getElementById('subDay').value=sub.billingDay||'';
+  document.getElementById('subRenewal').value=sub.renewalDate||addM(today(),1);
+  document.getElementById('subMethod').value=sub.paymentMethod||'credit';
+  document.getElementById('subPlace').value=sub.paymentPlace||'';
+  document.getElementById('subUsage').value=sub.usage||'medium';
+  document.getElementById('subStatus').value=sub.status||'active';
+  document.getElementById('subNotes').value=sub.notes||'';
+  document.getElementById('subAcc').innerHTML='<option value="">Sem conta/cartão</option>'+S.accounts.map(a=>`<option value="${a.id}">${a.icon} ${a.name}</option>`).join('');
+  document.getElementById('subAcc').value=sub.accountId||'';
+  document.getElementById('subscriptionModal').classList.add('open');
+}
+function saveSubscription(){
+  if(!requireWriteAccess(document.getElementById('subId').value?'editar assinaturas':'criar assinaturas'))return;
+  const existing=commitmentsState.subscriptions.find(entry=>entry.id===document.getElementById('subId').value);
+  const item=nSubscription({
+    id:document.getElementById('subId').value||uid(),
+    name:document.getElementById('subName').value.trim(),
+    amount:parseFloat(document.getElementById('subAmount').value)||0,
+    category:document.getElementById('subCategory').value||'Assinaturas',
+    billingDay:parseInt(document.getElementById('subDay').value,10)||new Date((document.getElementById('subRenewal').value||today())+'T12:00:00').getDate(),
+    renewalDate:document.getElementById('subRenewal').value||today(),
+    paymentMethod:document.getElementById('subMethod').value,
+    paymentPlace:document.getElementById('subPlace').value.trim(),
+    accountId:document.getElementById('subAcc').value,
+    usage:document.getElementById('subUsage').value,
+    status:document.getElementById('subStatus').value,
+    notes:document.getElementById('subNotes').value.trim(),
+    linkedDueId:existing?.linkedDueId||''
+  });
+  if(!item.name||!item.amount){toast('Informe nome e valor da assinatura','error');return;}
+  const idx=commitmentsState.subscriptions.findIndex(entry=>entry.id===item.id);
+  if(idx>=0)commitmentsState.subscriptions[idx]=item;else commitmentsState.subscriptions.unshift(item);
+  saveCommitments();
+  closeM('subscriptionModal');
+  renderCommitments();
+  toast('Assinatura salva','success');
+}
+function deleteSubscription(id){
+  if(!requireWriteAccess('remover assinaturas'))return;
+  if(!confirm('Remover esta assinatura da central?'))return;
+  commitmentsState.subscriptions=commitmentsState.subscriptions.filter(entry=>entry.id!==id);
+  saveCommitments();
+  renderCommitments();
+  toast('Assinatura removida','info');
+}
+function openDebtModal(id=null){
+  if(!requireWriteAccess(id?'editar dividas':'criar dividas'))return;
+  debtEditId=id;
+  const item=nDebt(id?commitmentsState.debts.find(entry=>entry.id===id):{nextDueDate:addM(today(),1)});
+  document.getElementById('debtId').value=id||'';
+  document.getElementById('debtName').value=id?item.name:'';
+  document.getElementById('debtTotal').value=item.totalAmount||'';
+  document.getElementById('debtOutstanding').value=item.outstandingAmount||'';
+  document.getElementById('debtInstallment').value=item.installmentAmount||'';
+  document.getElementById('debtTotalInstallments').value=item.totalInstallments||1;
+  document.getElementById('debtRemainingInstallments').value=item.remainingInstallments||1;
+  document.getElementById('debtInterest').value=item.interestRate||'';
+  document.getElementById('debtNextDate').value=item.nextDueDate||addM(today(),1);
+  document.getElementById('debtStrategy').value=item.strategy||'custom';
+  document.getElementById('debtStatus').value=item.status||'active';
+  document.getElementById('debtNotes').value=item.notes||'';
+  document.getElementById('debtAcc').innerHTML='<option value="">Sem conta/cartão</option>'+S.accounts.map(a=>`<option value="${a.id}">${a.icon} ${a.name}</option>`).join('');
+  document.getElementById('debtAcc').value=item.accountId||'';
+  document.getElementById('debtModal').classList.add('open');
+}
+function saveDebt(){
+  if(!requireWriteAccess(document.getElementById('debtId').value?'editar dividas':'criar dividas'))return;
+  const existing=commitmentsState.debts.find(entry=>entry.id===document.getElementById('debtId').value);
+  const item=nDebt({
+    id:document.getElementById('debtId').value||uid(),
+    name:document.getElementById('debtName').value.trim(),
+    totalAmount:parseFloat(document.getElementById('debtTotal').value)||0,
+    outstandingAmount:parseFloat(document.getElementById('debtOutstanding').value)||0,
+    installmentAmount:parseFloat(document.getElementById('debtInstallment').value)||0,
+    totalInstallments:parseInt(document.getElementById('debtTotalInstallments').value,10)||1,
+    remainingInstallments:parseInt(document.getElementById('debtRemainingInstallments').value,10)||1,
+    interestRate:parseFloat(document.getElementById('debtInterest').value)||0,
+    nextDueDate:document.getElementById('debtNextDate').value||today(),
+    accountId:document.getElementById('debtAcc').value,
+    strategy:document.getElementById('debtStrategy').value,
+    status:document.getElementById('debtStatus').value,
+    notes:document.getElementById('debtNotes').value.trim(),
+    linkedDueId:existing?.linkedDueId||''
+  });
+  if(!item.name||!item.totalAmount){toast('Informe nome e valor total da divida','error');return;}
+  const idx=commitmentsState.debts.findIndex(entry=>entry.id===item.id);
+  if(idx>=0)commitmentsState.debts[idx]=item;else commitmentsState.debts.unshift(item);
+  saveCommitments();
+  closeM('debtModal');
+  renderCommitments();
+  toast('Divida salva','success');
+}
+async function registerDebtPayment(id){
+  if(!requireWriteAccess('registrar parcelas de dividas'))return;
+  const item=commitmentsState.debts.find(entry=>entry.id===id);
+  if(!item)return;
+  const amount=item.installmentAmount||Math.min(item.outstandingAmount,item.totalAmount);
+  const date=item.nextDueDate||today();
+  const note=`Parcela de divida • ${item.remainingInstallments}/${item.totalInstallments}`;
+  const tx={id:uid(),type:'expense',desc:item.name,amount,category:'Outros',date,note,accountId:item.accountId||S.accounts[0]?.id||null,installmentGroup:null,installmentNum:null,installmentTotal:null,recurGroup:null,paid:true,pending:false};
+  try{
+    if(cfg.mode==='api'){
+      const saved=await api('POST','/api/transactions',{type:'expense',description:tx.desc,amount:tx.amount,category:tx.category,date,note,account_id:tx.accountId,paid:true,pending:false});
+      S.transactions.unshift(nTx({...saved,accountId:tx.accountId}));
+    }else{
+      S.transactions.unshift(tx);
+      saveLocal();
+    }
+    item.outstandingAmount=Math.max(0,Number((item.outstandingAmount-amount).toFixed(2)));
+    item.remainingInstallments=Math.max(0,item.remainingInstallments-1);
+    item.nextDueDate=item.remainingInstallments>0?addM(date,1):date;
+    if(item.outstandingAmount<=0||item.remainingInstallments===0)item.status='closed';
+    if(item.linkedDueId){
+      const linked=commitmentLinkedDue(item.linkedDueId);
+      if(linked){
+        if(item.status==='closed')linked.active=false;
+        else{
+          linked.amount=item.installmentAmount||linked.amount;
+          linked.nextDueDate=item.nextDueDate;
+          linked.dueDay=new Date(item.nextDueDate+'T12:00:00').getDate();
+        }
+        saveDueItems();
+      }
+    }
+    saveCommitments();
+    refreshAll();
+    toast('Parcela registrada','success');
+  }catch(e){toast('Erro ao registrar parcela: '+e.message,'error');}
+}
+function deleteDebt(id){
+  if(!requireWriteAccess('remover dividas'))return;
+  if(!confirm('Remover esta divida da central?'))return;
+  commitmentsState.debts=commitmentsState.debts.filter(entry=>entry.id!==id);
+  saveCommitments();
+  renderCommitments();
+  toast('Divida removida','info');
+}
+function openContractModal(id=null){
+  if(!requireWriteAccess(id?'editar contratos':'criar contratos'))return;
+  contractEditId=id;
+  const item=nContract(id?commitmentsState.contracts.find(entry=>entry.id===id):{renewalDate:addM(today(),1)});
+  document.getElementById('contractId').value=id||'';
+  document.getElementById('contractName').value=id?item.name:'';
+  document.getElementById('contractKind').value=item.kind||'service';
+  document.getElementById('contractAmount').value=item.monthlyAmount||'';
+  document.getElementById('contractProvider').value=item.provider||'';
+  document.getElementById('contractRenewal').value=item.renewalDate||addM(today(),1);
+  document.getElementById('contractAdjustment').value=item.adjustmentDate||'';
+  document.getElementById('contractStatus').value=item.status||'active';
+  document.getElementById('contractNotes').value=item.notes||'';
+  document.getElementById('contractAcc').innerHTML='<option value="">Sem conta/cartão</option>'+S.accounts.map(a=>`<option value="${a.id}">${a.icon} ${a.name}</option>`).join('');
+  document.getElementById('contractAcc').value=item.accountId||'';
+  document.getElementById('contractModal').classList.add('open');
+}
+function saveContract(){
+  if(!requireWriteAccess(document.getElementById('contractId').value?'editar contratos':'criar contratos'))return;
+  const existing=commitmentsState.contracts.find(entry=>entry.id===document.getElementById('contractId').value);
+  const item=nContract({
+    id:document.getElementById('contractId').value||uid(),
+    name:document.getElementById('contractName').value.trim(),
+    kind:document.getElementById('contractKind').value,
+    monthlyAmount:parseFloat(document.getElementById('contractAmount').value)||0,
+    provider:document.getElementById('contractProvider').value.trim(),
+    renewalDate:document.getElementById('contractRenewal').value||today(),
+    adjustmentDate:document.getElementById('contractAdjustment').value||'',
+    accountId:document.getElementById('contractAcc').value,
+    status:document.getElementById('contractStatus').value,
+    notes:document.getElementById('contractNotes').value.trim(),
+    linkedDueId:existing?.linkedDueId||''
+  });
+  if(!item.name){toast('Informe o nome do contrato','error');return;}
+  const idx=commitmentsState.contracts.findIndex(entry=>entry.id===item.id);
+  if(idx>=0)commitmentsState.contracts[idx]=item;else commitmentsState.contracts.unshift(item);
+  saveCommitments();
+  closeM('contractModal');
+  renderCommitments();
+  toast('Contrato salvo','success');
+}
+function deleteContract(id){
+  if(!requireWriteAccess('remover contratos'))return;
+  if(!confirm('Remover este contrato da central?'))return;
+  commitmentsState.contracts=commitmentsState.contracts.filter(entry=>entry.id!==id);
+  saveCommitments();
+  renderCommitments();
+  toast('Contrato removido','info');
+}
+function moneyCommittedSummary(){
+  const subscriptions=subscriptionCenterItems().filter(item=>item.status==='active').reduce((sum,item)=>sum+item.amount,0);
+  const debts=debtCenterItems().filter(item=>item.status==='active').reduce((sum,item)=>sum+(item.installmentAmount||0),0);
+  const contracts=contractCenterItems().filter(item=>item.status!=='ended').reduce((sum,item)=>sum+(item.monthlyAmount||0),0);
+  return {subscriptions,debts,contracts,total:subscriptions+debts+contracts};
+}
+function debtPayoffPlans(){
+  const active=debtCenterItems().filter(item=>item.status==='active'&&item.outstandingAmount>0);
+  return {
+    snowball:[...active].sort((a,b)=>a.outstandingAmount-b.outstandingAmount),
+    avalanche:[...active].sort((a,b)=>b.interestRate-a.interestRate)
+  };
+}
+function renderCommitments(){
+  const subs=subscriptionCenterItems();
+  const debts=debtCenterItems();
+  const contracts=contractCenterItems();
+  const summary=moneyCommittedSummary();
+  const renewals=[
+    ...subs.filter(item=>item.status==='active').map(item=>({name:item.name,date:item.renewalDate,type:'Assinatura'})),
+    ...contracts.filter(item=>item.status!=='ended').map(item=>({name:item.name,date:item.adjustmentDate||item.renewalDate,type:item.adjustmentDate?'Reajuste':'Contrato'}))
+  ].filter(item=>item.date&&daysUntilDate(item.date)!==null&&daysUntilDate(item.date)<=30).sort((a,b)=>a.date.localeCompare(b.date));
+  const overdueDebts=debts.filter(item=>item.status==='active'&&item.nextDueDate<today());
+  const subTotal=document.getElementById('commitSubTotal');if(subTotal)subTotal.textContent=fmt(summary.subscriptions);
+  const debtTotal=document.getElementById('commitDebtTotal');if(debtTotal)debtTotal.textContent=fmt(debts.reduce((sum,item)=>sum+item.outstandingAmount,0));
+  const renewCount=document.getElementById('commitRenewCount');if(renewCount)renewCount.textContent=String(renewals.length);
+  const committed=document.getElementById('commitCommittedMonthly');if(committed)committed.textContent=fmt(summary.total);
+  const debtAlert=document.getElementById('commitDebtAlert');if(debtAlert)debtAlert.textContent=overdueDebts.length?`${overdueDebts.length} divida(s) atrasadas`:'parcelas em dia';
+  const renewMeta=document.getElementById('commitRenewMeta');if(renewMeta)renewMeta.textContent=renewals[0]?`${renewals[0].type} • ${fmtD(renewals[0].date)}`:'nada vence em 30 dias';
+  const center=document.getElementById('commitmentCenter');
+  if(center){
+    const plans=debtPayoffPlans();
+    center.innerHTML=`
+      <div class="future-center-grid">
+        <div class="future-center-card">
+          <div class="ct">Dinheiro comprometido</div>
+          <div class="cs">O que ja sai do mes antes das escolhas do dia a dia</div>
+          <div class="future-center-list">
+            <div class="future-center-row"><div><div class="future-center-name">Assinaturas</div><div class="future-center-meta">${subs.filter(item=>item.status==='active').length} ativas</div></div><div class="future-center-amt">${fmt(summary.subscriptions)}</div></div>
+            <div class="future-center-row"><div><div class="future-center-name">Parcelas de dividas</div><div class="future-center-meta">${debts.filter(item=>item.status==='active').length} acompanhadas</div></div><div class="future-center-amt">${fmt(summary.debts)}</div></div>
+            <div class="future-center-row"><div><div class="future-center-name">Contratos</div><div class="future-center-meta">${contracts.filter(item=>item.status!=='ended').length} em vigor</div></div><div class="future-center-amt">${fmt(summary.contracts)}</div></div>
+          </div>
+        </div>
+        <div class="future-center-card">
+          <div class="ct">Plano de quitacao</div>
+          <div class="cs">Bola de neve e avalanche para atacar o saldo com menos improviso</div>
+          <div class="future-center-list">
+            ${plans.snowball.length?`<div class="future-center-row"><div><div class="future-center-name">Bola de neve</div><div class="future-center-meta">Comece por ${esc(plans.snowball[0].name)}</div></div><div class="future-center-amt">${fmt(plans.snowball[0].outstandingAmount)}</div></div>`:'<div class="sync-empty">Sem dividas ativas para ordenar.</div>'}
+            ${plans.avalanche.length?`<div class="future-center-row"><div><div class="future-center-name">Avalanche</div><div class="future-center-meta">Maior juros em ${esc(plans.avalanche[0].name)}</div></div><div class="future-center-amt">${plans.avalanche[0].interestRate.toFixed(2)}% a.m.</div></div>`:''}
+          </div>
+        </div>
+      </div>`;
+  }
+  const suggestions=detectSubscriptionSuggestions();
+  const subList=document.getElementById('subscriptionList');
+  if(subList)subList.innerHTML=subs.length?subs.map(item=>{
+    const renewDays=daysUntilDate(item.renewalDate);
+    const tone=item.status==='cancelled'?'var(--mt)':renewDays!==null&&renewDays<=3?'var(--dan)':renewDays!==null&&renewDays<=10?'var(--warn)':'var(--ac2)';
+    const linked=commitmentLinkedDue(item.linkedDueId);
+    const actions=item.source==='due'
+      ? `<button class="btn btn-g btn-sm" onclick="openDueModal('${item.linkedDueId}')">Abrir vencimento</button>`
+      : `<button class="btn btn-g btn-sm" onclick="${linked?`openDueModal('${linked.id}')`:`ensureSubscriptionDue('${item.id}')`}">${linked?'Editar vencimento':'Gerar vencimento'}</button><button class="btn btn-g btn-sm" onclick="openSubscriptionModal('${item.id}')">Editar</button><button class="btn btn-d btn-sm" onclick="deleteSubscription('${item.id}')">Remover</button>`;
+    return `<div class="commit-row"><div><div class="commit-title">${esc(item.name)}</div><div class="commit-meta"><span class="bdg">${esc(item.category)}</span><span class="bdg">${commitmentStatusLabel(item.status)}</span><span class="bdg">${commitmentUsageLabel(item.usage)}</span>${item.paymentPlace?`<span class="bdg">${esc(item.paymentPlace)}</span>`:''}${item.notes?`<span class="commit-note">${esc(item.notes)}</span>`:''}</div></div><div class="commit-side"><strong style="color:${tone}">${fmt(item.amount)}</strong><small>${renewDays===null?'sem renovacao':renewDays<0?`renovou ha ${Math.abs(renewDays)}d`:`renova em ${renewDays}d`}</small><div class="commit-actions">${actions}</div></div></div>`;
+  }).join(''):'<div class="sync-empty">Nenhuma assinatura salva ainda.</div>';
+  const suggestionList=document.getElementById('subscriptionSuggestionList');
+  if(suggestionList)suggestionList.innerHTML=suggestions.length?suggestions.map((item,idx)=>`<div class="ss-r"><div><div class="ss-l">${esc(item.name)}</div><div class="ss-s">${fmt(item.amount)} • categoria ${esc(item.category)} • dia ${item.billingDay}</div></div><button class="btn btn-g btn-sm" data-write-only="criar assinaturas" onclick="openSubscriptionModal(null,window.__subscriptionSuggestions[${idx}])">Salvar na central</button></div>`).join(''):'<div class="sync-empty">O detector automatico ainda nao encontrou recorrencias novas relevantes.</div>';
+  window.__subscriptionSuggestions=suggestions;
+  const debtList=document.getElementById('debtList');
+  if(debtList)debtList.innerHTML=debts.length?debts.map(item=>{
+    const nextDays=daysUntilDate(item.nextDueDate);
+    const linked=commitmentLinkedDue(item.linkedDueId);
+    return `<div class="commit-row"><div><div class="commit-title">${esc(item.name)}</div><div class="commit-meta"><span class="bdg">${commitmentStatusLabel(item.status)}</span><span class="bdg">${item.remainingInstallments}/${item.totalInstallments} parcelas</span><span class="bdg">${item.interestRate.toFixed(2)}% a.m.</span>${item.notes?`<span class="commit-note">${esc(item.notes)}</span>`:''}</div></div><div class="commit-side"><strong>${fmt(item.outstandingAmount)}</strong><small>${nextDays<0?`atrasada ha ${Math.abs(nextDays)}d`:`proxima em ${nextDays}d`}</small><div class="commit-actions"><button class="btn btn-p btn-sm" data-write-only="registrar parcelas de dividas" onclick="registerDebtPayment('${item.id}')">Registrar parcela</button><button class="btn btn-g btn-sm" onclick="${linked?`openDueModal('${linked.id}')`:`ensureDebtDue('${item.id}')`}">${linked?'Abrir vencimento':'Gerar vencimento'}</button><button class="btn btn-g btn-sm" onclick="openDebtModal('${item.id}')">Editar</button><button class="btn btn-d btn-sm" onclick="deleteDebt('${item.id}')">Remover</button></div></div></div>`;
+  }).join(''):'<div class="sync-empty">Nenhuma divida cadastrada ainda.</div>';
+  const planList=document.getElementById('debtPlanList');
+  if(planList){
+    const snowball=debtPayoffPlans().snowball;
+    planList.innerHTML=snowball.length?snowball.map((item,idx)=>`<div class="ss-r"><div><div class="ss-l">${idx+1}. ${esc(item.name)}</div><div class="ss-s">${fmt(item.outstandingAmount)} restantes • parcela ${fmt(item.installmentAmount||0)}</div></div><span class="diag-pill">${item.strategy==='avalanche'?'Avalanche':item.strategy==='snowball'?'Neve':'Livre'}</span></div>`).join(''):'<div class="sync-empty">Quando voce cadastrar dividas, a ordem sugerida aparece aqui.</div>';
+  }
+  const contractList=document.getElementById('contractList');
+  if(contractList)contractList.innerHTML=contracts.length?contracts.map(item=>{
+    const alertDate=item.adjustmentDate||item.renewalDate;
+    const days=daysUntilDate(alertDate);
+    const linked=commitmentLinkedDue(item.linkedDueId);
+    return `<div class="commit-row"><div><div class="commit-title">${esc(item.name)}</div><div class="commit-meta"><span class="bdg">${esc(item.kind)}</span><span class="bdg">${commitmentStatusLabel(item.status)}</span>${item.provider?`<span class="bdg">${esc(item.provider)}</span>`:''}${item.notes?`<span class="commit-note">${esc(item.notes)}</span>`:''}</div></div><div class="commit-side"><strong>${item.monthlyAmount?fmt(item.monthlyAmount):'—'}</strong><small>${days===null?'sem alerta':days<0?`venceu ha ${Math.abs(days)}d`:`alerta em ${days}d`}</small><div class="commit-actions"><button class="btn btn-g btn-sm" onclick="${linked?`openDueModal('${linked.id}')`:`ensureContractDue('${item.id}')`}">${linked?'Abrir vencimento':'Gerar vencimento'}</button><button class="btn btn-g btn-sm" onclick="openContractModal('${item.id}')">Editar</button><button class="btn btn-d btn-sm" onclick="deleteContract('${item.id}')">Remover</button></div></div></div>`;
+  }).join(''):'<div class="sync-empty">Nenhum contrato cadastrado ainda.</div>';
   applyWriteAccessUI();
 }
 function debounce(fn,wait=160){let t;return(...args)=>{clearTimeout(t);t=setTimeout(()=>fn(...args),wait);};}
@@ -3271,6 +3789,7 @@ function delDue(id){
   if(!confirm('Remover este vencimento?'))return;
   const removed=dueItems.find(x=>x.id===id);if(!removed)return;
   dueItems=dueItems.filter(x=>x.id!==id);
+  removeCommitmentLinkFromDeletedDue(id);
   saveDueItems();renderFut();
   queueUndo(`Vencimento removido: ${removed.name}`,async()=>{dueItems.push(removed);saveDueItems();renderFut();});
   toast('Vencimento removido','info');
@@ -4167,6 +4686,7 @@ function renderSet(){
     loadAdminUsers().catch(()=>{});
   }
   renderCatChips();
+  renderSidebarShortcutEditor();
   const pJ=document.getElementById('popJsonExp');if(pJ)pJ.style.display=loc?'':'none';
   const pM=document.getElementById('popMig');if(pM)pM.style.display=loc?'':'none';
   updateTrustPanel();
@@ -4204,7 +4724,14 @@ async function copyDiag(){
 // POPOVER
 function togglePop(){const p=document.getElementById('acctPop');const c=document.getElementById('popChev');p.classList.toggle('open');c.textContent=p.classList.contains('open')?'▼':'▲';}
 function closePop(){document.getElementById('acctPop').classList.remove('open');document.getElementById('popChev').textContent='▲';}
-document.addEventListener('click',e=>{const btn=document.getElementById('acctBtn');const pop=document.getElementById('acctPop');if(pop&&!pop.contains(e.target)&&btn&&!btn.contains(e.target))closePop();});
+document.addEventListener('click',e=>{
+  const btn=document.getElementById('acctBtn');
+  const pop=document.getElementById('acctPop');
+  if(pop&&!pop.contains(e.target)&&btn&&!btn.contains(e.target))closePop();
+  const shortcutMenu=document.getElementById('sidebarShortcutMenu');
+  const shortcutCard=e.target.closest('.sidebar-card');
+  if(sidebarShortcutMenuOpen&&shortcutMenu&&!shortcutMenu.contains(e.target)&&!shortcutCard)closeSidebarShortcutMenu();
+});
 // HELPERS
 function setTyp(t){document.getElementById('tExp').className='ttb'+(t==='expense'?' active expense':'');document.getElementById('tInc').className='ttb'+(t==='income'?' active income':'');document.getElementById('tExp').dataset.t=t==='expense'?'1':'';document.getElementById('tInc').dataset.t=t==='income'?'1':'';syncTxSplitUI();}
 function getTyp(){return document.getElementById('tExp').dataset.t?'expense':'income';}
@@ -4273,11 +4800,19 @@ function seedDemo(){
   ];
   S.budgets=[{id:uid(),category:'Alimentação',limit:600},{id:uid(),category:'Moradia',limit:1500},{id:uid(),category:'Transporte',limit:200},{id:uid(),category:'Lazer',limit:300},{id:uid(),category:'Assinaturas',limit:150},{id:uid(),category:'Tecnologia',limit:400}];
   S.goals=[{id:uid(),name:'Viagem Europa',icon:'\u2708\uFE0F',target:12000,current:4500,deadline:`${y+1}-06-01`,desc:'Lisboa e Berlim',monthly:800},{id:uid(),name:'Reserva Emergência',icon:'\u{1F6E1}\uFE0F',target:15000,current:8200,deadline:`${y}-12-31`,desc:'6 meses de despesas',monthly:500},{id:uid(),name:'Notebook Novo',icon:'\u{1F4BB}',target:6000,current:2100,deadline:`${y+1}-03-01`,desc:'Trabalho e estudos',monthly:300}];
+  commitmentsState=normalizeCommitmentsState({
+    subscriptions:[{name:'Netflix',amount:55,category:'Assinaturas',billingDay:16,renewalDate:addM(`${y}-${m}-16`,1),paymentMethod:'credit',paymentPlace:'Cartão principal',usage:'medium',status:'active',notes:'Streaming principal'}],
+    debts:[{name:'Notebook parcelado',totalAmount:3600,outstandingAmount:1800,installmentAmount:300,totalInstallments:12,remainingInstallments:6,interestRate:1.79,nextDueDate:`${y}-${m}-28`,strategy:'snowball',status:'active',notes:'Compra de trabalho'}],
+    contracts:[{name:'Internet fibra',kind:'internet',monthlyAmount:120,provider:'Operadora',renewalDate:`${y}-${m}-15`,adjustmentDate:`${y}-${m}-15`,status:'watch',notes:'Checar reajuste anual'}]
+  });
   saveLocal();
+  saveCommitments(false);
 }
 // INIT
 async function initApp(){
   loadImportCenterState();
+  loadCommitments();
+  loadSidebarShortcutPrefs();
   loadWidgetPrefs();
   loadRates();
   loadDueItems();
@@ -4287,6 +4822,7 @@ async function initApp(){
   applyAdminPanelVisibility();
   applyWriteAccessUI();
   applyAvatar();
+  renderSidebarShortcuts();
   const sv=localStorage.getItem(VK)||'n';setView(sv);
   const savedPage=sessionStorage.getItem(PAGE_KEY)||'dashboard';
   if(savedPage!=='dashboard')showPage(savedPage);
@@ -4824,15 +5360,19 @@ function initDeepLink() {
 // ════════════════════════════════════════════════════════════
 const WIDGETS_KEY = 'fz_widgets';
 const MIN_DASH_WIDGETS = 3;
-const FOCUSED_WIDGET_IDS = ['cards','quickactions','recent','budalerts'];
-const DEFAULT_DASH_WIDGET_ORDER = ['cards','quickactions','recent','budalerts','accounts','budgets','goals','shopping','vehicles','compare','ministats','barcats','saverate','charts','projection','weekly','anomaly'];
+const PINNED_WIDGET_IDS = ['workbench'];
+const FOCUSED_WIDGET_IDS = ['workbench','cards','commitments','quickactions','budalerts','renewals'];
+const DEFAULT_DASH_WIDGET_ORDER = ['workbench','cards','commitments','budalerts','quickactions','renewals','recent','accounts','budgets','goals','shopping','vehicles','compare','charts','barcats','ministats','saverate','projection','weekly','anomaly'];
 
 // Definição de todos os widgets disponíveis
 const WIDGET_DEFS = [
   { id:'cards',     ico:'💳', name:'Resumo do dia a dia',  desc:'Salário, gastos, sobra e a pagar',   default:true,  group:'core' },
   { id:'quickactions', ico:'⚡', name:'Ações rápidas',      desc:'Atalhos úteis para o dia a dia',     default:true,  group:'core' },
-  { id:'recent',    ico:'💸', name:'Últimas transações',    desc:'Lançamentos recentes',               default:true,  group:'core' },
+  { id:'workbench', ico:'🧭', name:'Atalhos do Finanza',    desc:'Porta de entrada para áreas complementares', default:true, group:'support' },
+  { id:'recent',    ico:'💸', name:'Últimas transações',    desc:'Lançamentos recentes',               default:false, group:'core' },
   { id:'budalerts', ico:'⚠️', name:'Alertas de orçamento',  desc:'Riscos que pedem decisão hoje',      default:true,  group:'core' },
+  { id:'commitments', ico:'📦', name:'Compromissos fixos',  desc:'Assinaturas, dívidas e contratos',   default:true,  group:'support' },
+  { id:'renewals',  ico:'🔔', name:'Renovações próximas',   desc:'Alertas de reajuste e vencimento',   default:true,  group:'support' },
   { id:'accounts',  ico:'🏦', name:'Saldos das contas',     desc:'Saldo de cada conta bancária',       default:false, group:'support' },
   { id:'budgets',   ico:'🎯', name:'Orçamentos rápidos',    desc:'Uso mensal por categoria',            default:false, group:'support' },
   { id:'goals',     ico:'🏆', name:'Metas rápidas',         desc:'Progresso das suas metas',            default:false, group:'support' },
@@ -4851,14 +5391,95 @@ const WIDGET_DEFS = [
 let widgetPrefs = {};
 let widgetOrder = [];
 let widgetFilters = {};
+let sidebarShortcutPrefs = [];
+let sidebarShortcutMenuOpen = false;
 let dashboardManagerOpen = false;
 let activeWidgetMenuId = '';
 let dashboardDragId = '';
 let dashDirty = true;
+const SIDEBAR_SHORTCUT_DEFS = [
+  {id:'commitments',label:'Compromissos',icon:'📦',page:'commitments'},
+  {id:'budget',label:'Limites',icon:'🎯',page:'budget'},
+  {id:'shared',label:'Acertos',icon:'🤝',page:'shared'},
+  {id:'shopping',label:'Compras',icon:'🛒',page:'shopping'},
+  {id:'goals',label:'Metas',icon:'🏆',page:'goals'},
+  {id:'accounts',label:'Contas',icon:'🏦',page:'accounts'},
+  {id:'car',label:'Carro',icon:'🚗',page:'car'},
+  {id:'future',label:'Vencimentos',icon:'📌',page:'future'}
+];
+const DEFAULT_SIDEBAR_SHORTCUTS = ['commitments','budget','shared','shopping','goals','accounts'];
 
 function defaultDashboardWidgetOrder(){
   const ids=WIDGET_DEFS.map(w=>w.id);
   return [...DEFAULT_DASH_WIDGET_ORDER.filter(id=>ids.includes(id)),...ids.filter(id=>!DEFAULT_DASH_WIDGET_ORDER.includes(id))];
+}
+function sidebarShortcutById(id){
+  return SIDEBAR_SHORTCUT_DEFS.find(item=>item.id===id)||SIDEBAR_SHORTCUT_DEFS[0];
+}
+function normalizeSidebarShortcuts(raw=[]){
+  const ids=SIDEBAR_SHORTCUT_DEFS.map(item=>item.id);
+  const picked=asArr(raw).map(String).filter(id=>ids.includes(id));
+  const result=[];
+  for(let i=0;i<DEFAULT_SIDEBAR_SHORTCUTS.length;i++){
+    const preferred=picked[i];
+    if(preferred&&!result.includes(preferred))result.push(preferred);
+    else{
+      const fallback=DEFAULT_SIDEBAR_SHORTCUTS.find(id=>!result.includes(id))||ids.find(id=>!result.includes(id))||DEFAULT_SIDEBAR_SHORTCUTS[i];
+      result.push(fallback);
+    }
+  }
+  return result;
+}
+function loadSidebarShortcutPrefs(){
+  try{sidebarShortcutPrefs=normalizeSidebarShortcuts(JSON.parse(localStorage.getItem(SIDEBAR_SHORTCUTS_KEY)||'[]'));}catch{sidebarShortcutPrefs=normalizeSidebarShortcuts();}
+}
+function saveSidebarShortcutPrefs(persistRemote=true){
+  sidebarShortcutPrefs=normalizeSidebarShortcuts(sidebarShortcutPrefs);
+  localStorage.setItem(SIDEBAR_SHORTCUTS_KEY,JSON.stringify(sidebarShortcutPrefs));
+  renderSidebarShortcuts();
+  if(persistRemote&&cfg.mode==='api')saveRemoteState().catch(()=>{});
+}
+function renderSidebarShortcuts(){
+  const el=document.getElementById('sidebarShortcuts');
+  if(!el)return;
+  el.innerHTML=sidebarShortcutPrefs.map(id=>{
+    const item=sidebarShortcutById(id);
+    return `<button class="sidebar-icon-btn" onclick="showPage('${item.page}')" title="${esc(item.label)}" aria-label="${esc(item.label)}">${item.icon}</button>`;
+  }).join('');
+}
+function renderSidebarShortcutEditor(){
+  const el=document.getElementById('sidebarShortcutMenu');
+  if(!el)return;
+  el.classList.toggle('open',sidebarShortcutMenuOpen);
+  el.innerHTML=`<div class="sidebar-shortcut-menu-head"><div><strong>Editar atalhos</strong><span>Escolha o que fica sempre visível.</span></div><button class="btn btn-g btn-sm" onclick="closeSidebarShortcutMenu()">Fechar</button></div><div class="sidebar-shortcut-editor">${sidebarShortcutPrefs.map((currentId,idx)=>`<label class="sidebar-shortcut-slot"><span>Atalho ${idx+1}</span><select class="fi sel" onchange="setSidebarShortcut(${idx},this.value)">${SIDEBAR_SHORTCUT_DEFS.map(item=>`<option value="${item.id}" ${item.id===currentId?'selected':''}>${item.icon} ${esc(item.label)}</option>`).join('')}</select></label>`).join('')}</div>`;
+}
+function setSidebarShortcut(index,id){
+  const nextId=String(id||'');
+  const existingIndex=sidebarShortcutPrefs.findIndex((item,idx)=>item===nextId&&idx!==index);
+  if(existingIndex>=0)[sidebarShortcutPrefs[existingIndex],sidebarShortcutPrefs[index]]=[sidebarShortcutPrefs[index],sidebarShortcutPrefs[existingIndex]];
+  else sidebarShortcutPrefs[index]=nextId;
+  saveSidebarShortcutPrefs();
+  renderSidebarShortcutEditor();
+  toast('Atalhos atualizados','success');
+}
+function toggleSidebarShortcutMenu(){
+  sidebarShortcutMenuOpen=!sidebarShortcutMenuOpen;
+  renderSidebarShortcutEditor();
+}
+function closeSidebarShortcutMenu(){
+  if(!sidebarShortcutMenuOpen)return;
+  sidebarShortcutMenuOpen=false;
+  renderSidebarShortcutEditor();
+}
+function isPinnedWidget(id){
+  return PINNED_WIDGET_IDS.includes(id);
+}
+function enforcePinnedWidgets(){
+  const ids=WIDGET_DEFS.map(w=>w.id);
+  PINNED_WIDGET_IDS.forEach(id=>{
+    if(ids.includes(id))widgetPrefs[id]=true;
+  });
+  widgetOrder=[...PINNED_WIDGET_IDS.filter(id=>ids.includes(id)),...widgetOrder.filter(id=>ids.includes(id)&&!PINNED_WIDGET_IDS.includes(id))];
 }
 
 function loadWidgetPrefs() {
@@ -4875,6 +5496,7 @@ function loadWidgetPrefs() {
   const ids=WIDGET_DEFS.map(w=>w.id);
   const fallbackOrder=defaultDashboardWidgetOrder();
   widgetOrder=[...widgetOrder.filter(id=>ids.includes(id)),...fallbackOrder.filter(id=>!widgetOrder.includes(id))];
+  enforcePinnedWidgets();
   ensureAtLeastOneWidget();
 }
 
@@ -4922,6 +5544,10 @@ function ensureAtLeastOneWidget(){
 }
 
 function toggleWidget(id) {
+  if(isPinnedWidget(id)){
+    toast('Esse atalho fica fixo no topo da dashboard','info');
+    return;
+  }
   const willDisable=isWidgetOn(id);
   if(willDisable&&activeWidgetCount()<=MIN_DASH_WIDGETS){
     toast(`Mantenha pelo menos ${MIN_DASH_WIDGETS} widgets na dashboard`,'info');
@@ -4935,6 +5561,7 @@ function toggleWidget(id) {
 function applyFocusedDashboardPreset(){
   widgetPrefs={};
   WIDGET_DEFS.forEach(w=>widgetPrefs[w.id]=FOCUSED_WIDGET_IDS.includes(w.id));
+  enforcePinnedWidgets();
   ensureAtLeastOneWidget();
   saveWidgetPrefs();
   activeWidgetMenuId='';
@@ -4943,6 +5570,7 @@ function applyFocusedDashboardPreset(){
 }
 function enableAllDashboardWidgets(){
   WIDGET_DEFS.forEach(w=>widgetPrefs[w.id]=true);
+  enforcePinnedWidgets();
   ensureAtLeastOneWidget();
   saveWidgetPrefs();
   renderDash();
@@ -4953,25 +5581,30 @@ function toggleDashboardManager(){
   renderDashboardManager();
 }
 function moveWidgetOrder(id,dir){
+  if(isPinnedWidget(id))return;
   const idx=widgetOrder.indexOf(id);
   const next=idx+dir;
-  if(idx<0||next<0||next>=widgetOrder.length)return;
+  if(idx<0||next<0||next>=widgetOrder.length||isPinnedWidget(widgetOrder[next]))return;
   [widgetOrder[idx],widgetOrder[next]]=[widgetOrder[next],widgetOrder[idx]];
+  enforcePinnedWidgets();
   saveWidgetOrder();
   renderDash();
 }
 function resetWidgetOrder(){
   widgetOrder=defaultDashboardWidgetOrder();
+  enforcePinnedWidgets();
   saveWidgetOrder();
   renderDash();
   toast('Ordem do dashboard restaurada','info');
 }
 function moveWidgetToEdge(id,edge){
+  if(isPinnedWidget(id))return;
   const idx=widgetOrder.indexOf(id);
   if(idx<0)return;
   const [item]=widgetOrder.splice(idx,1);
   if(edge==='start')widgetOrder.unshift(item);
   else widgetOrder.push(item);
+  enforcePinnedWidgets();
   saveWidgetOrder();
   renderDash();
 }
@@ -4981,6 +5614,7 @@ function resetDashboardWidgets(){
   widgetOrder=defaultDashboardWidgetOrder();
   widgetFilters={};
   activeWidgetMenuId='';
+  enforcePinnedWidgets();
   ensureAtLeastOneWidget();
   localStorage.setItem(WIDGETS_KEY,JSON.stringify(widgetPrefs));
   localStorage.setItem(WIDGET_ORDER_KEY,JSON.stringify(widgetOrder));
@@ -5023,6 +5657,9 @@ function openWidgetTarget(id){
   const targets={
     cards:'transactions',
     quickactions:'transactions',
+    workbench:'dashboard',
+    commitments:'commitments',
+    renewals:'commitments',
     charts:'transactions',
     compare:'transactions',
     projection:'future',
@@ -5060,11 +5697,13 @@ function onDashboardManagerDrop(id,event){
   const rows=document.querySelectorAll('.dash-manager-row');
   rows.forEach(row=>row.classList.remove('drag-over'));
   if(!dashboardDragId||dashboardDragId===id)return;
+  if(isPinnedWidget(dashboardDragId)||isPinnedWidget(id))return;
   const from=widgetOrder.indexOf(dashboardDragId);
   const to=widgetOrder.indexOf(id);
   if(from<0||to<0)return;
   const [item]=widgetOrder.splice(from,1);
   widgetOrder.splice(to,0,item);
+  enforcePinnedWidgets();
   dashboardDragId='';
   saveWidgetOrder();
   renderDash();

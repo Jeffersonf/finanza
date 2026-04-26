@@ -2,8 +2,11 @@ function dashboardWidgetRenderers(){
   return {
     cards:widgetCards,
     quickactions:widgetQuickActions,
+    workbench:widgetWorkbench,
     ministats:widgetMiniStats,
     accounts:widgetAccounts,
+    commitments:widgetCommitments,
+    renewals:widgetRenewals,
     vehicles:widgetVehicles,
     shopping:widgetShoppingDash,
     compare:()=>'<div class="dash-section" id="monthCompare"></div>',
@@ -29,8 +32,9 @@ function dashboardWidgetMarkup(id,isDark=document.documentElement.dataset.theme=
   const html=render();
   if(!html)return '';
   const menuOpen=activeWidgetMenuId===id;
-  const menu=`<div class="widget-menu-shell"><button class="widget-menu-btn" onclick="event.stopPropagation();toggleWidgetMenu('${id}')" aria-label="Abrir menu do widget" title="Ajustar widget">⋯</button>${menuOpen?`<div class="widget-menu-panel" onclick="event.stopPropagation()">${renderWidgetMenuPanel(id)}</div>`:''}</div>`;
-  return `<div class="dash-section-wrap" data-widget-id="${id}" data-theme-snapshot="${isDark?'dark':'light'}">${menu}${html}</div>`;
+  const pinned=isPinnedWidget(id);
+  const menu=`<div class="widget-menu-shell"><button class="widget-menu-btn" onclick="event.stopPropagation();toggleWidgetMenu('${id}')" aria-label="Abrir menu do widget" title="${pinned?'Ajustar atalho fixo':'Ajustar widget'}">⋯</button>${menuOpen?`<div class="widget-menu-panel" onclick="event.stopPropagation()">${renderWidgetMenuPanel(id)}</div>`:''}</div>`;
+  return `<div class="dash-section-wrap ${pinned?'dash-section-wrap-pinned':''}" data-widget-id="${id}" data-theme-snapshot="${isDark?'dark':'light'}">${menu}${html}</div>`;
 }
 function dashboardWidgetPostRender(id,isDark=document.documentElement.dataset.theme==='dark'){
   if(id==='compare')renderMonthCompare();
@@ -71,6 +75,7 @@ function widgetMenuAction(label,fn,tone='ghost'){
   return `<button class="${cls}" onclick="${fn}">${label}</button>`;
 }
 function renderWidgetMenuPanel(id){
+  const pinned=isPinnedWidget(id);
   const sections=[];
   sections.push(`<div class="widget-menu-head"><strong>${esc(widgetById(id)?.name||'Widget')}</strong><small>Ajuste os dados mostrados e a posicao deste bloco.</small></div>`);
   switch(id){
@@ -80,12 +85,21 @@ function renderWidgetMenuPanel(id){
     case 'quickactions':
       sections.push(widgetSelectControl('quickactions','limit','Atalhos',[{value:'4',label:'4 atalhos'},{value:'6',label:'6 atalhos'}],'6'));
       break;
+    case 'workbench':
+      sections.push(widgetSelectControl('workbench','layout','Visual',[{value:'grid',label:'Grade completa'},{value:'compact',label:'Compacto'}],'grid'));
+      break;
     case 'charts':
       sections.push(widgetSelectControl('charts','mode','Grafico principal',[{value:'bars',label:'Barras'},{value:'line',label:'Linha acumulada'}],'bars'));
       break;
     case 'accounts':
       sections.push(widgetSelectControl('accounts','limit','Contas',[{value:'3',label:'3 contas'},{value:'5',label:'5 contas'},{value:'all',label:'Todas'}],'5'));
       sections.push(widgetSelectControl('accounts','sort','Ordem',[{value:'manual',label:'Ordem cadastrada'},{value:'balance_desc',label:'Maior saldo'},{value:'balance_asc',label:'Menor saldo'}],'manual'));
+      break;
+    case 'commitments':
+      sections.push(widgetSelectControl('commitments','scope','Mostrar',[{value:'monthly',label:'Mensal'},{value:'debts',label:'Dívidas'},{value:'all',label:'Tudo'}],'monthly'));
+      break;
+    case 'renewals':
+      sections.push(widgetSelectControl('renewals','limit','Linhas',[{value:'3',label:'3 alertas'},{value:'5',label:'5 alertas'},{value:'8',label:'8 alertas'}],'5'));
       break;
     case 'goals':
       sections.push(widgetSelectControl('goals','limit','Metas',[{value:'3',label:'3 metas'},{value:'4',label:'4 metas'},{value:'6',label:'6 metas'}],'4'));
@@ -124,8 +138,13 @@ function renderWidgetMenuPanel(id){
       sections.push('<div class="widget-menu-empty">Esse widget segue a visão principal da dashboard por enquanto.</div>');
       break;
   }
-  sections.push(`<div class="widget-inline-actions">${widgetMenuAction('Abrir area',`openWidgetTarget('${id}')`)}${widgetMenuAction('Topo',`moveWidgetToEdge('${id}','start')`)}${widgetMenuAction('Base',`moveWidgetToEdge('${id}','end')`)}</div>`);
-  sections.push(`<div class="widget-inline-actions">${widgetMenuAction('Subir',`moveWidgetOrder('${id}',-1)`)}${widgetMenuAction('Descer',`moveWidgetOrder('${id}',1)`)}${widgetMenuAction('Remover',`toggleWidget('${id}')`,'danger')}</div>`);
+  if(pinned){
+    sections.push('<div class="widget-menu-empty">Esse atalho fica fixo no topo para servir como entrada principal das áreas complementares.</div>');
+    sections.push(`<div class="widget-inline-actions">${widgetMenuAction('Abrir area',`openWidgetTarget('${id}')`)}</div>`);
+  }else{
+    sections.push(`<div class="widget-inline-actions">${widgetMenuAction('Abrir area',`openWidgetTarget('${id}')`)}${widgetMenuAction('Topo',`moveWidgetToEdge('${id}','start')`)}${widgetMenuAction('Base',`moveWidgetToEdge('${id}','end')`)}</div>`);
+    sections.push(`<div class="widget-inline-actions">${widgetMenuAction('Subir',`moveWidgetOrder('${id}',-1)`)}${widgetMenuAction('Descer',`moveWidgetOrder('${id}',1)`)}${widgetMenuAction('Remover',`toggleWidget('${id}')`,'danger')}</div>`);
+  }
   return sections.join('');
 }
 function renderDashboardManager(){
@@ -136,7 +155,7 @@ function renderDashboardManager(){
   const supportVisible=activeIds.filter(id=>widgetById(id)?.group==='support').length;
   const analysisVisible=activeIds.filter(id=>widgetById(id)?.group==='analysis').length;
   const allActive=activeIds.length===WIDGET_DEFS.length;
-  el.innerHTML=`<div class="dash-manager-head"><div><div class="dash-manager-title">Dashboard essencial primeiro</div><div class="dash-manager-sub">${coreVisible} essenciais • ${supportVisible} de apoio • ${analysisVisible} analíticos ativos</div></div><button class="btn btn-g btn-sm" onclick="toggleDashboardManager()">${dashboardManagerOpen?'Fechar editor':'Editar widgets'}</button></div>${dashboardManagerOpen?`<div class="dash-manager-panel"><div class="dash-manager-actions"><button class="btn btn-g btn-sm" onclick="applyFocusedDashboardPreset()">Só o essencial</button><button class="btn btn-g btn-sm" ${allActive?'disabled':''} onclick="enableAllDashboardWidgets()">Selecionar todos</button><button class="btn btn-g btn-sm" onclick="resetWidgetOrder()">Restaurar ordem</button><button class="btn btn-g btn-sm" onclick="resetDashboardWidgets()">Voltar ao padrão</button></div><div class="dash-manager-tip">A home agora prioriza capturar, revisar e decidir gastos. Widgets analíticos continuam disponíveis, mas podem ficar desligados para manter o fluxo leve. Arraste aqui para reorganizar sem mexer nos cards da tela.</div><div class="dash-manager-list">${widgetOrder.map((id,idx)=>{const w=widgetById(id);if(!w)return'';const on=isWidgetOn(id);return `<div class="dash-manager-row ${on?'is-on':'is-off'}" data-widget-id="${id}" draggable="true" ondragstart="onDashboardManagerDragStart('${id}')" ondragend="onDashboardManagerDragEnd()" ondragover="onDashboardManagerDragOver('${id}',event)" ondrop="onDashboardManagerDrop('${id}',event)"><div class="dash-manager-info"><span class="dash-manager-grab" aria-hidden="true">⋮⋮</span><span class="dash-manager-ico">${w.ico}</span><div><strong>${esc(w.name)} <span class="dash-manager-tag tag-${esc(w.group||'analysis')}">${widgetGroupLabel(w.group)}</span></strong><small>${esc(w.desc)}</small></div></div><div class="dash-manager-controls"><button class="btn btn-g btn-sm" ${idx===0?'disabled':''} onclick="moveWidgetOrder('${id}',-1)">↑</button><button class="btn btn-g btn-sm" ${idx===widgetOrder.length-1?'disabled':''} onclick="moveWidgetOrder('${id}',1)">↓</button><button class="btn ${on?'btn-d':'btn-g'} btn-sm" onclick="toggleWidget('${id}')">${on?'Remover':'Adicionar'}</button></div></div>`;}).join('')}</div></div>`:''}`;
+  el.innerHTML=`<div class="dash-manager-head"><div><div class="dash-manager-title">${coreVisible} essenciais • ${supportVisible} de apoio • ${analysisVisible} analíticos ativos</div><div class="dash-manager-sub">Sua página inicial, do seu jeito</div></div><button class="btn btn-g btn-sm" onclick="toggleDashboardManager()">${dashboardManagerOpen?'Fechar editor':'Editar widgets'}</button></div>${dashboardManagerOpen?`<div class="dash-manager-panel"><div class="dash-manager-actions"><button class="btn btn-g btn-sm" onclick="applyFocusedDashboardPreset()">Só o essencial</button><button class="btn btn-g btn-sm" ${allActive?'disabled':''} onclick="enableAllDashboardWidgets()">Selecionar todos</button><button class="btn btn-g btn-sm" onclick="resetWidgetOrder()">Restaurar ordem</button><button class="btn btn-g btn-sm" onclick="resetDashboardWidgets()">Voltar ao padrão</button></div><div class="dash-manager-tip">Deixe o topo para abrir o que você usa sempre e ligue abaixo só os blocos que ajudam de verdade.</div><div class="dash-manager-list">${widgetOrder.map((id,idx)=>{const w=widgetById(id);if(!w)return'';const on=isWidgetOn(id);const pinned=isPinnedWidget(id);return `<div class="dash-manager-row ${on?'is-on':'is-off'} ${pinned?'is-pinned':''}" data-widget-id="${id}" draggable="${pinned?'false':'true'}" ondragstart="onDashboardManagerDragStart('${id}')" ondragend="onDashboardManagerDragEnd()" ondragover="onDashboardManagerDragOver('${id}',event)" ondrop="onDashboardManagerDrop('${id}',event)"><div class="dash-manager-info"><span class="dash-manager-grab" aria-hidden="true">${pinned?'★':'⋮⋮'}</span><span class="dash-manager-ico">${w.ico}</span><div><strong>${esc(w.name)} <span class="dash-manager-tag tag-${esc(w.group||'analysis')}">${widgetGroupLabel(w.group)}</span>${pinned?` <span class="dash-manager-tag tag-core">Fixo</span>`:''}</strong><small>${esc(w.desc)}</small></div></div><div class="dash-manager-controls"><button class="btn btn-g btn-sm" ${idx===0||pinned?'disabled':''} onclick="moveWidgetOrder('${id}',-1)">↑</button><button class="btn btn-g btn-sm" ${idx===widgetOrder.length-1||pinned?'disabled':''} onclick="moveWidgetOrder('${id}',1)">↓</button><button class="btn ${on&&!pinned?'btn-d':'btn-g'} btn-sm" ${pinned?'disabled':''} onclick="toggleWidget('${id}')">${on&&!pinned?'Remover':pinned?'Fixo':'Adicionar'}</button></div></div>`;}).join('')}</div></div>`:''}`;
 }
 
 function widgetRangeDate(scope='month'){
@@ -199,6 +218,28 @@ function widgetQuickActions(){
     <div class="quick-actions-grid">${actions.map(a=>`<button class="quick-action-card ${a.className||''}" onclick="${a.fn}"><span class="quick-action-ico">${a.icon}</span><strong>${esc(a.title)}</strong><small>${esc(a.hint)}</small></button>`).join('')}</div>
   </div>`;
 }
+function widgetWorkbench(){
+  const layout=(widgetFilters?.workbench?.layout)||'grid';
+  const areas=[
+    {icon:'📦',title:'Compromissos',short:'Comprom.',hint:'Assinaturas, dívidas e contratos',page:'commitments'},
+    {icon:'🤝',title:'Acertos',short:'Acertos',hint:'Casal, família e divisão',page:'shared'},
+    {icon:'🎯',title:'Limites',short:'Limites',hint:'Orçamentos e risco',page:'budget'},
+    {icon:'🛒',title:'Compras',short:'Compras',hint:'Listas e reposição',page:'shopping'},
+    {icon:'🚗',title:'Carro',short:'Carro',hint:'Combustível e manutenção',page:'car'},
+    {icon:'🏆',title:'Metas',short:'Metas',hint:'Objetivos e reserva',page:'goals'},
+    {icon:'🏦',title:'Contas',short:'Contas',hint:'Saldo e rendimento',page:'accounts'},
+    {icon:'🔔',title:'Renovações',short:'Alertas',hint:'Reajustes e vencimentos próximos',page:'commitments'}
+  ];
+  const compact=layout==='compact';
+  const items=areas;
+  return `<div class="quick-actions-widget quick-actions-widget-featured dash-section">
+    <div class="bh"><div><div class="ct">🧭 Atalhos do Finanza</div></div></div>
+    <div class="quick-actions-grid workbench-grid ${compact?'workbench-grid-compact':'workbench-grid-full'}">${items.map(area=>compact
+      ? `<button class="quick-action-card quick-action-card-compact" onclick="showPage('${area.page}')" title="${esc(area.title)}"><span class="quick-action-ico">${area.icon}</span><strong>${esc(area.short||area.title)}</strong></button>`
+      : `<button class="quick-action-card quick-action-card-workbench" onclick="showPage('${area.page}')"><span class="quick-action-ico">${area.icon}</span><strong>${esc(area.title)}</strong><small>${esc(area.hint)}</small></button>`
+    ).join('')}</div>
+  </div>`;
+}
 function widgetAccounts(){
   if(!S.accounts.length)return '';
   const limit=(widgetFilters?.accounts?.limit)||'5';
@@ -211,6 +252,47 @@ function widgetAccounts(){
     <div class="bh"><div class="ct">Contas</div><button class="btn btn-g btn-sm" onclick="showPage('accounts')">Ver →</button></div>
     <div style="display:flex;flex-direction:column;gap:8px;">
       ${accounts.map(a=>{const bal=getAccBal(a.id);const y=getAccYield(a,1);return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px;border-bottom:1px solid var(--bd2)"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">${a.icon}</span><span style="font-size:13px;font-weight:500">${a.name}</span>${y>0?`<span class="yield-pill">+${fmt(y)}</span>`:''}</div><span style="font-family:var(--font-money);font-weight:700;font-size:14px;color:${bal>=0?'var(--ac)':'var(--dan)'}">${fmt(bal)}</span></div>`;}).join('')}
+    </div>
+  </div>`;
+}
+function widgetCommitments(){
+  if(typeof moneyCommittedSummary!=='function')return '';
+  const summary=moneyCommittedSummary();
+  const debts=(typeof debtCenterItems==='function'?debtCenterItems():[]).filter(item=>item.status==='active');
+  const subs=(typeof subscriptionCenterItems==='function'?subscriptionCenterItems():[]).filter(item=>item.status==='active');
+  const contracts=(typeof contractCenterItems==='function'?contractCenterItems():[]).filter(item=>item.status!=='ended');
+  const scope=(widgetFilters?.commitments?.scope)||'monthly';
+  const mainValue=scope==='debts'
+    ? debts.reduce((sum,item)=>sum+item.outstandingAmount,0)
+    : summary.total;
+  const chips=[
+    {label:'Assinaturas',value:summary.subscriptions},
+    {label:'Parcelas',value:summary.debts},
+    {label:'Contratos',value:summary.contracts}
+  ];
+  return `<div class="box dash-section">
+    <div class="bh"><div><div class="ct">📦 Compromissos fixos</div><div class="cs">${subs.length} assinatura(s) • ${debts.length} dívida(s) • ${contracts.length} contrato(s)</div></div><button class="btn btn-g btn-sm" onclick="showPage('commitments')">Abrir →</button></div>
+    <div class="future-center-row" style="padding:6px 0 12px"><div><div class="future-center-name">${scope==='debts'?'Dívidas em aberto':'Dinheiro comprometido no mês'}</div><div class="future-center-meta">${scope==='debts'?'saldo total ainda pendente':'o que já sai antes do restante do mês'}</div></div><div class="future-center-amt">${fmt(mainValue)}</div></div>
+    <div class="proj-scenarios">
+      ${chips.map(item=>`<div class="proj-scenario"><span>${item.label}</span><strong>${fmt(item.value)}</strong></div>`).join('')}
+    </div>
+  </div>`;
+}
+function widgetRenewals(){
+  if(typeof subscriptionCenterItems!=='function'||typeof contractCenterItems!=='function'||typeof daysUntilDate!=='function')return '';
+  const limit=Number((widgetFilters?.renewals?.limit)||5);
+  const entries=[
+    ...subscriptionCenterItems().filter(item=>item.status==='active').map(item=>({name:item.name,date:item.renewalDate,kind:'Assinatura',amount:item.amount})),
+    ...contractCenterItems().filter(item=>item.status!=='ended').map(item=>({name:item.name,date:item.adjustmentDate||item.renewalDate,kind:item.adjustmentDate?'Reajuste':'Contrato',amount:item.monthlyAmount||0}))
+  ]
+    .filter(item=>item.date&&daysUntilDate(item.date)!==null&&daysUntilDate(item.date)<=30)
+    .sort((a,b)=>a.date.localeCompare(b.date))
+    .slice(0,limit);
+  if(!entries.length)return '';
+  return `<div class="box dash-section">
+    <div class="bh"><div><div class="ct">🔔 Renovações e reajustes</div><div class="cs">O que merece revisão nos próximos 30 dias</div></div><button class="btn btn-g btn-sm" onclick="showPage('commitments')">Ver central →</button></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${entries.map(item=>{const days=daysUntilDate(item.date);const tone=days<=3?'var(--dan)':days<=10?'var(--warn)':'var(--ac2)';return `<div class="future-center-row"><div><div class="future-center-name">${esc(item.name)}</div><div class="future-center-meta" style="color:${tone}">${item.kind} • ${days<0?`há ${Math.abs(days)}d`:`em ${days}d`} • ${fmtD(item.date)}</div></div><div class="future-center-amt">${item.amount?fmt(item.amount):'—'}</div></div>`;}).join('')}
     </div>
   </div>`;
 }

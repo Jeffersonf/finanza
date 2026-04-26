@@ -27,13 +27,7 @@
 <nav class="fnav" id="fnav">
   <div class="fn-item active" data-page="dashboard"><span class="fni">📊</span>Início</div>
   <div class="fn-item" data-page="transactions"><span class="fni">💸</span>Gastos</div>
-  <div class="fn-item" data-page="shared"><span class="fni">🤝</span>Acertos</div>
   <div class="fn-item fut-n" data-page="future"><span class="fni">📌</span>Venc.</div>
-  <div class="fn-item" data-page="budget"><span class="fni">🎯</span>Limites</div>
-  <div class="fn-item sl-n" data-page="shopping"><span class="fni">🛒</span>Lista</div>
-  <div class="fn-item" data-page="car"><span class="fni">🚗</span>Carro</div>
-  <div class="fn-item" data-page="goals"><span class="fni">🏆</span>Metas</div>
-  <div class="fn-item" data-page="settings"><span class="fni">⚙️</span>Config</div>
 </nav>
 <div class="qa-wrap" id="qaWrap">
   <div class="qa-panel" id="qaPanel">
@@ -197,15 +191,22 @@
   <nav>
     <div class="nav-item active" data-page="dashboard"><span class="ico">📊</span>Dashboard</div>
     <div class="nav-item" data-page="transactions"><span class="ico">💸</span>Gastos do dia a dia</div>
-    <div class="nav-item" data-page="shared"><span class="ico">🤝</span>Acertos e divisão</div>
     <div class="nav-item fn" data-page="future"><span class="ico">📌</span>Vencimentos</div>
-    <div class="nav-item" data-page="budget"><span class="ico">🎯</span>Limites e orçamentos</div>
-    <div class="nav-item sl-n" data-page="shopping"><span class="ico">🛒</span>Lista de compras</div>
-    <div class="nav-item" data-page="car"><span class="ico">🚗</span>Carro e combustível</div>
-    <div class="nav-item" data-page="goals"><span class="ico">🏆</span>Metas</div>
-    <div class="nav-item an" data-page="accounts"><span class="ico">🏦</span>Contas e rendimento</div>
-    <div class="nav-item" data-page="settings"><span class="ico">⚙️</span>Configurações</div>
   </nav>
+  <div class="sidebar-utility">
+    <div class="sidebar-card">
+      <div class="sidebar-card-head">
+        <div class="sidebar-card-kicker">Atalhos fixos</div>
+        <button class="sidebar-card-edit" onclick="toggleSidebarShortcutMenu()" title="Editar atalhos">Editar</button>
+      </div>
+      <div class="sidebar-icon-shortcuts" id="sidebarShortcuts"></div>
+      <div class="sidebar-shortcut-menu" id="sidebarShortcutMenu"></div>
+    </div>
+    <div class="sidebar-mini-actions">
+      <button class="sidebar-mini-btn primary" data-write-only="criar transações" onclick="openModal()">+ Nova</button>
+      <button class="sidebar-mini-btn" onclick="openImportCenter()">Importar</button>
+    </div>
+  </div>
   <div class="sb-bottom">
     <div class="conn-wrap">
     </div>
@@ -226,6 +227,10 @@
   </div>
 </aside>
 <main class="main">
+<button class="mobile-profile-btn" id="mobileProfileBtn" onclick="showPage('settings')" aria-label="Abrir perfil e configurações">
+  <span class="uavatar" id="uAvatarMobile">EU</span>
+  <span class="mobile-profile-label">Perfil</span>
+</button>
 <div class="page active" id="page-dashboard">
   <div class="ph"><div><div class="pt">Dashboard</div><div class="ps">Centro do dia para lançar, revisar e decidir seus gastos</div></div>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
@@ -325,6 +330,35 @@
   <div class="box">
     <div class="bh"><div><div class="ct">Saldos entre vocês</div><div class="cs">Quem deve para quem com base nas despesas divididas e nos acertos registrados</div></div></div>
     <div id="sharedBalancesList"></div>
+  </div>
+</div>
+<div class="page" id="page-commitments">
+  <div class="ph"><div><div class="pt">📦 Assinaturas, dívidas e contratos</div><div class="ps">Central para o dinheiro comprometido, renovações, parcelas e acordos recorrentes</div></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-g btn-sm" data-write-only="criar assinaturas" onclick="openSubscriptionModal()">+ Assinatura</button><button class="btn btn-g btn-sm" data-write-only="criar dividas" onclick="openDebtModal()">+ Dívida</button><button class="btn btn-p btn-sm" data-write-only="criar contratos" onclick="openContractModal()">+ Contrato</button></div></div>
+  <div class="g4" style="margin-bottom:18px;">
+    <div class="sc sc-glow-warn"><span class="ci">📺</span><div class="cl">Assinaturas/mês</div><div class="cv neu" id="commitSubTotal">—</div><div class="cc">o que é recorrente e continua cobrando</div></div>
+    <div class="sc sc-glow-dan"><span class="ci">💳</span><div class="cl">Dívidas em aberto</div><div class="cv neg" id="commitDebtTotal">—</div><div class="cc" id="commitDebtAlert">—</div></div>
+    <div class="sc sc-glow-ac2"><span class="ci">🔔</span><div class="cl">Alertas em 30 dias</div><div class="cv fut" id="commitRenewCount">—</div><div class="cc" id="commitRenewMeta">—</div></div>
+    <div class="sc sc-glow-ac"><span class="ci">🧾</span><div class="cl">Comprometido/mês</div><div class="cv" id="commitCommittedMonthly">—</div><div class="cc">fixos que saem antes do resto</div></div>
+  </div>
+  <div class="box" style="margin-bottom:14px">
+    <div class="bh"><div><div class="ct">Painel de dinheiro comprometido</div><div class="cs">Veja o que já pesa no mês e qual dívida atacar primeiro</div></div></div>
+    <div id="commitmentCenter"></div>
+  </div>
+  <div class="box" style="margin-bottom:14px">
+    <div class="bh"><div><div class="ct">Central de assinaturas</div><div class="cs">Renovações, comparação do que é útil vs esquecido e vínculo com vencimentos</div></div></div>
+    <div id="subscriptionList" class="commit-list"></div>
+    <div class="sdiv"><div class="sdiv-line"></div><span class="sdiv-lbl">Detector automático</span><div class="sdiv-line"></div></div>
+    <div id="subscriptionSuggestionList"></div>
+  </div>
+  <div class="box" style="margin-bottom:14px">
+    <div class="bh"><div><div class="ct">Dívidas e plano de quitação</div><div class="cs">Parcelas, juros, ordem sugerida para quitar e vínculo com vencimentos</div></div></div>
+    <div id="debtList" class="commit-list"></div>
+    <div class="sdiv"><div class="sdiv-line"></div><span class="sdiv-lbl">Ordem sugerida</span><div class="sdiv-line"></div></div>
+    <div id="debtPlanList"></div>
+  </div>
+  <div class="box">
+    <div class="bh"><div><div class="ct">Contratos e reajustes</div><div class="cs">Internet, aluguel, seguro, financiamento e acordos que merecem revisão</div></div></div>
+    <div id="contractList" class="commit-list"></div>
   </div>
 </div>
 <div class="page" id="page-future">
@@ -716,6 +750,42 @@
   <div class="frow"><div class="fg"><label class="fl">Conta/cartão</label><select class="fi" id="dueAcc"></select></div><div class="fg"><label class="fl">Categoria</label><select class="fi" id="dueCat"></select></div></div>
   <div class="fg"><label class="fl">Observação</label><input type="text" class="fi" id="dueNotes" placeholder="Contrato, código, login, detalhe importante..."></div>
   <div class="ma"><button class="btn btn-p" style="flex:1" onclick="saveDue()">Salvar</button><button class="btn btn-g" onclick="closeM('dueModal')">Cancelar</button></div>
+</div></div>
+<div class="ov" id="subscriptionModal"><div class="modal">
+  <button class="mc" onclick="closeM('subscriptionModal')">✕</button>
+  <div class="mt">Assinatura</div><div class="ms">Guarde o que renova todo mês e o que já vale rever ou cancelar</div>
+  <input type="hidden" id="subId">
+  <div class="frow"><div class="fg"><label class="fl">Nome</label><input type="text" class="fi" id="subName" placeholder="Ex: Netflix, Adobe, academia"></div><div class="fg"><label class="fl">Valor mensal (R$)</label><input type="number" class="fi" id="subAmount" min="0" step="0.01" placeholder="0,00"></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Categoria</label><input type="text" class="fi" id="subCategory" value="Assinaturas"></div><div class="fg"><label class="fl">Dia da cobrança</label><input type="number" class="fi" id="subDay" min="1" max="31" placeholder="15"></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Próxima renovação</label><input type="date" class="fi" id="subRenewal"></div><div class="fg"><label class="fl">Uso percebido</label><select class="fi" id="subUsage"><option value="high">Muito usada</option><option value="medium">Uso normal</option><option value="low">Quase esquecida</option></select></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Forma</label><select class="fi" id="subMethod"><option value="credit">Cartão principal</option><option value="debit">Débito automático</option><option value="pix">Pix</option><option value="boleto">Boleto</option></select></div><div class="fg"><label class="fl">Onde cobra</label><input type="text" class="fi" id="subPlace" placeholder="App, site, operadora..."></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Conta/cartão</label><select class="fi" id="subAcc"></select></div><div class="fg"><label class="fl">Status</label><select class="fi" id="subStatus"><option value="active">Ativa</option><option value="paused">Pausada</option><option value="cancelled">Cancelada</option></select></div></div>
+  <div class="fg"><label class="fl">Observação</label><input type="text" class="fi" id="subNotes" placeholder="Preço promocional, motivo, login, oportunidade de corte..."></div>
+  <div class="ma"><button class="btn btn-p" style="flex:1" onclick="saveSubscription()">Salvar assinatura</button><button class="btn btn-g" onclick="closeM('subscriptionModal')">Cancelar</button></div>
+</div></div>
+<div class="ov" id="debtModal"><div class="modal">
+  <button class="mc" onclick="closeM('debtModal')">✕</button>
+  <div class="mt">Dívida</div><div class="ms">Acompanhe saldo, juros, parcelas e a melhor ordem para quitar</div>
+  <input type="hidden" id="debtId">
+  <div class="frow"><div class="fg"><label class="fl">Nome</label><input type="text" class="fi" id="debtName" placeholder="Ex: Nubank parcelado, empréstimo, consignado"></div><div class="fg"><label class="fl">Valor total (R$)</label><input type="number" class="fi" id="debtTotal" min="0" step="0.01" placeholder="0,00"></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Saldo em aberto (R$)</label><input type="number" class="fi" id="debtOutstanding" min="0" step="0.01" placeholder="0,00"></div><div class="fg"><label class="fl">Parcela mensal (R$)</label><input type="number" class="fi" id="debtInstallment" min="0" step="0.01" placeholder="0,00"></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Parcelas totais</label><input type="number" class="fi" id="debtTotalInstallments" min="1" step="1"></div><div class="fg"><label class="fl">Parcelas restantes</label><input type="number" class="fi" id="debtRemainingInstallments" min="0" step="1"></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Juros (% a.m.)</label><input type="number" class="fi" id="debtInterest" min="0" step="0.01" placeholder="0,00"></div><div class="fg"><label class="fl">Próxima parcela</label><input type="date" class="fi" id="debtNextDate"></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Conta/cartão</label><select class="fi" id="debtAcc"></select></div><div class="fg"><label class="fl">Estratégia</label><select class="fi" id="debtStrategy"><option value="custom">Livre</option><option value="snowball">Bola de neve</option><option value="avalanche">Avalanche</option></select></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Status</label><select class="fi" id="debtStatus"><option value="active">Ativa</option><option value="watch">Acompanhar</option><option value="closed">Quitada</option></select></div><div class="fg"></div></div>
+  <div class="fg"><label class="fl">Observação</label><input type="text" class="fi" id="debtNotes" placeholder="Banco, renegociação, CET, risco, condição especial..."></div>
+  <div class="ma"><button class="btn btn-p" style="flex:1" onclick="saveDebt()">Salvar dívida</button><button class="btn btn-g" onclick="closeM('debtModal')">Cancelar</button></div>
+</div></div>
+<div class="ov" id="contractModal"><div class="modal">
+  <button class="mc" onclick="closeM('contractModal')">✕</button>
+  <div class="mt">Contrato</div><div class="ms">Guarde prazos, reajustes, valores e pontos de atenção antes de renovar</div>
+  <input type="hidden" id="contractId">
+  <div class="frow"><div class="fg"><label class="fl">Nome</label><input type="text" class="fi" id="contractName" placeholder="Ex: Aluguel, internet, seguro do carro"></div><div class="fg"><label class="fl">Tipo</label><select class="fi" id="contractKind"><option value="service">Serviço</option><option value="rent">Aluguel</option><option value="insurance">Seguro</option><option value="financing">Financiamento</option><option value="utility">Conta essencial</option></select></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Valor mensal (R$)</label><input type="number" class="fi" id="contractAmount" min="0" step="0.01" placeholder="0,00"></div><div class="fg"><label class="fl">Fornecedor / contraparte</label><input type="text" class="fi" id="contractProvider" placeholder="Ex: Vivo, imobiliária, banco"></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Renovação / vencimento</label><input type="date" class="fi" id="contractRenewal"></div><div class="fg"><label class="fl">Reajuste previsto</label><input type="date" class="fi" id="contractAdjustment"></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Conta/cartão</label><select class="fi" id="contractAcc"></select></div><div class="fg"><label class="fl">Status</label><select class="fi" id="contractStatus"><option value="active">Ativo</option><option value="watch">Acompanhar</option><option value="ended">Encerrado</option></select></div></div>
+  <div class="fg"><label class="fl">Observação</label><input type="text" class="fi" id="contractNotes" placeholder="Cláusula importante, link, reajuste, multa, contato, anexo externo..."></div>
+  <div class="ma"><button class="btn btn-p" style="flex:1" onclick="saveContract()">Salvar contrato</button><button class="btn btn-g" onclick="closeM('contractModal')">Cancelar</button></div>
 </div></div>
 <div class="ov" id="budModal"><div class="modal">
   <button class="mc" onclick="closeM('budModal')">✕</button>
