@@ -17,6 +17,8 @@ function migrateLegacyBackup(input = {}) {
       ...tx,
       description: tx.description || tx.desc || 'Lancamento',
       desc: tx.desc || tx.description || 'Lancamento',
+      purchaseDate: tx.purchaseDate || tx.purchase_date || tx.date || null,
+      purchase_date: tx.purchase_date || tx.purchaseDate || tx.date || null,
       accountId: tx.accountId || tx.account_id || null,
       account_id: tx.account_id || tx.accountId || null,
       installmentGroup: tx.installmentGroup || tx.installment_group || null,

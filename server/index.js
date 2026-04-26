@@ -36,6 +36,7 @@ async function ensureOperationalSchema() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT FALSE;
     UPDATE users SET role = 'admin' WHERE is_admin = TRUE AND role <> 'admin';
     ALTER TABLE transactions ADD COLUMN IF NOT EXISTS split_meta JSONB DEFAULT '{}'::jsonb;
+    ALTER TABLE transactions ADD COLUMN IF NOT EXISTS purchase_date DATE;
     CREATE TABLE IF NOT EXISTS audit_events (
       id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id     UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -726,7 +727,7 @@ app.get('/api/transactions', userAuth, async (req, res) => {
 
 app.post('/api/transactions', userAuth, requireWrite, async (req, res) => {
   try {
-    const { type, description, amount, category, date, note = '',
+    const { type, description, amount, category, date, purchase_date = null, note = '',
             account_id, paid=false, pending=false,
             installment_group, installment_num, installment_total, recur_group, split_meta = {} } = req.body;
     if (!type || !description || !amount || !category || !date)
@@ -734,10 +735,10 @@ app.post('/api/transactions', userAuth, requireWrite, async (req, res) => {
 
     const { rows } = await pool.query(
       `INSERT INTO transactions
-        (user_id, type, description, amount, category, date, note,
+        (user_id, type, description, amount, category, date, purchase_date, note,
          account_id, paid, pending, installment_group, installment_num, installment_total, recur_group, split_meta)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb) RETURNING *`,
-      [req.user.id, type, description, amount, normalizeCategoryName(category), date, note,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb) RETURNING *`,
+      [req.user.id, type, description, amount, normalizeCategoryName(category), date, purchase_date || null, note,
        account_id||null, !!paid, !!pending,
        installment_group||null, installment_num||null, installment_total||null, recur_group||null, toJsonb(split_meta, {})]
     );
@@ -748,13 +749,13 @@ app.post('/api/transactions', userAuth, requireWrite, async (req, res) => {
 
 app.put('/api/transactions/:id', userAuth, requireWrite, async (req, res) => {
   try {
-    const { type, description, amount, category, date, note, account_id, paid, pending, split_meta = {} } = req.body;
+    const { type, description, amount, category, date, purchase_date = null, note, account_id, paid, pending, split_meta = {} } = req.body;
     const { rows } = await pool.query(
       `UPDATE transactions
-       SET type=$1,description=$2,amount=$3,category=$4,date=$5,note=$6,
-           account_id=$7,paid=COALESCE($8,paid),pending=COALESCE($9,pending),split_meta=$10::jsonb
-       WHERE id=$11 AND user_id=$12 RETURNING *`,
-      [type, description, amount, normalizeCategoryName(category), date, note, account_id||null,
+       SET type=$1,description=$2,amount=$3,category=$4,date=$5,purchase_date=$6,note=$7,
+           account_id=$8,paid=COALESCE($9,paid),pending=COALESCE($10,pending),split_meta=$11::jsonb
+       WHERE id=$12 AND user_id=$13 RETURNING *`,
+      [type, description, amount, normalizeCategoryName(category), date, purchase_date || null, note, account_id||null,
        typeof paid === 'boolean' ? paid : null,
        typeof pending === 'boolean' ? pending : null,
        toJsonb(split_meta, {}),
@@ -827,11 +828,11 @@ app.put('/api/import', userAuth, requireWrite, async (req, res) => {
 
     await replaceRows(client, 'transactions', uid, data.transactions || [],
       `INSERT INTO transactions
-        (user_id,type,description,amount,category,date,note,account_id,paid,pending,
+        (user_id,type,description,amount,category,date,purchase_date,note,account_id,paid,pending,
          installment_group,installment_num,installment_total,recur_group,split_meta)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb)`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb)`,
       (t, userId) => [userId, cleanText(t.type, 'expense'), cleanText(t.desc || t.description, 'Lançamento'),
-        Number(t.amount)||0, normalizeCategoryName(cleanText(t.category, 'A classificar')), t.date, cleanText(t.note),
+        Number(t.amount)||0, normalizeCategoryName(cleanText(t.category, 'A classificar')), t.date, t.purchaseDate || t.purchase_date || t.date, cleanText(t.note),
         t.accountId || t.account_id || null, !!t.paid, !!t.pending,
         t.installmentGroup || t.installment_group || null, t.installmentNum || t.installment_num || null,
         t.installmentTotal || t.installment_total || null, t.recurGroup || t.recur_group || null,

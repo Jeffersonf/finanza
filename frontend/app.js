@@ -1342,14 +1342,61 @@ async function saveConn(){
     closeM('connModal');await initApp();toast('Salvo!','success');
   }catch(e){toast('Erro: '+e.message,'error');}
 }
-function nTx(t){return{id:t.id,type:t.type,desc:t.description||t.desc||'',amount:parseFloat(t.amount),category:normCatName(t.category||'A classificar'),date:(t.date||'').substring(0,10),note:t.note||'',accountId:t.accountId||t.account_id||null,installmentGroup:t.installmentGroup||t.installment_group||null,installmentNum:t.installmentNum||t.installment_num||null,installmentTotal:t.installmentTotal||t.installment_total||null,recurGroup:t.recurGroup||t.recur_group||null,splitMeta:splitMetaOf(t),paid:t.paid||false,pending:t.pending||false};}
+function nTx(t){return{id:t.id,type:t.type,desc:t.description||t.desc||'',amount:parseFloat(t.amount),category:normCatName(t.category||'A classificar'),date:(t.date||'').substring(0,10),purchaseDate:(t.purchaseDate||t.purchase_date||t.date||'').substring(0,10),note:t.note||'',accountId:t.accountId||t.account_id||null,installmentGroup:t.installmentGroup||t.installment_group||null,installmentNum:t.installmentNum||t.installment_num||null,installmentTotal:t.installmentTotal||t.installment_total||null,recurGroup:t.recurGroup||t.recur_group||null,splitMeta:splitMetaOf(t),paid:t.paid||false,pending:t.pending||false};}
 function nBud(b){return{id:b.id,category:normCatName(b.category),limit:parseFloat(b.limit)};}
 function nGoal(g){return{id:g.id,name:g.name,icon:g.icon||'\u{1F3AF}',target:parseFloat(g.target),current:parseFloat(g.current||0),deadline:(g.deadline||'').substring(0,10),desc:g.description||g.desc||'',monthly:parseFloat(g.monthly||0)};}
-function nAcc(a){return normalizeAccount({id:a.id,name:a.name,icon:a.icon,type:a.type,balance:a.balance,yieldRate:a.yield_rate,yieldType:a.yield_type,yieldVal:a.yield_val,calcBase:a.calc_base,startDate:(a.start_date||'').substring(0,10),note:a.note});}
+function nAcc(a){return normalizeAccount({id:a.id,name:a.name,icon:a.icon,type:a.type,balance:a.balance,yieldRate:a.yield_rate,yieldType:a.yield_type,yieldVal:a.yield_val,calcBase:a.calc_base,startDate:(a.start_date||'').substring(0,10),cardClosingDay:a.card_closing_day,cardDueDay:a.card_due_day,cardLast4:a.card_last4,cardExpiry:a.card_expiry,note:a.note});}
 function nCat(c){const name=normCatName(c.name);return{id:c.id,ico:c.icon||c.ico||'\u{1F3F7}\uFE0F',name,col:catColor(name,c.color||c.col),custom:true};}
 function nShopList(l){return{id:l.id,name:l.name,ico:l.icon||l.ico||'\u{1F6D2}',position:l.position||0};}
 function nShopItem(i){return{id:i.id,listId:i.list_id||i.listId,name:i.name,qty:i.qty||'',cat:i.category||i.cat||'\u{1F6D2} Geral',bought:!!i.bought,createdAt:Number(i.created_ms||i.createdAt||Date.now())};}
 function defAccs(){return[{id:uid(),name:'Principal',icon:'\u{1F3E6}',type:'checking',balance:0,yieldRate:0,note:''}];}
+function clampCardDay(v){return Math.min(31,Math.max(1,parseInt(v,10)||1));}
+function monthLastDay(year,monthIndex){return new Date(year,monthIndex+1,0).getDate();}
+function buildMonthDate(year,monthIndex,day){
+  const safeDay=Math.min(clampCardDay(day),monthLastDay(year,monthIndex));
+  return new Date(year,monthIndex,safeDay,12,0,0,0);
+}
+function toIsoDate(dateObj){return dateObj.toISOString().slice(0,10);}
+function formatCardExpiry(v){
+  const digits=String(v||'').replace(/\D/g,'').slice(0,4);
+  if(!digits)return'';
+  if(digits.length<=2)return digits;
+  return `${digits.slice(0,2)}/${digits.slice(2)}`;
+}
+function getCreditCardMeta(account){
+  if(!account||account.type!=='credit')return null;
+  const closingDay=clampCardDay(account.cardClosingDay||1);
+  const dueDay=clampCardDay(account.cardDueDay||closingDay);
+  const bestDay=closingDay===31?1:closingDay+1;
+  return {closingDay,dueDay,bestDay,expiry:formatCardExpiry(account.cardExpiry||'')};
+}
+function getCreditCardChargeInfo(account,purchaseDate){
+  const meta=getCreditCardMeta(account);
+  const purchaseIso=(purchaseDate||today()).substring(0,10);
+  if(!meta)return{purchaseDate:purchaseIso,effectiveDate:purchaseIso,label:'',statementDate:purchaseIso};
+  const base=new Date(`${purchaseIso}T12:00:00`);
+  const purchaseDay=base.getDate();
+  const statementMonthOffset=purchaseDay>meta.closingDay?1:0;
+  const statementMonth=new Date(base.getFullYear(),base.getMonth()+statementMonthOffset,1,12,0,0,0);
+  const statementDate=buildMonthDate(statementMonth.getFullYear(),statementMonth.getMonth(),meta.closingDay);
+  const dueMonthOffset=meta.dueDay<=meta.closingDay?1:0;
+  const dueBase=new Date(statementMonth.getFullYear(),statementMonth.getMonth()+dueMonthOffset,1,12,0,0,0);
+  const effectiveDate=buildMonthDate(dueBase.getFullYear(),dueBase.getMonth(),meta.dueDay);
+  return {
+    purchaseDate:purchaseIso,
+    effectiveDate:toIsoDate(effectiveDate),
+    statementDate:toIsoDate(statementDate),
+    label:`Compra em ${fmtD(purchaseIso)} • fecha ${fmtD(toIsoDate(statementDate))} • paga ${fmtD(toIsoDate(effectiveDate))}`
+  };
+}
+function getTxEntryDates(accountId,date,type){
+  const purchaseDate=(date||today()).substring(0,10);
+  const account=S.accounts.find(a=>a.id===accountId);
+  if(type!=='expense'||!account||account.type!=='credit'){
+    return {purchaseDate,effectiveDate:purchaseDate,label:''};
+  }
+  return getCreditCardChargeInfo(account,purchaseDate);
+}
 function asObj(v){return v&&typeof v==='object'&&!Array.isArray(v)?v:{};}
 function asArr(v){return Array.isArray(v)?v:[];}
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
@@ -2049,10 +2096,21 @@ function openAccModal(id=null){
   document.getElementById('accYieldVal').value=a?.yieldVal||100;
   document.getElementById('accCalcBase').value=a?.calcBase||'du';
   document.getElementById('accStartDate').value=a?.startDate||'';
+  document.getElementById('accCardClosingDay').value=a?.cardClosingDay||'';
+  document.getElementById('accCardDueDay').value=a?.cardDueDay||'';
+  document.getElementById('accCardLast4').value=a?.cardLast4||'';
+  document.getElementById('accCardExpiry').value=formatCardExpiry(a?.cardExpiry||'');
+  document.getElementById('accCardBestDay').value=a?.type==='credit'&&a?.cardClosingDay?String((Number(a.cardClosingDay)%31)+1).padStart(2,'0'):'';
   document.getElementById('accNote').value=a?.note||'';
   toggleAccInvFields();
   updAccYieldPreview();
   document.getElementById('accModal').classList.add('open');
+}
+function openCreditCardModal(){
+  openAccModal();
+  document.getElementById('accTyp').value='credit';
+  document.getElementById('accIco').value=document.getElementById('accIco').value||'💳';
+  toggleAccInvFields();
 }
 function saveAcc(){
   if(!requireWriteAccess(accEditId?'editar contas':'criar contas'))return;
@@ -2066,9 +2124,15 @@ function saveAcc(){
   const yieldVal=parseFloat(document.getElementById('accYieldVal')?.value)||100;
   const calcBase=document.getElementById('accCalcBase')?.value||'du';
   const startDate=document.getElementById('accStartDate')?.value||'';
+  const cardClosingDay=Math.min(31,Math.max(0,parseInt(document.getElementById('accCardClosingDay')?.value,10)||0));
+  const cardDueDay=Math.min(31,Math.max(0,parseInt(document.getElementById('accCardDueDay')?.value,10)||0));
+  const cardLast4=String(document.getElementById('accCardLast4')?.value||'').replace(/\D/g,'').slice(-4);
+  const cardExpiry=formatCardExpiry(document.getElementById('accCardExpiry')?.value||'');
   if(!name){toast('Informe o nome','error');return;}
+  if(type==='credit'&&!cardClosingDay){toast('Informe o dia de fechamento do cartão','error');return;}
+  if(type==='credit'&&!cardDueDay){toast('Informe o dia de vencimento do cartão','error');return;}
   const rateInfo=type==='investment'?getAccRateInfo({type,yieldType,yieldVal,calcBase,yieldRate}):{monthly:yieldRate};
-  const account={id:accEditId||uid(),name,icon,type,balance,yieldRate:type==='investment'?Number(rateInfo.monthly.toFixed(4)):yieldRate,yieldType,yieldVal,calcBase,startDate,note};
+  const account={id:accEditId||uid(),name,icon,type,balance,yieldRate:type==='investment'?Number(rateInfo.monthly.toFixed(4)):yieldRate,yieldType,yieldVal,calcBase,startDate,cardClosingDay:type==='credit'?cardClosingDay:0,cardDueDay:type==='credit'?cardDueDay:0,cardLast4:type==='credit'?cardLast4:'',cardExpiry:type==='credit'?cardExpiry:'',note};
   if(accEditId){
     const i=S.accounts.findIndex(a=>a.id===accEditId);
     if(i>=0)S.accounts[i]=account;
@@ -2079,7 +2143,12 @@ function saveAcc(){
 function toggleAccInvFields(){
   const type=document.getElementById('accTyp')?.value;
   const fields=document.getElementById('accInvFields');
+  const cardFields=document.getElementById('accCardFields');
   if(fields)fields.style.display=type==='investment'?'block':'none';
+  if(cardFields)cardFields.style.display=type==='credit'?'block':'none';
+  const bestDay=document.getElementById('accCardBestDay');
+  const closingDay=parseInt(document.getElementById('accCardClosingDay')?.value,10)||0;
+  if(bestDay)bestDay.value=type==='credit'&&closingDay?String((closingDay%31)+1).padStart(2,'0'):'';
   updAccYieldPreview();
 }
 function updAccYieldPreview(){
@@ -2148,21 +2217,34 @@ function renderAccs(){
   const el=document.getElementById('accGrid');if(!el)return;
   const total=S.accounts.reduce((s,a)=>s+getAccBal(a.id),0);
   const invs=S.accounts.filter(a=>a.type==='investment');
+  const cards=S.accounts.filter(a=>a.type==='credit');
   const invTotal=invs.reduce((s,a)=>s+Math.max(getAccBal(a.id),0),0);
   const y=getYieldSummary();
   const best=[...S.accounts].sort((a,b)=>getAccYield(b,1)-getAccYield(a,1))[0];
   const stats=document.getElementById('accStats');
   if(stats)stats.innerHTML=`
     <div class="insight-card"><div class="insight-k">Patrimônio</div><div class="insight-v money ${total>=0?'neu':'neg'}">${fmt(total)}</div></div>
+    <div class="insight-card"><div class="insight-k">Cartões</div><div class="insight-v" style="color:var(--warn)">${cards.length}</div><div class="cc">${cards.filter(a=>a.cardClosingDay&&a.cardDueDay).length} com ciclo completo</div></div>
     <div class="insight-card"><div class="insight-k">Investido</div><div class="insight-v" style="color:var(--ac2)">${fmt(invTotal)}</div><div class="cc">${invs.length} conta${invs.length!==1?'s':''}</div></div>
     <div class="insight-card"><div class="insight-k">Rendimento mensal</div><div class="insight-v" style="color:var(--ac)">${fmt(y.month)}</div><div class="cc">${fmt(y.year)}/ano estimado</div></div>
     <div class="insight-card"><div class="insight-k">Melhor conta</div><div class="insight-v" style="font-size:16px">${best?best.icon+' '+best.name:''}</div><div class="cc">${best?fmt(getAccYield(best,1))+'/mês':'sem dados'}</div></div>`;
+  const cardCenter=document.getElementById('accCardCenter');
+  if(cardCenter)cardCenter.innerHTML=cards.length?cards.map(a=>{
+    const meta=getCreditCardMeta(a);
+    const last4=a.cardLast4?`•••• ${a.cardLast4}`:'sem final';
+    const expiry=a.cardExpiry||'validade não informada';
+    return `<div class="card-center-item"><div class="card-center-top"><div><div class="card-center-name">${esc(a.name)}</div><div class="card-center-sub">${esc(last4)} • ${esc(expiry)}</div></div><div class="card-center-icon">${esc(a.icon||'💳')}</div></div><div class="card-center-meta"><span>Fecha dia ${meta?.closingDay||'—'}</span><span>Vence dia ${meta?.dueDay||'—'}</span><span>Melhor dia ${meta?.bestDay||'—'}</span></div><div class="card-center-actions"><button class="btn btn-g btn-sm" ${writeActionAttrs('editar contas')} onclick="openAccModal('${a.id}')">Editar</button><button class="btn btn-d btn-sm" ${writeActionAttrs('remover contas')} onclick="delAcc('${a.id}')">Remover</button></div></div>`;
+  }).join(''):`<div class="card-center-empty"><strong>Nenhum cartão salvo.</strong><span>Cadastre seus cartões aqui para organizar fechamento, vencimento e compras futuras.</span></div>`;
   el.innerHTML=S.accounts.map(a=>{
     const bal=getAccBal(a.id);
     const y=getAccYield(a,1);
     const rate=getAccRateInfo(a);
-    const yLbl=y>0?`<div class="yield-detail"><span class="yield-pill">+${fmt(y)}/mês</span><span>${rate.label}</span></div>`:`<div class="yield-detail">Sem rendimento configurado</div>`;
-    return`<div class="bg-card"><div style="display:flex;justify-content:space-between;margin-bottom:10px"><div style="font-size:24px">${a.icon}</div><div style="display:flex;align-items:center;gap:4px"><span style="font-size:11px;color:var(--mt);background:var(--sf2);border:1px solid var(--bd);border-radius:5px;padding:2px 6px">${ATYPES[a.type]||a.type}</span><button class="ib" ${writeActionAttrs('editar contas')} onclick="openAccModal('${a.id}')" title="Editar">✏️</button><button class="ib del" ${writeActionAttrs('remover contas')} onclick="delAcc('${a.id}')" title="Remover">🗑️</button></div></div><div style="font-size:13px;font-weight:600;margin-bottom:3px">${a.name}</div><div class="money" style="font-size:20px;font-weight:700;color:${bal>=0?'var(--ac)':'var(--dan)'}">${fmt(bal)}</div>${yLbl}${a.note?`<div style="font-size:11px;color:var(--mt);margin-top:6px">${a.note}</div>`:''}</div>`;
+    const cardMeta=a.type==='credit'?getCreditCardMeta(a):null;
+    const yLbl=a.type==='credit'
+      ? `<div class="yield-detail"><span class="yield-pill">Fecha ${cardMeta?.closingDay||'—'}</span><span>Vence ${cardMeta?.dueDay||'—'}</span></div>`
+      : y>0?`<div class="yield-detail"><span class="yield-pill">+${fmt(y)}/mês</span><span>${rate.label}</span></div>`:`<div class="yield-detail">Sem rendimento configurado</div>`;
+    const noteExtra=a.type==='credit'&&a.cardLast4?`<div style="font-size:11px;color:var(--mt);margin-top:6px">Final ${esc(a.cardLast4)}${a.cardExpiry?` • validade ${esc(a.cardExpiry)}`:''}</div>`:'';
+    return`<div class="bg-card"><div style="display:flex;justify-content:space-between;margin-bottom:10px"><div style="font-size:24px">${a.icon}</div><div style="display:flex;align-items:center;gap:4px"><span style="font-size:11px;color:var(--mt);background:var(--sf2);border:1px solid var(--bd);border-radius:5px;padding:2px 6px">${ATYPES[a.type]||a.type}</span><button class="ib" ${writeActionAttrs('editar contas')} onclick="openAccModal('${a.id}')" title="Editar">✏️</button><button class="ib del" ${writeActionAttrs('remover contas')} onclick="delAcc('${a.id}')" title="Remover">🗑️</button></div></div><div style="font-size:13px;font-weight:600;margin-bottom:3px">${a.name}</div><div class="money" style="font-size:20px;font-weight:700;color:${bal>=0?'var(--ac)':'var(--dan)'}">${fmt(bal)}</div>${yLbl}${noteExtra}${a.note?`<div style="font-size:11px;color:var(--mt);margin-top:6px">${a.note}</div>`:''}</div>`;
   }).join('')+`<div class="bg-card" style="border-style:dashed;display:flex;align-items:center;justify-content:center;gap:7px;color:var(--mt);font-size:12px;cursor:pointer;" ${canWriteAppData()?'':'title="Conta em modo leitura"'} onclick="openAccModal()"><span style="font-size:20px">+</span> Nova Conta</div>`;
 }
 let qaOpen=false;
@@ -2435,6 +2517,24 @@ function handleModalEnter(e){
   return false;
 }
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();openSrch();return;}if(handleModalEnter(e))return;if(e.key==='Escape'){closeSrch();document.querySelectorAll('.ov.open').forEach(o=>o.classList.remove('open'));}});
+function refreshTxDateHint(){
+  const label=document.getElementById('txDateLabel');
+  const hint=document.getElementById('txCardHint');
+  if(!label||!hint)return;
+  const type=getTyp();
+  const accountId=document.getElementById('txAcc')?.value||S.accounts[0]?.id||null;
+  const date=document.getElementById('txDt')?.value||today();
+  const info=getTxEntryDates(accountId,date,type);
+  if(info.label){
+    label.textContent='Data da compra';
+    hint.textContent=info.label;
+    hint.style.display='block';
+  }else{
+    label.textContent='Data';
+    hint.textContent='';
+    hint.style.display='none';
+  }
+}
 function openModal(id=null,futDate=false){
   if(!requireWriteAccess(id?'editar transações':'criar transações'))return;
   editId=id;const tx=id?S.transactions.find(t=>t.id===id):null;
@@ -2444,7 +2544,7 @@ function openModal(id=null,futDate=false){
   const quickPrev=document.getElementById('txQuickPreview');if(quickPrev)quickPrev.textContent='Digite uma frase para ver a prévia antes de salvar.';
   document.getElementById('txDesc').value=tx?.desc||'';
   document.getElementById('txAmt').value=tx?.amount||'';
-  document.getElementById('txDt').value=tx?.date||(futDate?addM(today(),1):today());
+  document.getElementById('txDt').value=tx?.purchaseDate||tx?.date||(futDate?addM(today(),1):today());
   document.getElementById('txNote').value=tx?.note||'';
   popCatSels();popAccSels();
   setTyp(tx?.type||'expense');
@@ -2453,6 +2553,7 @@ function openModal(id=null,futDate=false){
   if(tx?.accountId)document.getElementById('txAcc').value=tx.accountId;
   document.getElementById('instChk').checked=false;document.getElementById('instSec').style.display='none';
   document.getElementById('recChk').checked=false;document.getElementById('recSec').style.display='none';
+  refreshTxDateHint();
   document.getElementById('txModal').classList.add('open');
 }
 function dupTx(id){
@@ -2461,13 +2562,14 @@ function dupTx(id){
   editId=null;
   document.getElementById('mTit').textContent='Duplicar Transação';
   document.getElementById('txDesc').value=tx.desc;document.getElementById('txAmt').value=tx.amount;
-  document.getElementById('txDt').value=today();document.getElementById('txNote').value=tx.note;
+  document.getElementById('txDt').value=tx.purchaseDate||today();document.getElementById('txNote').value=tx.note;
   popCatSels();popAccSels();document.getElementById('txCat').value=tx.category;
   setTyp(tx.type);
   fillTxSplitForm(splitMetaOf(tx));
   if(tx.accountId)document.getElementById('txAcc').value=tx.accountId;
   document.getElementById('instChk').checked=false;document.getElementById('instSec').style.display='none';
   document.getElementById('recChk').checked=false;document.getElementById('recSec').style.display='none';
+  refreshTxDateHint();
   document.getElementById('txModal').classList.add('open');
 }
 function normalizeTxText(s){
@@ -2626,10 +2728,13 @@ async function saveTx(){
   let desc=document.getElementById('txDesc').value.trim();
   const amount=parseFloat(document.getElementById('txAmt').value);
   const category=document.getElementById('txCat').value||'A classificar';
-  const date=document.getElementById('txDt').value||today();
+  const entryDate=document.getElementById('txDt').value||today();
   const note=document.getElementById('txNote').value.trim();
   const type=getTyp();const accountId=document.getElementById('txAcc').value||S.accounts[0]?.id||null;
   const splitMeta=splitMetaFromForm();
+  const entryDates=getTxEntryDates(accountId,entryDate,type);
+  const date=entryDates.effectiveDate;
+  const purchaseDate=entryDates.purchaseDate;
   const isInst=document.getElementById('instChk').checked;
   const isRec=document.getElementById('recChk').checked;
   if(!amount){toast('Informe o valor para salvar','error');return;}
@@ -2639,13 +2744,14 @@ async function saveTx(){
   try{
     if(isInst&&!editId){
       const n=parseInt(document.getElementById('instN').value)||1;
-      const st=document.getElementById('instSt').value||date;
+      const st=document.getElementById('instSt').value||entryDate;
       if(n<2){toast('Mínimo 2 parcelas','error');return;}
       const per=Math.round(amount/n*100)/100,gid=uid();
       for(let i=0;i<n;i++){
         const d=addM(st,i);
-        const tx={id:uid(),type,desc:`${desc} (${i+1}/${n})`,amount:per,category,date:d,note,accountId,installmentGroup:gid,installmentNum:i+1,installmentTotal:n,recurGroup:null,splitMeta,paid:false,pending:false};
-        if(cfg.mode==='api'){const r=await api('POST','/api/transactions',{type,description:tx.desc,amount:per,category,date:d,note,account_id:accountId,paid:false,pending:false,installment_group:gid,installment_num:i+1,installment_total:n,split_meta:splitMeta});S.transactions.unshift(nTx({...r,accountId,split_meta:splitMeta}));}
+        const instDates=getTxEntryDates(accountId,d,type);
+        const tx={id:uid(),type,desc:`${desc} (${i+1}/${n})`,amount:per,category,date:instDates.effectiveDate,purchaseDate:instDates.purchaseDate,note,accountId,installmentGroup:gid,installmentNum:i+1,installmentTotal:n,recurGroup:null,splitMeta,paid:false,pending:false};
+        if(cfg.mode==='api'){const r=await api('POST','/api/transactions',{type,description:tx.desc,amount:per,category,date:tx.date,purchase_date:tx.purchaseDate,note,account_id:accountId,paid:false,pending:false,installment_group:gid,installment_num:i+1,installment_total:n,split_meta:splitMeta});S.transactions.unshift(nTx({...r,accountId,split_meta:splitMeta,purchase_date:tx.purchaseDate}));}
         else S.transactions.unshift(tx);
       }
       if(cfg.mode==='local')saveLocal();toast(`${n} parcelas criadas! ✓`,'success');
@@ -2654,20 +2760,21 @@ async function saveTx(){
       const cnt=parseInt(document.getElementById('recN').value)||12;
       const gid=uid();const nD=(d,i)=>freq==='weekly'?addW(d,i):freq==='yearly'?addY(d,i):addM(d,i);
       for(let i=0;i<cnt;i++){
-        const d=nD(date,i);
-        const tx={id:uid(),type,desc,amount,category,date:d,note,accountId,installmentGroup:null,installmentNum:null,installmentTotal:null,recurGroup:gid,splitMeta,paid:false,pending:false};
-        if(cfg.mode==='api'){const r=await api('POST','/api/transactions',{type,description:desc,amount,category,date:d,note,account_id:accountId,paid:false,pending:false,recur_group:gid,split_meta:splitMeta});S.transactions.unshift(nTx({...r,accountId,split_meta:splitMeta}));}
+        const d=nD(entryDate,i);
+        const recDates=getTxEntryDates(accountId,d,type);
+        const tx={id:uid(),type,desc,amount,category,date:recDates.effectiveDate,purchaseDate:recDates.purchaseDate,note,accountId,installmentGroup:null,installmentNum:null,installmentTotal:null,recurGroup:gid,splitMeta,paid:false,pending:false};
+        if(cfg.mode==='api'){const r=await api('POST','/api/transactions',{type,description:desc,amount,category,date:tx.date,purchase_date:tx.purchaseDate,note,account_id:accountId,paid:false,pending:false,recur_group:gid,split_meta:splitMeta});S.transactions.unshift(nTx({...r,accountId,split_meta:splitMeta,purchase_date:tx.purchaseDate}));}
         else S.transactions.unshift(tx);
       }
       if(cfg.mode==='local')saveLocal();toast(`${cnt} lançamentos criados! ✓`,'success');
     } else {
       const oldTx=editId?S.transactions.find(t=>t.id===editId):null;
-      const pl={type,description:desc,amount,category,date,note,account_id:accountId,paid:oldTx?.paid||false,pending:oldTx?.pending||false,split_meta:splitMeta};
+      const pl={type,description:desc,amount,category,date,purchase_date:purchaseDate,note,account_id:accountId,paid:oldTx?.paid||false,pending:oldTx?.pending||false,split_meta:splitMeta};
       if(cfg.mode==='api'){
-        if(editId){const u=await api('PUT',`/api/transactions/${editId}`,pl);const i=S.transactions.findIndex(t=>t.id===editId);S.transactions[i]=nTx({...u,accountId,split_meta:splitMeta});}
-        else{const c=await api('POST','/api/transactions',pl);S.transactions.unshift(nTx({...c,accountId,split_meta:splitMeta}));}
+        if(editId){const u=await api('PUT',`/api/transactions/${editId}`,pl);const i=S.transactions.findIndex(t=>t.id===editId);S.transactions[i]=nTx({...u,accountId,split_meta:splitMeta,purchase_date:purchaseDate});}
+        else{const c=await api('POST','/api/transactions',pl);S.transactions.unshift(nTx({...c,accountId,split_meta:splitMeta,purchase_date:purchaseDate}));}
       } else {
-        const tx={id:editId||uid(),type,desc,amount,category,date,note,accountId,installmentGroup:oldTx?.installmentGroup||null,installmentNum:oldTx?.installmentNum||null,installmentTotal:oldTx?.installmentTotal||null,recurGroup:oldTx?.recurGroup||null,splitMeta,paid:oldTx?.paid||false,pending:oldTx?.pending||false};
+        const tx={id:editId||uid(),type,desc,amount,category,date,purchaseDate,note,accountId,installmentGroup:oldTx?.installmentGroup||null,installmentNum:oldTx?.installmentNum||null,installmentTotal:oldTx?.installmentTotal||null,recurGroup:oldTx?.recurGroup||null,splitMeta,paid:oldTx?.paid||false,pending:oldTx?.pending||false};
         if(editId){const i=S.transactions.findIndex(t=>t.id===editId);S.transactions[i]=tx;}else S.transactions.unshift(tx);
         saveLocal();
       }
@@ -2688,8 +2795,8 @@ async function delTx(id){
     if(cfg.mode==='local')saveLocal();
     queueUndo(`Transação removida: ${tx.desc}`,async()=>{
       if(cfg.mode==='api'){
-        const restored=await api('POST','/api/transactions',{type:tx.type,description:tx.desc,amount:tx.amount,category:tx.category,date:tx.date,note:tx.note||'',account_id:tx.accountId,paid:tx.paid,pending:tx.pending,split_meta:splitMetaOf(tx)});
-        S.transactions.unshift(nTx({...restored,accountId:tx.accountId,split_meta:splitMetaOf(tx)}));
+        const restored=await api('POST','/api/transactions',{type:tx.type,description:tx.desc,amount:tx.amount,category:tx.category,date:tx.date,purchase_date:tx.purchaseDate||tx.date,note:tx.note||'',account_id:tx.accountId,paid:tx.paid,pending:tx.pending,split_meta:splitMetaOf(tx)});
+        S.transactions.unshift(nTx({...restored,accountId:tx.accountId,split_meta:splitMetaOf(tx),purchase_date:tx.purchaseDate||tx.date}));
       }else{S.transactions.unshift(tx);saveLocal();}
     });
     toast('Removida','error');refreshAll();
@@ -2707,8 +2814,8 @@ async function delGrp(gid,field){
     queueUndo(`${toD.length} lançamentos removidos`,async()=>{
       if(cfg.mode==='api'){
         for(const tx of toD){
-          const restored=await api('POST','/api/transactions',{type:tx.type,description:tx.desc,amount:tx.amount,category:tx.category,date:tx.date,note:tx.note||'',account_id:tx.accountId,paid:tx.paid,pending:tx.pending,split_meta:splitMetaOf(tx)});
-          S.transactions.unshift(nTx({...restored,accountId:tx.accountId,installmentGroup:tx.installmentGroup,installmentNum:tx.installmentNum,installmentTotal:tx.installmentTotal,recurGroup:tx.recurGroup,split_meta:splitMetaOf(tx)}));
+          const restored=await api('POST','/api/transactions',{type:tx.type,description:tx.desc,amount:tx.amount,category:tx.category,date:tx.date,purchase_date:tx.purchaseDate||tx.date,note:tx.note||'',account_id:tx.accountId,paid:tx.paid,pending:tx.pending,split_meta:splitMetaOf(tx)});
+          S.transactions.unshift(nTx({...restored,accountId:tx.accountId,installmentGroup:tx.installmentGroup,installmentNum:tx.installmentNum,installmentTotal:tx.installmentTotal,recurGroup:tx.recurGroup,split_meta:splitMetaOf(tx),purchase_date:tx.purchaseDate||tx.date}));
         }
       }else{S.transactions.unshift(...toD);saveLocal();}
     });
@@ -2720,7 +2827,7 @@ async function markPaid(id){
   const tx=S.transactions.find(t=>t.id===id);if(!tx)return;
   const prev=tx.paid;tx.paid=!tx.paid;
   try{
-    if(cfg.mode==='api')await api('PUT',`/api/transactions/${id}`,{type:tx.type,description:tx.desc,amount:tx.amount,category:tx.category,date:tx.date,note:tx.note||'',account_id:tx.accountId,paid:tx.paid,pending:tx.pending,split_meta:splitMetaOf(tx)});
+    if(cfg.mode==='api')await api('PUT',`/api/transactions/${id}`,{type:tx.type,description:tx.desc,amount:tx.amount,category:tx.category,date:tx.date,purchase_date:tx.purchaseDate||tx.date,note:tx.note||'',account_id:tx.accountId,paid:tx.paid,pending:tx.pending,split_meta:splitMetaOf(tx)});
     else saveLocal();
   }catch(e){tx.paid=prev;toast('Erro: '+e.message,'error');return;}
   refreshAll();toast(tx.paid?'Marcado como pago OK':'Desmarcado','info');setTimeout(scheduleVencimentoNotifications,500);setTimeout(setupPersistentNotification,1000);
@@ -2917,7 +3024,7 @@ async function setSharedApprovalStatus(txId,status){
   };
   tx.splitMeta=splitMeta;
   if(cfg.mode==='api'){
-    await api('PUT',`/api/transactions/${tx.id}`,{type:tx.type,description:tx.desc,amount:tx.amount,category:tx.category,date:tx.date,note:tx.note||'',account_id:tx.accountId,paid:tx.paid,pending:tx.pending,split_meta:splitMeta});
+    await api('PUT',`/api/transactions/${tx.id}`,{type:tx.type,description:tx.desc,amount:tx.amount,category:tx.category,date:tx.date,purchase_date:tx.purchaseDate||tx.date,note:tx.note||'',account_id:tx.accountId,paid:tx.paid,pending:tx.pending,split_meta:splitMeta});
   }else{
     saveLocal();
   }
@@ -4320,7 +4427,7 @@ document.addEventListener('click',e=>{
   if(sidebarShortcutMenuOpen&&shortcutMenu&&!shortcutMenu.contains(e.target)&&!shortcutCard)closeSidebarShortcutMenu();
 });
 // HELPERS
-function setTyp(t){document.getElementById('tExp').className='ttb'+(t==='expense'?' active expense':'');document.getElementById('tInc').className='ttb'+(t==='income'?' active income':'');document.getElementById('tExp').dataset.t=t==='expense'?'1':'';document.getElementById('tInc').dataset.t=t==='income'?'1':'';syncTxSplitUI();}
+function setTyp(t){document.getElementById('tExp').className='ttb'+(t==='expense'?' active expense':'');document.getElementById('tInc').className='ttb'+(t==='income'?' active income':'');document.getElementById('tExp').dataset.t=t==='expense'?'1':'';document.getElementById('tInc').dataset.t=t==='income'?'1':'';syncTxSplitUI();refreshTxDateHint();}
 function getTyp(){return document.getElementById('tExp').dataset.t?'expense':'income';}
 function closeM(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.ov').forEach(o=>{let md=null;o.addEventListener('mousedown',e=>{md=e.target;});o.addEventListener('mouseup',e=>{if(e.target===o&&md===o)o.classList.remove('open');md=null;});let td=null;o.addEventListener('touchstart',e=>{td=e.target;},{passive:true});o.addEventListener('touchend',e=>{if(td===o&&e.target===o)o.classList.remove('open');td=null;});});
@@ -4784,7 +4891,7 @@ async function saveInlineEdit(id){
   if(amount<=0){toast('Valor invlido','error');return;}
   tx.desc=desc;tx.amount=amount;tx.date=date;
   if(cfg.mode==='api'){
-    try{await api('PUT',`/api/transactions/${id}`,{type:tx.type,description:desc,amount,category:tx.category,date,note:tx.note||'',account_id:tx.accountId,paid:tx.paid,pending:tx.pending});}
+    try{await api('PUT',`/api/transactions/${id}`,{type:tx.type,description:desc,amount,category:tx.category,date,purchase_date:tx.purchaseDate||date,note:tx.note||'',account_id:tx.accountId,paid:tx.paid,pending:tx.pending});}
     catch(e){toast('Erro: '+e.message,'error');return;}
   } else saveLocal();
   closeInlineEdit();

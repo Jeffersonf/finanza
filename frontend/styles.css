@@ -557,6 +557,66 @@ body::before {
 }
 .reload-btn.spin .ri { animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg) } }
+.card-center-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:12px;
+}
+.card-center-item{
+  border:1px solid rgba(245,196,90,.18);
+  background:linear-gradient(160deg,rgba(245,196,90,.08),rgba(255,255,255,.02));
+  border-radius:18px;
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.card-center-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.card-center-name{
+  font-size:14px;
+  font-weight:800;
+}
+.card-center-sub{
+  font-size:11px;
+  color:var(--mt);
+  margin-top:3px;
+}
+.card-center-icon{
+  font-size:24px;
+}
+.card-center-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.card-center-meta span{
+  font-size:11px;
+  font-weight:600;
+  color:var(--tx2);
+  background:var(--sf2);
+  border:1px solid var(--bd);
+  border-radius:999px;
+  padding:5px 9px;
+}
+.card-center-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.card-center-empty{
+  border:1px dashed var(--bd);
+  border-radius:16px;
+  padding:18px;
+  color:var(--mt);
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
 .acct-area { border-top: 1px solid var(--bd); padding-top: 14px; position: relative; }
 .acct-btn {
   display: flex; align-items: center; gap: 10px;

@@ -246,6 +246,13 @@
 <div class="page" id="page-accounts">
   <div class="ph"><div><div class="pt">Contas</div><div class="ps">Corrente, poupança, cartão</div></div><button class="btn btn-p" data-write-only="criar contas" onclick="openAccModal()">+ Nova Conta</button></div>
   <div class="insight-grid" id="accStats"></div>
+  <div class="box" style="margin-bottom:14px;">
+    <div class="bh">
+      <div><div class="ct">Central de cartões</div><div class="cs">Fechamento, vencimento, validade e final do cartão em um lugar só</div></div>
+      <button class="btn btn-g btn-sm" data-write-only="criar contas" onclick="openCreditCardModal()">+ Novo cartão</button>
+    </div>
+    <div class="card-center-grid" id="accCardCenter"></div>
+  </div>
   <div class="bg-grid" id="accGrid"></div>
   <div class="box" style="margin-top:14px;"><div class="bh"><div class="ct">Transferência</div></div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;">
@@ -691,8 +698,9 @@
   <div class="quick-preview" id="txQuickPreview">Digite uma frase para ver a prévia antes de salvar.</div>
   <div class="required-hint">Só o valor é obrigatório. Se deixar em branco, o Finanza usa descrição pela categoria, data de hoje e sua conta principal.</div>
   <div class="frow"><div class="fg"><label class="fl" for="txDesc">Descrição opcional</label><input type="text" class="fi" id="txDesc" placeholder="Ex: Aluguel..."></div><div class="fg"><label class="fl" for="txAmt">Valor (R$) *</label><input type="number" class="fi" id="txAmt" placeholder="0,00" min="0" step="0.01" inputmode="decimal" oninput="updIPrev()"></div></div>
-  <div class="frow"><div class="fg"><label class="fl" for="txCat">Categoria</label><select class="fi" id="txCat"></select></div><div class="fg"><label class="fl" for="txAcc">Conta</label><select class="fi" id="txAcc"></select></div></div>
-  <div class="frow"><div class="fg"><label class="fl" for="txDt">Data</label><input type="date" class="fi" id="txDt"></div><div class="fg"><label class="fl" for="txNote">Observação</label><input type="text" class="fi" id="txNote" placeholder="Opcional..."></div></div>
+  <div class="frow"><div class="fg"><label class="fl" for="txCat">Categoria</label><select class="fi" id="txCat"></select></div><div class="fg"><label class="fl" for="txAcc">Conta</label><select class="fi" id="txAcc" onchange="refreshTxDateHint()"></select></div></div>
+  <div class="frow"><div class="fg"><label class="fl" for="txDt" id="txDateLabel">Data</label><input type="date" class="fi" id="txDt" onchange="refreshTxDateHint()"></div><div class="fg"><label class="fl" for="txNote">Observação</label><input type="text" class="fi" id="txNote" placeholder="Opcional..."></div></div>
+  <div class="quick-preview" id="txCardHint" style="display:none"></div>
   <div id="txSplitWrap" class="opt-sec" style="display:block">
     <div class="opt-t" style="color:var(--ac2)">🤝 Divisão de despesas</div>
     <div class="frow"><div class="fg"><label class="fl" for="txSplitMode">Como tratar</label><select class="fi" id="txSplitMode" onchange="syncTxSplitUI()"><option value="none">Só minha</option><option value="equal">Dividir igualmente</option></select></div><div class="fg"><label class="fl" for="txSplitPayer">Quem pagou</label><select class="fi" id="txSplitPayer" onchange="syncTxSplitHint()"></select></div></div>
@@ -722,6 +730,22 @@
   <div class="mt" id="accModalTitle">Nova Conta</div><div class="ms" id="accModalSub">Conta bancária ou carteira</div>
   <div class="frow"><div class="fg"><label class="fl">Nome</label><input type="text" class="fi" id="accNm" placeholder="Ex: Nubank..."></div><div class="fg"><label class="fl">Ícone</label><input type="text" class="fi" id="accIco" placeholder="🏦" maxlength="2"></div></div>
   <div class="frow"><div class="fg"><label class="fl">Tipo</label><select class="fi" id="accTyp" onchange="toggleAccInvFields()"><option value="checking">Corrente</option><option value="savings">Poupança</option><option value="credit">Cartão</option><option value="cash">Dinheiro</option><option value="investment">Investimento / CDB / CDI</option></select></div><div class="fg"><label class="fl">Saldo Atual (R$)</label><input type="number" class="fi" id="accBal" placeholder="0,00" step="0.01" oninput="updAccYieldPreview()"></div></div>
+  <div id="accCardFields" style="display:none">
+    <div style="background:rgba(245,196,90,.06);border:1px solid rgba(245,196,90,.18);border-radius:14px;padding:14px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--warn);margin-bottom:12px">💳 Ciclo da fatura</div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Fechamento</label><input type="number" class="fi" id="accCardClosingDay" min="1" max="31" placeholder="15" oninput="toggleAccInvFields()"></div>
+        <div class="fg"><label class="fl">Vencimento</label><input type="number" class="fi" id="accCardDueDay" min="1" max="31" placeholder="22"></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Final</label><input type="text" class="fi" id="accCardLast4" placeholder="1234" maxlength="4"></div>
+        <div class="fg"><label class="fl">Validade (MM/AA)</label><input type="text" class="fi" id="accCardExpiry" placeholder="08/29" maxlength="5" oninput="this.value=formatCardExpiry(this.value)"></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Melhor dia estimado</label><input type="text" class="fi" id="accCardBestDay" placeholder="Depois do fechamento" disabled></div>
+      </div>
+    </div>
+  </div>
   <div id="accInvFields" style="display:none">
     <div style="background:rgba(90,245,200,.06);border:1px solid rgba(90,245,200,.18);border-radius:14px;padding:14px;margin-bottom:12px">
       <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ac2);margin-bottom:12px">📈 Rendimento</div>
