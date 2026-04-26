@@ -182,6 +182,12 @@ Status de implementacao: ciclo fechado nesta base com papeis online, auditoria p
 - [x] Importar cotacoes automaticamente.
 - [x] Alertas de concentracao.
 - [x] Relatorio anual.
+- [ ] Modulo de aposentadoria.
+- [ ] Simulador de aposentadoria por idade alvo.
+- [ ] Projecao de renda passiva mensal na aposentadoria.
+- [ ] Comparativo entre INSS, previdencia privada e carteira propria.
+- [ ] Meta de independencia financeira com retirada segura.
+- [ ] Painel de acumulo vs renda futura.
 - [x] Modo "FIRE"/independencia financeira.
 - [x] Painel de dividas e patrimonio liquido.
 
