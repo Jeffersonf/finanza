@@ -4,6 +4,7 @@ const DEFAULT_API_URL='https://finanza-api.onrender.com';
 const CK='fz_cfg',LK='fz_local',CCK='fz_cats',VK='fz_view',AVK='fz_avatar',PRIVK='fz_privacy',CAR_KEY='fz_car',PAGE_KEY='fz_page';
 const RATES_KEY='fz_rates', WIDGET_ORDER_KEY='fz_widget_order', WIDGET_FILTER_KEY='fz_widget_filters', DUE_KEY='fz_due_items', TX_FILTERS_KEY='fz_tx_filters', COMMITMENTS_KEY='fz_commitments', SIDEBAR_SHORTCUTS_KEY='fz_sidebar_shortcuts';
 const SAVE_STATE_KEY='fz_save_state', SYNC_HISTORY_KEY='fz_sync_history', AUDIT_HISTORY_KEY='fz_audit_history';
+const INITIAL_BOOT_TX_LIMIT=250;
 let monthlyIncomeCents=0;
 let dueItems=[];
 let cfg={url:'',key:'',mode:'',userName:'',userId:'',role:'',twoFactorEnabled:false};
@@ -25,6 +26,7 @@ let undoState=null;
 let importPreviewState=null;
 let pendingTwoFactorSecret='';
 let subscriptionEditId=null,debtEditId=null,contractEditId=null;
+let fullTxHydrationPromise=null;
 const IMPORT_CENTER_KEY='fz_import_center';
 const IMPORT_BATCH_PREFIX='imp_';
 let importCenterState={profiles:{csv:{}},rules:{categories:[],subscriptions:[]},snapshots:[],txMeta:{}};
@@ -1926,22 +1928,45 @@ function persistLocalOrRemote(){
   if(cfg.mode==='api')saveRemoteState().catch(e=>toast('Erro ao salvar estado: '+e.message,'error'));
   else saveLocal();
 }
-async function loadAll(){
+function applyRemotePayload(txR,buds,goals,state){
+  S.transactions=(txR.data||[]).map(nTx);S.budgets=(buds||[]).map(nBud);S.goals=(goals||[]).map(nGoal);
+  S.accounts=(state.accounts||[]).map(nAcc);
+  if(!S.accounts.length)S.accounts=defAccs();
+  custCats=(state.categories||[]).map(nCat);
+  sl={lists:(state.shopping?.lists||[]).map(nShopList),items:(state.shopping?.items||[]).map(nShopItem)};
+  if(!sl.lists.length)sl={lists:[{id:uid(),name:'Mercado',ico:'\u{1F6D2}'}],items:[]};
+  carState=normalizeCarState(state.car||state.vehicle||state.vehicles||state.settings?.rates?.car||{});
+  localStorage.setItem(CAR_KEY,JSON.stringify(carState));
+  slActiveList=state.settings?.active_list||sl.lists[0]?.id||null;
+  applyRemoteSettings(state.settings||{});
+  saveLocal();setConn('online');
+  if(!(state.accounts||[]).length)saveRemoteState().catch(()=>{});
+}
+async function hydrateFullTransactionsInBackground(){
+  if(cfg.mode!=='api'||fullTxHydrationPromise)return fullTxHydrationPromise;
+  fullTxHydrationPromise=(async()=>{
+    try{
+      const txR=await api('GET','/api/transactions?limit=1000');
+      S.transactions=(txR.data||[]).map(nTx);
+      saveLocal();
+      refreshAll();
+      showConnBar('online','Sincronizado',1800);
+    }catch(err){
+      console.warn('full hydration:',err.message);
+    }finally{
+      fullTxHydrationPromise=null;
+    }
+  })();
+  return fullTxHydrationPromise;
+}
+async function loadAll(options={}){
   if(cfg.mode==='local'){S=loadLocal();if(!S.transactions?.length)seedDemo();if(!S.accounts?.length)S.accounts=defAccs();setConn('offline');return;}
+  const limit=Math.min(Math.max(parseInt(options.limit,10)||1000,1),1000);
+  const backgroundFull=!!options.backgroundFull;
   try{
-    const[txR,buds,goals,state]=await Promise.all([api('GET','/api/transactions?limit=1000'),api('GET','/api/budgets'),api('GET','/api/goals'),api('GET','/api/state')]);
-    S.transactions=(txR.data||[]).map(nTx);S.budgets=(buds||[]).map(nBud);S.goals=(goals||[]).map(nGoal);
-    S.accounts=(state.accounts||[]).map(nAcc);
-    if(!S.accounts.length)S.accounts=defAccs();
-    custCats=(state.categories||[]).map(nCat);
-    sl={lists:(state.shopping?.lists||[]).map(nShopList),items:(state.shopping?.items||[]).map(nShopItem)};
-    if(!sl.lists.length)sl={lists:[{id:uid(),name:'Mercado',ico:'\u{1F6D2}'}],items:[]};
-    carState=normalizeCarState(state.car||state.vehicle||state.vehicles||state.settings?.rates?.car||{});
-    localStorage.setItem(CAR_KEY,JSON.stringify(carState));
-    slActiveList=state.settings?.active_list||sl.lists[0]?.id||null;
-    applyRemoteSettings(state.settings||{});
-    saveLocal();setConn('online');
-    if(!(state.accounts||[]).length)saveRemoteState().catch(()=>{});
+    const[txR,buds,goals,state]=await Promise.all([api('GET',`/api/transactions?limit=${limit}`),api('GET','/api/budgets'),api('GET','/api/goals'),api('GET','/api/state')]);
+    applyRemotePayload(txR,buds,goals,state);
+    if(backgroundFull&&Number(txR.total||0)>limit)hydrateFullTransactionsInBackground();
   }catch(e){
     console.warn('offline:',e.message);const c=loadLocal();
     S=c.transactions?.length?c:{transactions:[],budgets:[],goals:[],accounts:defAccs()};
@@ -4836,9 +4861,9 @@ async function initApp(){
   document.getElementById('uName').textContent=name;
   applyAvatar();
   const bootedFromCache=primeAppFromCache();
-  if(bootedFromCache)showConnBar('syncing','Cache aberto • sincronizando...',2200);
-  await loadAll();
-  if(bootedFromCache&&cfg.mode==='api')showConnBar('online','Sincronização concluída',2200);
+  if(bootedFromCache)showConnBar('syncing','Sincronizando...',2200);
+  await loadAll({limit:INITIAL_BOOT_TX_LIMIT,backgroundFull:true});
+  if(bootedFromCache&&cfg.mode==='api')showConnBar('online','Sincronizado',2200);
   if(cfg.mode==='local')loadCC();
   loadCar();
   popCatSels();
