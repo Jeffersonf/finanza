@@ -1,14 +1,21 @@
 # Finanza - Changelog completo
 
-Documento consolidado do que ja foi construido ate a linha `4.0.0`, com base no estado atual do repositorio, nos roadmaps existentes e no historico recente de commits.
+Documento consolidado do que ja foi construido na linha principal do `Finanza`, com base no estado atual do repositorio, nos roadmaps existentes e no historico recente de commits.
 
 Observacao importante:
 
 - `ROADMAP-COMPLETO.md` usa `[x]` como "quero fazer", nao como "feito".
 - Este changelog registra o que realmente entrou no produto.
-- A versao publicada continua `4.0.0`, mas o repositorio ja acumulou rodadas posteriores sem bump formal de versao.
+- A versao alinhada no repositorio ao fechar esta fase e `4.3.1`.
 
 ## Pos-4.0.0 - Rodadas entregues sem bump de versao
+
+### 4.3.1 - Fechamento da fase web principal (`2026-04-26`)
+
+- [x] Linha web principal tratada como base consolidada para operacao financeira.
+- [x] Setup atualizado para refletir login por `URL + usuario + senha + 2FA opcional`, com `api_key` preservada como detalhe tecnico da API.
+- [x] Roadmap atualizado para marcar a `4.11` como ciclo concluido e a base atual como manutencao ativa.
+- [x] Changelog e narrativa do produto alinhados ao fechamento desta fase antes do foco seguir para `Finvita` e `FinClinica`.
 
 ### 4.1 - Usabilidade sem atrito
 
@@ -22,10 +29,10 @@ Observacao importante:
 
 ### 4.2 - Inteligencia financeira pessoal
 
-- [x] Simuladores de metas e planejamento.
-- [x] Projecoes, comparativos e leituras em linguagem humana.
-- [x] Alertas, ranking de categorias e sugestoes de acao.
-- [x] Widget experimental de inteligencia implementado e depois removido por decisao de foco e qualidade.
+- [x] Simuladores, projecoes, comparativos e leituras financeiras chegaram a existir em versoes experimentais desta linha.
+- [x] Alertas, ranking e sugestoes de acao tambem tiveram exploracoes iniciais.
+- [x] Widget experimental de inteligencia foi implementado e depois removido por decisao de foco e qualidade.
+- [x] A frente `4.2` ficou registrada como experimento relevante, mas nao consolidado como nucleo estavel do app atual.
 
 ### 4.3 - Dados, importadores e reconciliacao
 
@@ -73,7 +80,8 @@ Status: concluida e pronta para evolucao incremental.
 - [x] Tela inicial de escolha entre modo online e modo local.
 - [x] Modo local para uso sem servidor, com dados salvos no dispositivo.
 - [x] Modo online com sincronizacao entre dispositivos via API.
-- [x] Fluxo de login, criacao de usuario e redefinicao de senha com chave admin.
+- [x] Fluxo de login por usuario e senha no modo online.
+- [x] Criacao de usuario, redefinicao de senha com chave admin ou codigo de recuperacao e 2FA opcional.
 - [x] Area de conta com nome, papel, backup, exportacao e troca de conta.
 
 ### Transacoes

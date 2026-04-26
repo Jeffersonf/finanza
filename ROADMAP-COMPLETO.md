@@ -12,17 +12,22 @@ Legenda sugerida:
 ## Status atual de versao
 
 - [x] Versao atual alinhada em frontend, pacotes e Android: `4.3.1`.
-- Ciclo em andamento no roadmap: `4.11 - Performance e foco no controle de gastos`.
-- Escopo do ciclo `4.11`: reduzir re-render da dashboard, priorizar widgets essenciais, diminuir duplicacao estrutural no frontend e manter a home orientada a captura, revisao e decisao de gasto.
+- [x] Fechamento desta fase registrado em `2026-04-26`.
+- Ciclo de produto concluido nesta linha: `4.11 - Performance e foco no controle de gastos`.
+- Escopo fechado da `4.11`: reduzir re-render da dashboard, priorizar widgets essenciais, diminuir duplicacao estrutural no frontend e manter a home orientada a captura, revisao e decisao de gasto.
+- Estado recomendado desta base apos `2026-04-26`: manutencao ativa, correcoes, polimento e alinhamento de docs; sem abrir outra frente grande dentro do `Finanza` agora.
 - Linha futura planejada: `5.0 - Android nativo premium`.
+- Proximo foco estrategico fora desta base: `Finvita` como organizacao pessoal e `FinClinica` como frente visual/operacional separada.
 
 ## Leitura rapida de onde estamos
 
 - [x] Base web principal ativa e em uso, com frontend separado em multiplos arquivos e dashboard reorganizada para foco no dia a dia.
 - [x] Ciclos `4.1`, `4.3`, `4.10` e `4.11` tem evidencias fortes no codigo atual.
 - [x] `4.4` fechado na base atual com papeis, auditoria, espaco compartilhado, acertos, convite por link, recuperacao por codigo e 2FA opcional.
+- [x] Setup e narrativa do produto agora refletem o fluxo real de login por usuario/senha, com `api_key` ficando como detalhe tecnico e nao como entrada principal da interface.
 - [~] `4.5`, `4.6` e `4.9` tem partes implementadas, mas ainda pedem fechamento de escopo.
 - [ ] `4.2`, `4.7`, `4.8`, `5.0` e boa parte de `6.0` ainda estao mais como direcao do que como entrega fechada.
+- [x] Decisao de fase tomada: o `Finanza` fica como base financeira consolidada enquanto a expansao de organizacao pessoal segue no `Finvita`.
 
 ## Norte do produto
 
@@ -271,7 +276,7 @@ Itens puxados para este ciclo:
 - [x] Endurecer permissoes defensivas. Entrega atual: `canWrite(null)` bloqueia escrita e `publicUser()` nao quebra nem vaza campos sensiveis.
 - [x] Melhorar retorno de importacao. Entrega atual: backend informa contagem de categorias, listas, itens de compra e vencimentos alem de transacoes, orcamentos, metas e contas.
 
-## 4.11 - Performance e foco no controle de gastos (ciclo atual)
+## 4.11 - Performance e foco no controle de gastos (ciclo concluido)
 
 Status de implementacao: dashboard reorganizada para priorizar o fluxo diario, com widgets classificados em essencial/apoio/analise, render parcial em interacoes pontuais do menu e filtros, e `financas.html` reduzido a entrada leve apontando para `index.html`.
 
@@ -283,6 +288,15 @@ Status de implementacao: dashboard reorganizada para priorizar o fluxo diario, c
 - [x] Reduzir duplicacao entre `index.html` e `financas.html`.
 - [x] Revisar a home para ficar mais "controle de gastos" e menos "painel de tudo".
 - [x] Definir criterio de produto: se uma feature nao melhora captura, revisao ou decisao de gasto, ela entra depois.
+
+## Fechamento da fase web principal
+
+Status de implementacao: decisao registrada em `2026-04-26` para considerar a linha `4.3.1` consolidada como base principal de financas pessoais, mantendo apenas manutencao ativa, correcoes e polimento antes de deslocar energia de produto para `Finvita` e `FinClinica`.
+
+- [x] Congelar expansao grande de escopo dentro do `Finanza`.
+- [x] Manter esta base como fonte principal das operacoes financeiras do ecossistema.
+- [x] Alinhar setup e documentacao ao fluxo atual de login por usuario/senha.
+- [x] Registrar no roadmap a transicao de foco para manutencao e consolidacao.
 
 ## 5.0 - Android nativo premium
 

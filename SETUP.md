@@ -1,4 +1,4 @@
-# Finanza v3.9 final - Setup com Supabase
+# Finanza 4.3.1 - Setup com Supabase
 
 Este projeto usa:
 
@@ -80,6 +80,12 @@ curl -X POST https://SEU-APP.onrender.com/api/setup \
 
 A resposta retorna a `api_key` do admin. Se o usuario informado ja existir e ainda nao houver nenhum admin, ele sera promovido para `admin`.
 
+Observacao:
+
+- a `api_key` continua existindo para autenticacao da API e automacoes;
+- no app web/mobile o fluxo principal passou a ser `URL + usuario + senha + 2FA opcional`;
+- a chave nao precisa mais ser digitada manualmente para entrar no app.
+
 ## 5. Criar usuarios
 
 ```bash
@@ -91,13 +97,29 @@ curl -X POST https://SEU-APP.onrender.com/api/users \
 
 A resposta inclui a `api_key` do usuario. Os papeis aceitos pela API sao `admin`, `editor`, `read` e `guest`; perfis `read` e `guest` consultam dados, mas nao editam transacoes, metas, orcamentos, importacao ou estado remoto. Contas com papel `admin` tambem podem listar, criar, alterar papeis e remover usuarios pelo app, sem precisar digitar a `API_SECRET`.
 
+Se preferir, depois do primeiro admin criado voce tambem pode criar usuarios pelo proprio app, em `Configuracoes`/area administrativa.
+
 ## 6. Entrar no app
 
 Na tela inicial do Finanza:
 
 - Escolha **Online**.
 - URL: `https://SEU-APP.onrender.com`
-- Chave: a `api_key` do usuario.
+- Usuario: o `username` da conta.
+- Senha: a senha da conta.
+- Codigo 2FA: opcional, apenas se o usuario tiver ativado esse fator.
+
+O app recebe e guarda internamente a `api_key` da sessao depois do login. Ela continua util para integracoes e chamadas diretas na API, mas nao e mais o campo principal de entrada da interface.
+
+## 7. Recuperacao e seguranca
+
+Fluxos disponiveis no app atual:
+
+- criacao do primeiro usuario sem chave admin, quando a instancia ainda nao tem administrador;
+- criacao controlada por chave admin quando o cadastro estiver fechado;
+- redefinicao de senha com `API_SECRET` ou com codigo de recuperacao gerado pelo proprio usuario;
+- 2FA opcional por aplicativo autenticador;
+- regeneracao de `api_key` da conta para uso tecnico, sem mudar o fluxo visual de login.
 
 ## Endpoints principais
 
