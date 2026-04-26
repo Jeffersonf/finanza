@@ -470,10 +470,10 @@ body::before {
 }
 .sidebar-shortcut-menu{
   position:absolute;
-  top:calc(100% + 10px);
-  left:-1px;
-  width:calc(100% + 2px);
-  max-width:none;
+  top:-1px;
+  left:calc(100% + 12px);
+  width:420px;
+  max-width:min(420px, calc(100vw - 48px));
   box-sizing:border-box;
   padding:12px;
   border:1px solid color-mix(in srgb, var(--bd) 94%, rgba(200,245,90,.18));
@@ -482,7 +482,8 @@ body::before {
   box-shadow:0 22px 44px rgba(0,0,0,.28);
   display:none;
   z-index:120;
-  overflow:hidden;
+  overflow:auto;
+  max-height:min(420px, calc(100vh - 56px));
 }
 .sidebar-shortcut-menu.open{
   display:block;
@@ -1215,14 +1216,15 @@ select.sel {
 .commit-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
 .sidebar-shortcut-editor{
   display:grid;
-  grid-template-columns:1fr;
-  gap:8px;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
   margin-top:0;
 }
 .sidebar-shortcut-slot{
   display:flex;
   flex-direction:column;
   gap:5px;
+  min-width:0;
 }
 .sidebar-shortcut-slot span{
   font-size:11px;
@@ -1232,6 +1234,7 @@ select.sel {
 .sidebar-shortcut-menu .fi{
   padding:8px 10px;
   font-size:12px;
+  min-width:0;
 }
 .frow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .ma { display: flex; gap: 8px; margin-top: 20px; }
@@ -2275,14 +2278,21 @@ select:focus-visible,
   border-radius:16px;
   background:var(--sf);
 }
+.dash-manager-copy{
+  display:flex;
+  align-items:baseline;
+  gap:12px;
+  min-width:0;
+  flex-wrap:wrap;
+}
 .dash-manager-title{
   font-size:15px;
   font-weight:800;
   line-height:1.2;
 }
 .dash-manager-sub{
-  margin-top:1px;
-  font-size:12px;
+  margin-top:0;
+  font-size:11px;
   color:var(--mt);
   line-height:1.2;
 }

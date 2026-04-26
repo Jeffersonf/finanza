@@ -1929,7 +1929,6 @@ function persistLocalOrRemote(){
 async function loadAll(){
   if(cfg.mode==='local'){S=loadLocal();if(!S.transactions?.length)seedDemo();if(!S.accounts?.length)S.accounts=defAccs();setConn('offline');return;}
   try{
-    await fetch(cfg.url+'/health');
     const[txR,buds,goals,state]=await Promise.all([api('GET','/api/transactions?limit=1000'),api('GET','/api/budgets'),api('GET','/api/goals'),api('GET','/api/state')]);
     S.transactions=(txR.data||[]).map(nTx);S.budgets=(buds||[]).map(nBud);S.goals=(goals||[]).map(nGoal);
     S.accounts=(state.accounts||[]).map(nAcc);
@@ -2021,6 +2020,23 @@ function updateRates(){
   if(cfg.mode==='api')saveRemoteState().catch(e=>toast('Erro ao salvar taxas: '+e.message,'error'));
   toast(`Configurações atualizadas`,'success');
   renderAccs();renderDash();
+}
+function primeAppFromCache(){
+  if(cfg.mode!=='api')return false;
+  let cached=null;
+  try{cached=loadLocal();}catch{}
+  if(!cached)return false;
+  const hasCachedData=!!((cached.transactions||[]).length||(cached.accounts||[]).length||(cached.budgets||[]).length||(cached.goals||[]).length);
+  if(!hasCachedData)return false;
+  S=cached;
+  if(!S.accounts?.length)S.accounts=defAccs();
+  loadCC();
+  loadCar();
+  popCatSels();
+  popAccSels();
+  updM();
+  renderDash();
+  return true;
 }
 function calcEffectiveRate(type,val){
   switch(type){
@@ -4816,12 +4832,21 @@ async function initApp(){
   loadWidgetPrefs();
   loadRates();
   loadDueItems();
-  await loadAll();if(cfg.mode==='local')loadCC();loadCar();popCatSels();popAccSels();updM();renderDash();
   const name=cfg.userName||'Eu';
   document.getElementById('uName').textContent=name;
+  applyAvatar();
+  const bootedFromCache=primeAppFromCache();
+  if(bootedFromCache)showConnBar('syncing','Cache aberto • sincronizando...',2200);
+  await loadAll();
+  if(bootedFromCache&&cfg.mode==='api')showConnBar('online','Sincronização concluída',2200);
+  if(cfg.mode==='local')loadCC();
+  loadCar();
+  popCatSels();
+  popAccSels();
+  updM();
+  renderDash();
   applyAdminPanelVisibility();
   applyWriteAccessUI();
-  applyAvatar();
   renderSidebarShortcuts();
   const sv=localStorage.getItem(VK)||'n';setView(sv);
   const savedPage=sessionStorage.getItem(PAGE_KEY)||'dashboard';
@@ -4911,7 +4936,6 @@ async function syncQueue(){
 // ════════════════════════════════════════════════════════════
 let _lastConnState='';
 function showConnBar(state,msg,duration=3000){
-  if(state==='syncing'||state==='online')return;
   if(state===_lastConnState&&state==='online')return;
   _lastConnState=state;
   const b=document.getElementById('connBar');
