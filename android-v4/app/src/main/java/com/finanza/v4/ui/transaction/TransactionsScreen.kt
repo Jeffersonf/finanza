@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.SearchOff
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +46,7 @@ import com.finanza.v4.ui.home.TransactionFilterUiState
 import com.finanza.v4.ui.theme.FinanzaAmber
 import com.finanza.v4.ui.theme.FinanzaGreen
 import com.finanza.v4.ui.theme.FinanzaMint
+import com.finanza.v4.ui.theme.FinanzaMuted
 import com.finanza.v4.ui.theme.FinanzaPurple
 import com.finanza.v4.ui.theme.FinanzaRed
 import com.finanza.v4.ui.theme.FinanzaSurface2
@@ -70,24 +73,27 @@ fun TransactionsScreen(
 ) {
     LazyColumn(
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .padding(horizontal = 18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(bottom = 112.dp)
     ) {
         item {
             PageHeader(
-                title = "Transacoes",
-                subtitle = viewLabel(txView),
+                title = "Transações",
+                subtitle = "Histórico completo",
                 trailing = { MetricPill("${transactions.size}", FinanzaGreen) }
             )
         }
         item {
-            FinanzaSection(title = "Filtros", subtitle = "Periodo, tipo e categoria") {
+            FinanzaSection(
+                title = "Filtros e período",
+                subtitle = "Busca visual parecida com a central web"
+            ) {
                 PeriodPillBar(content = {
                     FinanzaChip(text = "Normal", selected = txView == "n", onClick = { onTxViewChange("n") }, color = FinanzaGreen)
                     FinanzaChip(text = "Compacto", selected = txView == "c", onClick = { onTxViewChange("c") }, color = FinanzaMint)
-                    FinanzaChip(text = "Graficos", selected = txView == "chart", onClick = { onTxViewChange("chart") }, color = FinanzaAmber)
+                    FinanzaChip(text = "Gráficos", selected = txView == "chart", onClick = { onTxViewChange("chart") }, color = FinanzaAmber)
                 })
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     FinanzaChip(text = "\u2039", selected = false, onClick = { onMonthChange(filters.month.minusMonths(1)) })
@@ -121,7 +127,7 @@ fun TransactionsScreen(
         item { TransactionSummary(transactions) }
         if (transactions.isNotEmpty()) {
             item {
-                FinanzaSection(title = "Historico", subtitle = "${transactions.size} item(ns)") {}
+                FinanzaSection(title = "Lista de transações", subtitle = "${transactions.size} item(ns) no filtro atual") {}
             }
             when (txView) {
                 "chart" -> item { CategoryChart(transactions) }
@@ -149,7 +155,7 @@ private fun TransactionSummary(transactions: List<Transaction>) {
     val income = transactions.filter { it.type == TransactionType.Income }.sumOf { it.amountCents }
     val expense = transactions.filter { it.type == TransactionType.Expense }.sumOf { it.amountCents }
     val pending = transactions.filter { it.pending }.sumOf { it.amountCents }
-    FinanzaSection(title = "Resumo do periodo", subtitle = "Totais filtrados") {
+    FinanzaSection(title = "Resumo do período", subtitle = "Totais filtrados como na faixa superior do web") {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             MetricPill("Receitas ${money(income)}", FinanzaGreen, Modifier.weight(1f))
             MetricPill("Despesas ${money(expense)}", FinanzaRed, Modifier.weight(1f))
@@ -176,7 +182,7 @@ private fun EditableTransactionRow(
     }
     FinanzaListItem(
         emoji = if (transaction.type == TransactionType.Income) "\u2B06" else "\u2B07",
-        title = transaction.description,
+        title = transaction.description.ifBlank { "Lançamento" },
         subtitle = "${transaction.date}${if (transaction.pending) " \u2022 a pagar" else ""}${if (transaction.paid) " \u2022 pago" else ""}",
         amount = "${if (transaction.type == TransactionType.Income) "+" else "-"}${money(transaction.amountCents)}",
         amountColor = accent,
@@ -186,11 +192,17 @@ private fun EditableTransactionRow(
         stripColor = glow,
         onClick = { onEdit(transaction) },
         trailing = {
-            IconButton(onClick = { onEdit(transaction) }) {
+            IconButton(
+                onClick = { onEdit(transaction) },
+                colors = IconButtonDefaults.iconButtonColors(contentColor = FinanzaMuted)
+            ) {
                 Icon(Icons.Rounded.Edit, contentDescription = "Editar")
             }
             if (transaction.type == TransactionType.Expense) {
-                IconButton(onClick = { onPaidChange(transaction.id, !transaction.paid) }) {
+                IconButton(
+                    onClick = { onPaidChange(transaction.id, !transaction.paid) },
+                    colors = IconButtonDefaults.iconButtonColors(contentColor = if (transaction.paid) FinanzaGreen else FinanzaPurple)
+                ) {
                     Icon(
                         Icons.Rounded.CheckCircle,
                         contentDescription = "Marcar pago",
@@ -198,7 +210,10 @@ private fun EditableTransactionRow(
                     )
                 }
             }
-            IconButton(onClick = { onDelete(transaction.id) }) {
+            IconButton(
+                onClick = { onDelete(transaction.id) },
+                colors = IconButtonDefaults.iconButtonColors(contentColor = FinanzaRed)
+            ) {
                 Icon(Icons.Rounded.Delete, contentDescription = "Excluir", tint = FinanzaRed)
             }
         }
@@ -215,7 +230,7 @@ private fun CompactTransactionRow(
     val accent = if (transaction.type == TransactionType.Income) FinanzaGreen else FinanzaRed
     FinanzaListItem(
         emoji = if (transaction.type == TransactionType.Income) "\u2B06" else "\u2B07",
-        title = transaction.description,
+        title = transaction.description.ifBlank { "Lançamento" },
         subtitle = "${transaction.category} \u2022 ${transaction.date}",
         amount = "${if (transaction.type == TransactionType.Income) "+" else "-"}${money(transaction.amountCents)}",
         amountColor = accent,
@@ -252,11 +267,11 @@ private fun CategoryChart(transactions: List<Transaction>) {
     val max = expenses.maxOfOrNull { it.second }?.takeIf { it > 0 } ?: 1L
     FinanzaSection(
         title = "Gastos por categoria",
-        subtitle = "Ranking visual do mes",
+        subtitle = "Ranking visual do mês",
         trailing = { MetricPill("${expenses.size}", FinanzaPurple) }
     ) {
         if (expenses.isEmpty()) {
-            Text("Sem despesas para montar grafico.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Sem despesas para montar gráfico.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         expenses.forEachIndexed { index, (category, cents) ->
             val color = listOf(FinanzaRed, FinanzaAmber, FinanzaPurple, FinanzaMint, FinanzaGreen)[index % 5]
@@ -286,8 +301,8 @@ private fun CategoryChart(transactions: List<Transaction>) {
 private fun viewLabel(txView: String): String {
     return when (txView) {
         "c" -> "Visual compacto"
-        "chart" -> "Graficos do mes"
-        else -> "Historico completo"
+        "chart" -> "Gráficos do mês"
+        else -> "Histórico completo"
     }
 }
 

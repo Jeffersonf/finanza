@@ -16,27 +16,33 @@ val DmSans = FontFamily(
     Font(R.font.dm_sans_800, FontWeight.ExtraBold)
 )
 
+val Syne = FontFamily(
+    Font(R.font.syne_600, FontWeight.SemiBold),
+    Font(R.font.syne_700, FontWeight.Bold),
+    Font(R.font.syne_800, FontWeight.ExtraBold)
+)
+
 val FinanzaTypography = Typography(
     displayMedium = Typography().displayMedium.copy(
-        fontFamily = DmSans,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 20.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.sp
+        fontFamily = Syne,
+        fontWeight = FontWeight.Bold,
+        fontSize = 22.sp,
+        lineHeight = 26.sp,
+        letterSpacing = (-0.4).sp
     ),
     displaySmall = Typography().displaySmall.copy(
-        fontFamily = DmSans,
+        fontFamily = Syne,
         fontWeight = FontWeight.Bold,
-        fontSize = 20.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.sp
+        fontSize = 24.sp,
+        lineHeight = 28.sp,
+        letterSpacing = (-0.5).sp
     ),
     titleLarge = Typography().titleLarge.copy(
-        fontFamily = DmSans,
+        fontFamily = Syne,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 17.sp,
+        fontSize = 18.sp,
         lineHeight = 22.sp,
-        letterSpacing = 0.sp
+        letterSpacing = (-0.2).sp
     ),
     titleMedium = Typography().titleMedium.copy(
         fontFamily = DmSans,

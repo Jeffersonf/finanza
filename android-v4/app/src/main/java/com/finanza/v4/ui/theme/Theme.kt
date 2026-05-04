@@ -12,6 +12,7 @@ val FinanzaMint = Color(0xFF5AF5C8)
 val FinanzaPurple = Color(0xFFA78BFA)
 val FinanzaRed = Color(0xFFF5705A)
 val FinanzaAmber = Color(0xFFF5C85A)
+val FinanzaBlue = Color(0xFF6FCBFF)
 val FinanzaBg = Color(0xFF08090D)
 val FinanzaBg2 = Color(0xFF0D0F16)
 val FinanzaSurface = Color(0xFF12151E)
@@ -31,11 +32,11 @@ private val FinanzaDarkColors: ColorScheme = darkColorScheme(
     secondary = FinanzaMint,
     tertiary = FinanzaPurple,
     background = FinanzaBg,
-    surface = FinanzaSurface,
-    surfaceVariant = FinanzaSurface2,
-    surfaceContainer = FinanzaSurface,
-    surfaceContainerHigh = FinanzaSurface2,
-    surfaceContainerHighest = FinanzaSurface2,
+    surface = FinanzaSurface.copy(alpha = .92f),
+    surfaceVariant = FinanzaSurface2.copy(alpha = .86f),
+    surfaceContainer = FinanzaSurface.copy(alpha = .95f),
+    surfaceContainerHigh = FinanzaSurface2.copy(alpha = .92f),
+    surfaceContainerHighest = Color(0xFF23293D),
     outline = FinanzaBorder,
     outlineVariant = FinanzaBorder.copy(alpha = .55f),
     onPrimary = FinanzaBg,

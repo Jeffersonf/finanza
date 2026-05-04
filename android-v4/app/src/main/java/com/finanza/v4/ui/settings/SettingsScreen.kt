@@ -48,14 +48,20 @@ fun SettingsScreen(
     state: SettingsUiState,
     preferences: AppPreferences,
     shoppingLists: List<ShoppingList>,
+    biometricAvailable: Boolean,
     onChange: ((SettingsUiState) -> SettingsUiState) -> Unit,
     onPreferencesChange: ((AppPreferences) -> AppPreferences) -> Unit,
     onLogin: () -> Unit,
     onPush: () -> Unit,
     onPull: () -> Unit,
     onDisconnect: () -> Unit,
+    onAutoSyncChange: (Boolean) -> Unit,
     onExportBackup: ((String) -> Unit) -> Unit,
     onImportBackup: (String) -> Unit,
+    onAppLockChange: (Boolean) -> Unit,
+    onBiometricsChange: (Boolean) -> Unit,
+    onSavePin: (String) -> Unit,
+    onClearPin: () -> Unit,
     onEnableReminders: () -> Unit
 ) {
     val context = LocalContext.current
@@ -63,6 +69,7 @@ fun SettingsScreen(
     var cdiText by remember(preferences.cdi) { mutableStateOf(formatRate(preferences.cdi)) }
     var selicText by remember(preferences.selic) { mutableStateOf(formatRate(preferences.selic)) }
     var monthlyIncomeText by remember(preferences.monthlyIncomeCents) { mutableStateOf(formatMoneyInput(preferences.monthlyIncomeCents)) }
+    var pinText by remember { mutableStateOf("") }
 
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
@@ -89,16 +96,16 @@ fun SettingsScreen(
     ) {
         item {
             PageHeader(
-                title = "Configuracoes",
-                subtitle = "Aparencia, dashboard, conta e notificacoes",
+                title = "Configurações",
+                subtitle = "Aparência, dashboard, conta e notificações",
                 trailing = { MetricPill(if (state.connected) "online" else "local", if (state.connected) FinanzaGreen else FinanzaMint) }
             )
         }
         item {
-            FinanzaSection("Visao geral", "Resumo rapido do estado atual da v4 neste aparelho.") {
+            FinanzaSection("Visão geral", "Resumo rápido do estado atual da v4 neste aparelho.") {
                 FinanzaListItem(
                     emoji = if (state.connected) "✓" else "○",
-                    title = if (state.connected) "Sincronizacao ativa" else "Modo local",
+                    title = if (state.connected) "Sincronização ativa" else "Modo local",
                     subtitle = if (state.connected) {
                         state.userName.takeIf { it.isNotBlank() }?.let { "Conectado como $it" } ?: "API conectada"
                     } else {
@@ -112,7 +119,7 @@ fun SettingsScreen(
                 FinanzaListItem(
                     emoji = "¤",
                     title = "Renda mensal base",
-                    subtitle = "Usada para ritmo diario e indicadores da dashboard",
+                    subtitle = "Usada para ritmo diário e indicadores da dashboard",
                     amount = formatMoney(preferences.monthlyIncomeCents),
                     amountColor = FinanzaGreen,
                     iconColor = FinanzaGreen,
@@ -121,8 +128,8 @@ fun SettingsScreen(
             }
         }
         item {
-            FinanzaSection("Aparencia e comportamento", "Tema, taxas, visualizacao e lista ativa sincronizados com a web.") {
-                Text("Aparencia", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            FinanzaSection("Aparência e comportamento", "Tema, taxas, visualização e lista ativa sincronizados com a web.") {
+                Text("Aparência", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     FinanzaChip(
                         text = "Escuro",
@@ -137,8 +144,8 @@ fun SettingsScreen(
                     )
                 }
                 FinanzaToggleRow(
-                    title = "Icones na dashboard",
-                    subtitle = "Mostra ou oculta os icones dos cards da tela inicial",
+                    title = "Ícones na dashboard",
+                    subtitle = "Mostra ou oculta os ícones dos cards da tela inicial",
                     checked = preferences.showDashboardIcons,
                     onCheckedChange = { checked -> onPreferencesChange { it.copy(showDashboardIcons = checked) } },
                     color = FinanzaMint
@@ -147,7 +154,7 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     value = monthlyIncomeText,
                     onValueChange = { monthlyIncomeText = it },
-                    label = "Salario ou renda mensal base",
+                    label = "Salário ou renda mensal base",
                     prefix = "R$",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
@@ -184,9 +191,9 @@ fun SettingsScreen(
                         onPreferencesChange { it.copy(cdi = cdi, selic = selic) }
                     }
                 )
-                Text("Visualizacao dos lancamentos", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Visualização dos lançamentos", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("n" to "Normal", "c" to "Compacta", "chart" to "Graficos").forEach { (key, label) ->
+                    listOf("n" to "Normal", "c" to "Compacta", "chart" to "Gráficos").forEach { (key, label) ->
                         FinanzaChip(
                             text = label,
                             selected = preferences.txView == key,
@@ -248,7 +255,7 @@ fun SettingsScreen(
             }
         }
         item {
-            FinanzaSection("Sincronizacao", "Conecte a API do Finanza para enviar ou baixar seus dados.") {
+            FinanzaSection("Sincronização", "Conecte a API do Finanza para enviar ou baixar seus dados.") {
                 FinanzaTextField(
                     modifier = Modifier.fillMaxWidth(),
                     value = state.baseUrl,
@@ -260,7 +267,7 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     value = state.username,
                     onValueChange = { value -> onChange { it.copy(username = value, message = null) } },
-                    label = "Usuario"
+                    label = "Usuário"
                 )
                 FinanzaTextField(
                     modifier = Modifier.fillMaxWidth(),
@@ -277,6 +284,20 @@ fun SettingsScreen(
                 )
                 if (state.connected) {
                     Text("Conectado${state.userName.takeIf { it.isNotBlank() }?.let { ": $it" } ?: ""}", color = MaterialTheme.colorScheme.primary)
+                    FinanzaToggleRow(
+                        title = "Sincronização em background",
+                        subtitle = "Envia alterações locais em segundo plano quando houver internet",
+                        checked = state.autoSyncEnabled,
+                        onCheckedChange = onAutoSyncChange,
+                        color = FinanzaGreen
+                    )
+                    if (state.lastSyncMessage.isNotBlank()) {
+                        Text(
+                            "Ultimo sync: ${formatSyncTimestamp(state.lastSyncAt)} • ${state.lastSyncMessage}",
+                            color = if (state.lastSyncSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                     FinanzaGhostButton(modifier = Modifier.fillMaxWidth(), text = "Enviar local para nuvem", onClick = onPush, enabled = !state.syncing)
                     FinanzaGhostButton(modifier = Modifier.fillMaxWidth(), text = "Baixar nuvem para este aparelho", onClick = onPull, enabled = !state.syncing)
                     FinanzaGhostButton(modifier = Modifier.fillMaxWidth(), text = "Desconectar", onClick = onDisconnect, enabled = !state.syncing, color = MaterialTheme.colorScheme.error)
@@ -284,7 +305,51 @@ fun SettingsScreen(
             }
         }
         item {
-            FinanzaSection("Backup local", "Exporte um JSON da v4 ou importe um backup antigo para migracao.") {
+            FinanzaSection("Segurança do app", "Proteja este aparelho com bloqueio local por biometria ou PIN.") {
+                FinanzaToggleRow(
+                    title = "Bloquear ao voltar para o app",
+                    subtitle = "Pede biometria ou PIN quando o Finanza volta ao primeiro plano",
+                    checked = state.appLockEnabled,
+                    onCheckedChange = onAppLockChange,
+                    color = FinanzaGreen
+                )
+                FinanzaToggleRow(
+                    title = "Permitir biometria",
+                    subtitle = if (biometricAvailable) "Usa a biometria do aparelho para desbloquear" else "Biometria indisponível neste aparelho",
+                    checked = state.biometricsEnabled,
+                    onCheckedChange = { if (biometricAvailable) onBiometricsChange(it) },
+                    color = FinanzaMint
+                )
+                FinanzaTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = pinText,
+                    onValueChange = { pinText = it.filter(Char::isDigit).take(8) },
+                    label = if (state.hasPin) "Trocar PIN" else "Criar PIN",
+                    placeholder = "4 a 8 dígitos",
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    visualTransformation = PasswordVisualTransformation()
+                )
+                FinanzaPrimaryButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    text = if (state.hasPin) "Salvar novo PIN" else "Salvar PIN",
+                    onClick = {
+                        onSavePin(pinText)
+                        pinText = ""
+                    },
+                    enabled = pinText.length >= 4
+                )
+                if (state.hasPin) {
+                    FinanzaGhostButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = "Remover PIN salvo",
+                        onClick = onClearPin,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        }
+        item {
+            FinanzaSection("Backup local", "Exporte um JSON da v4 ou importe um backup antigo para migração.") {
                 FinanzaGhostButton(
                     modifier = Modifier.fillMaxWidth(),
                     text = "Exportar backup v4",
@@ -308,7 +373,7 @@ fun SettingsScreen(
             }
         }
         item {
-            FinanzaSection("Notificacoes", "Ative o lembrete diario e mantenha os atalhos persistentes visiveis.") {
+            FinanzaSection("Notificações", "Ative o lembrete diário e mantenha os atalhos persistentes visíveis.") {
                 FinanzaGhostButton(modifier = Modifier.fillMaxWidth(), text = "Ativar lembretes e atalhos", onClick = onEnableReminders)
             }
         }
@@ -347,6 +412,15 @@ private fun formatMoneyInput(cents: Long): String {
 
 private fun formatMoney(cents: Long): String {
     return String.format(Locale("pt", "BR"), "R$ %,.2f", cents / 100.0)
+}
+
+private fun formatSyncTimestamp(timestamp: Long): String {
+    if (timestamp <= 0L) return "ainda nao sincronizado"
+    val instant = java.time.Instant.ofEpochMilli(timestamp)
+    val zone = java.time.ZoneId.systemDefault()
+    return java.time.format.DateTimeFormatter.ofPattern("dd/MM HH:mm")
+        .withZone(zone)
+        .format(instant)
 }
 
 private fun orderedWidgets(preferences: AppPreferences) = preferences.widgetOrder

@@ -61,7 +61,7 @@ fun ShoppingScreen(
         item {
             PageHeader(
                 title = "Compras",
-                subtitle = "Listas separadas por rotina, mercado e reposicao da casa",
+                subtitle = "Listas separadas por rotina, mercado e reposição da casa",
                 trailing = { MetricPill("$pending pendentes", FinanzaMint) }
             )
         }
@@ -73,6 +73,13 @@ fun ShoppingScreen(
                     icon = Icons.Rounded.ShoppingCart
                 )
             }
+        }
+        item {
+            FinanzaSection(
+                title = "Listas ativas",
+                subtitle = "Estrutura próxima da central de compras da versão web",
+                trailing = { MetricPill("${orderedLists.size} listas", FinanzaGreen) }
+            ) {}
         }
         orderedLists.forEach { list ->
             val itemsForList = snapshot.items.filter { it.listId == list.id }

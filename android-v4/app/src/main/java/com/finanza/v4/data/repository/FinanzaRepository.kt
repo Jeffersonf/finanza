@@ -51,7 +51,8 @@ class FinanzaRepository(
     private val shoppingItemDao: ShoppingItemDao,
     private val appSettingsDao: AppSettingsDao,
     private val syncPreferences: SyncPreferences,
-    private val apiClient: FinanzaApiClient
+    private val apiClient: FinanzaApiClient,
+    private val onLocalDataChanged: () -> Unit = {}
 ) {
     val syncConfig: Flow<SyncConfig> = syncPreferences.config
 
@@ -136,6 +137,7 @@ class FinanzaRepository(
         existing?.let { reverseBalanceImpact(it) }
         transactionDao.upsert(saved)
         applyBalanceImpact(saved)
+        onLocalDataChanged()
     }
 
     suspend fun setTransactionPaid(id: String, paid: Boolean) {
@@ -144,15 +146,22 @@ class FinanzaRepository(
             applyBalanceImpact(existing.copy(pending = false, paid = true))
         }
         transactionDao.setPaid(id, paid)
+        onLocalDataChanged()
     }
 
     suspend fun deleteTransaction(id: String) {
         transactionDao.getById(id)?.let { reverseBalanceImpact(it) }
         transactionDao.deleteById(id)
+        onLocalDataChanged()
     }
 
     suspend fun saveAppPreferences(preferences: AppPreferences) {
         appSettingsDao.upsert(preferences.toEntity())
+        onLocalDataChanged()
+    }
+
+    suspend fun getAppPreferences(): AppPreferences {
+        return appSettingsDao.get()?.toPreferences() ?: AppPreferences()
     }
 
     suspend fun saveAccount(draft: AccountDraft) {
@@ -167,6 +176,7 @@ class FinanzaRepository(
                 yieldRate = draft.yieldRate.takeIf { draft.type == "investment" } ?: existing?.yieldRate ?: 0.0
             )
         )
+        onLocalDataChanged()
     }
 
     suspend fun deleteAccount(id: String): DeleteResult {
@@ -174,6 +184,7 @@ class FinanzaRepository(
             return DeleteResult.Blocked("Esta conta possui lancamentos vinculados.")
         }
         accountDao.deleteById(id)
+        onLocalDataChanged()
         return DeleteResult.Deleted
     }
 
@@ -186,10 +197,12 @@ class FinanzaRepository(
                 month = draft.month
             )
         )
+        onLocalDataChanged()
     }
 
     suspend fun deleteBudget(id: String) {
         budgetDao.deleteById(id)
+        onLocalDataChanged()
     }
 
     suspend fun saveGoal(draft: GoalDraft) {
@@ -205,10 +218,12 @@ class FinanzaRepository(
                 monthlyCents = draft.monthlyCents
             )
         )
+        onLocalDataChanged()
     }
 
     suspend fun deleteGoal(id: String) {
         goalDao.deleteById(id)
+        onLocalDataChanged()
     }
 
     suspend fun saveShoppingList(draft: ShoppingListDraft) {
@@ -220,11 +235,13 @@ class FinanzaRepository(
                 position = draft.position
             )
         )
+        onLocalDataChanged()
     }
 
     suspend fun deleteShoppingList(id: String) {
         shoppingItemDao.deleteByListId(id)
         shoppingListDao.deleteById(id)
+        onLocalDataChanged()
     }
 
     suspend fun saveShoppingItem(draft: ShoppingItemDraft) {
@@ -238,14 +255,17 @@ class FinanzaRepository(
                 bought = draft.bought
             )
         )
+        onLocalDataChanged()
     }
 
     suspend fun setShoppingItemBought(id: String, bought: Boolean) {
         shoppingItemDao.setBought(id, bought)
+        onLocalDataChanged()
     }
 
     suspend fun deleteShoppingItem(id: String) {
         shoppingItemDao.deleteById(id)
+        onLocalDataChanged()
     }
 
     suspend fun importLegacyBackup(json: String): ImportResult {
@@ -259,7 +279,7 @@ class FinanzaRepository(
         val shopping = root.optJSONObject("shopping")
         val shoppingLists = shopping?.optJSONArray("lists") ?: root.optJSONArray("shoppingLists") ?: JSONArray()
         val shoppingItems = shopping?.optJSONArray("items") ?: root.optJSONArray("shoppingItems") ?: JSONArray()
-        val settings = root.optJSONObject("settings")
+        val settings = root.optJSONObject("settings") ?: root.optJSONObject("user_settings")
 
         val importedAccounts = parseAccounts(accounts)
         val fallbackAccountId = importedAccounts.firstOrNull()?.id ?: UUID.randomUUID().toString()
@@ -289,6 +309,7 @@ class FinanzaRepository(
         shoppingListDao.upsertAll(importedShoppingLists.ifEmpty { listOf(defaultShoppingList()) })
         shoppingItemDao.upsertAll(importedShoppingItems)
         settings?.let { appSettingsDao.upsert(parseSettings(it)) }
+        onLocalDataChanged()
 
         return ImportResult.Imported(
             accounts = safeAccounts.size,
@@ -307,6 +328,14 @@ class FinanzaRepository(
         return config
     }
 
+    suspend fun setAutoSyncEnabled(enabled: Boolean) {
+        syncPreferences.setAutoSyncEnabled(enabled)
+    }
+
+    suspend fun markSyncResult(message: String, success: Boolean) {
+        syncPreferences.markSyncResult(message, success)
+    }
+
     suspend fun pushLocalToRemote(config: SyncConfig) {
         require(config.connected) { "Conecte na API primeiro." }
         apiClient.putImport(config, buildBackupJson())
@@ -318,6 +347,51 @@ class FinanzaRepository(
 
     suspend fun disconnectSync() {
         syncPreferences.clear()
+    }
+
+    suspend fun payDueItem(itemId: String, date: String): Boolean {
+        val preferences = getAppPreferences()
+        val item = preferences.dueItems.firstOrNull { it.id == itemId } ?: return false
+        val accountId = item.accountId?.takeIf { it.isNotBlank() }
+            ?: accountDao.listAll().firstOrNull()?.id
+            ?: return false
+        saveTransaction(
+            TransactionDraft(
+                accountId = accountId,
+                type = TransactionType.Expense,
+                description = item.name,
+                category = item.category,
+                amountCents = item.amountCents,
+                date = date,
+                note = listOf(methodLabel(item.paymentMethod), item.paymentPlace).filter { it.isNotBlank() }.joinToString(" • "),
+                pending = false
+            )
+        )
+        val key = date.take(7)
+        saveAppPreferences(
+            preferences.copy(
+                dueItems = preferences.dueItems.map { due ->
+                    if (due.id == item.id && key !in due.paidKeys) due.copy(paidKeys = due.paidKeys + key) else due
+                }
+            )
+        )
+        return true
+    }
+
+    suspend fun postponeDueItem(itemId: String, fromDate: String, days: Long = 1): Boolean {
+        val preferences = getAppPreferences()
+        val item = preferences.dueItems.firstOrNull { it.id == itemId } ?: return false
+        val baseDate = runCatching { java.time.LocalDate.parse(fromDate) }
+            .getOrElse { runCatching { java.time.LocalDate.parse(item.nextDueDate) }.getOrDefault(java.time.LocalDate.now()) }
+        val nextDate = baseDate.plusDays(days)
+        saveAppPreferences(
+            preferences.copy(
+                dueItems = preferences.dueItems.map { due ->
+                    if (due.id == item.id) due.copy(nextDueDate = nextDate.toString(), dueDay = nextDate.dayOfMonth) else due
+                }
+            )
+        )
+        return true
     }
 
     suspend fun pullRemoteToLocal(config: SyncConfig): ImportResult {
@@ -364,6 +438,7 @@ class FinanzaRepository(
                 BudgetEntity(UUID.randomUUID().toString(), "Casa", 80_000, "2026-04")
             )
         )
+        onLocalDataChanged()
     }
 
     private fun summarize(
@@ -518,6 +593,10 @@ class FinanzaRepository(
             }
         }
         val settings = appSettingsDao.get()?.toJson() ?: JSONObject().put("theme", "dark")
+        val dueItems = settings.optJSONObject("rates")
+            ?.optJSONArray("dueItems")
+            ?: settings.optJSONObject("rates")?.optJSONArray("due_items")
+            ?: JSONArray()
         return JSONObject()
             .put("app", "Finanza")
             .put("version", "4.3.1")
@@ -527,8 +606,13 @@ class FinanzaRepository(
             .put("budgets", budgets)
             .put("goals", goals)
             .put("categories", categories)
+            .put("customCategories", categories)
+            .put("shoppingLists", shoppingLists)
+            .put("shoppingItems", shoppingItems)
             .put("shopping", JSONObject().put("lists", shoppingLists).put("items", shoppingItems))
             .put("settings", settings)
+            .put("user_settings", settings)
+            .put("dueItems", dueItems)
     }
 }
 
@@ -707,13 +791,21 @@ private fun parseAccounts(accounts: JSONArray): List<AccountEntity> {
         val item = accounts.optJSONObject(index) ?: return@mapNotNull null
         val id = item.optString("id").ifBlank { UUID.randomUUID().toString() }
         val name = item.optString("name").ifBlank { "Conta" }
+        val type = item.optString("type").ifBlank { "checking" }
+        val yieldRate = item.optDouble(
+            "yieldRate",
+            item.optDouble(
+                "yield_rate",
+                if (type == "investment") item.optDouble("yieldVal", item.optDouble("yield_val", 0.0)) else 0.0
+            )
+        )
         AccountEntity(
             id = id,
             name = name,
             icon = item.optString("icon").ifBlank { "\uD83C\uDFE6" },
-            type = item.optString("type").ifBlank { "checking" },
+            type = type,
             balanceCents = moneyToCents(item, "balance"),
-            yieldRate = item.optDouble("yieldRate", item.optDouble("yield_rate", 0.0))
+            yieldRate = yieldRate
         )
     }
 }
@@ -745,7 +837,8 @@ private fun parseBudgets(budgets: JSONArray): List<BudgetEntity> {
     val currentMonth = YearMonth.now().toString()
     return (0 until budgets.length()).mapNotNull { index ->
         val item = budgets.optJSONObject(index) ?: return@mapNotNull null
-        val limitCents = moneyToCents(item, "limit")
+        val limitCents = moneyToCents(item, "limit").takeIf { it > 0L }
+            ?: moneyToCents(item, "amount")
         val category = item.optString("category")
         if (category.isBlank() || limitCents <= 0L) return@mapNotNull null
         BudgetEntity(
@@ -760,8 +853,9 @@ private fun parseBudgets(budgets: JSONArray): List<BudgetEntity> {
 private fun parseGoals(goals: JSONArray): List<GoalEntity> {
     return (0 until goals.length()).mapNotNull { index ->
         val item = goals.optJSONObject(index) ?: return@mapNotNull null
-        val target = moneyToCents(item, "target")
-        val name = item.optString("name")
+        val target = moneyToCents(item, "target").takeIf { it > 0L }
+            ?: moneyToCents(item, "goal")
+        val name = item.optString("name").ifBlank { item.optString("title") }
         val deadline = item.optString("deadline").take(10)
         if (name.isBlank() || target <= 0L || deadline.isBlank()) return@mapNotNull null
         GoalEntity(
@@ -769,10 +863,12 @@ private fun parseGoals(goals: JSONArray): List<GoalEntity> {
             name = name,
             icon = item.optString("icon").ifBlank { "\uD83C\uDFAF" },
             targetCents = target,
-            currentCents = moneyToCents(item, "current"),
+            currentCents = moneyToCents(item, "current").takeIf { it > 0L }
+                ?: moneyToCents(item, "saved"),
             deadline = deadline,
-            description = item.optString("description").ifBlank { item.optString("desc") },
-            monthlyCents = moneyToCents(item, "monthly")
+            description = item.optString("description").ifBlank { item.optString("desc").ifBlank { item.optString("note") } },
+            monthlyCents = moneyToCents(item, "monthly").takeIf { it > 0L }
+                ?: moneyToCents(item, "perMonth")
         )
     }
 }
@@ -824,11 +920,20 @@ private fun parseShoppingItems(items: JSONArray): List<ShoppingItemEntity> {
 }
 
 private fun parseSettings(settings: JSONObject): AppSettingsEntity {
+    val rates = settings.optJSONObject("rates")
+        ?: settings.optJSONObject("rate_settings")
+        ?: JSONObject()
+    val widgetPrefs = settings.optJSONObject("widgetPrefs")
+        ?: settings.optJSONObject("widget_prefs")
+        ?: JSONObject()
+    val widgetOrder = settings.optJSONArray("widgetOrder")
+        ?: settings.optJSONArray("widget_order")
+        ?: JSONArray()
     return AppSettingsEntity(
         theme = settings.optString("theme").ifBlank { "dark" },
-        ratesJson = (settings.optJSONObject("rates") ?: JSONObject()).toString(),
-        widgetPrefsJson = (settings.optJSONObject("widgetPrefs") ?: settings.optJSONObject("widget_prefs") ?: JSONObject()).toString(),
-        widgetOrderJson = (settings.optJSONArray("widgetOrder") ?: settings.optJSONArray("widget_order") ?: JSONArray()).toString(),
+        ratesJson = rates.toString(),
+        widgetPrefsJson = widgetPrefs.toString(),
+        widgetOrderJson = widgetOrder.toString(),
         txView = normalizeTxView(settings.optString("txView").ifBlank { settings.optString("tx_view").ifBlank { "n" } }),
         activeList = settings.optString("activeList").ifBlank { settings.optString("active_list").ifBlank { null } }
     )
@@ -1018,5 +1123,17 @@ private fun normalizeMoney(value: String): String {
             if (decimalDigits in 1..2) raw else raw.replace(".", "")
         }
         else -> raw
+    }
+}
+
+private fun methodLabel(method: String): String {
+    return when (method) {
+        "pix" -> "Pix"
+        "boleto" -> "Boleto"
+        "credit" -> "Cartao principal"
+        "store_card" -> "Cartao proprio"
+        "debit" -> "Debito automatico"
+        "financing" -> "Crediario"
+        else -> method
     }
 }

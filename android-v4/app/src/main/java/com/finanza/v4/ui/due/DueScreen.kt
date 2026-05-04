@@ -76,8 +76,8 @@ fun DueScreen(
         }
         item {
             FinanzaSection(
-                title = "Proximos compromissos",
-                subtitle = "${money(total)} nos proximos 45 dias",
+                title = "Próximos compromissos",
+                subtitle = "${money(total)} nos próximos 45 dias",
                 trailing = {
                     FinanzaGhostButton(
                         text = "Novo",
@@ -198,7 +198,7 @@ private fun DueForm(
         title = if (item == null) "Novo vencimento" else "Editar vencimento",
         subtitle = "Data, forma e local de pagamento"
     ) {
-        FinanzaTextField(value = name, onValueChange = { name = it }, label = "Nome", placeholder = "Internet, luz, crediario...")
+        FinanzaTextField(value = name, onValueChange = { name = it }, label = "Nome", placeholder = "Internet, luz, crediário...")
         FinanzaTextField(
             value = amount,
             onValueChange = { amount = it },
@@ -206,12 +206,12 @@ private fun DueForm(
             prefix = "R$ ",
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal)
         )
-        FinanzaTextField(value = date, onValueChange = { date = it }, label = "Proximo vencimento", placeholder = "2026-04-20")
+        FinanzaTextField(value = date, onValueChange = { date = it }, label = "Próximo vencimento", placeholder = "2026-04-20")
         FinanzaTextField(value = place, onValueChange = { place = it }, label = "Onde pagar", placeholder = "App, site, loja, banco...")
-        FinanzaTextField(value = notes, onValueChange = { notes = it }, label = "Observacao", placeholder = "Contrato, login, codigo...")
-        ChipRow("Forma", listOf("pix" to "Pix", "boleto" to "Boleto", "credit" to "Cartao", "store_card" to "Loja", "debit" to "Debito", "financing" to "Crediario"), method) { method = it }
+        FinanzaTextField(value = notes, onValueChange = { notes = it }, label = "Observação", placeholder = "Contrato, login, código...")
+        ChipRow("Forma", listOf("pix" to "Pix", "boleto" to "Boleto", "credit" to "Cartão", "store_card" to "Loja", "debit" to "Débito", "financing" to "Crediário"), method) { method = it }
         ChipRow("Categoria", categories.ifEmpty { listOf("A classificar") }.map { it to it }, category) { category = it }
-        ChipRow("Conta/cartao", listOf("" to "Sem conta") + accounts.map { it.id to "${it.icon} ${it.name}" }, accountId) { accountId = it }
+        ChipRow("Conta/cartão", listOf("" to "Sem conta") + accounts.map { it.id to "${it.icon} ${it.name}" }, accountId) { accountId = it }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             FinanzaGhostButton(text = "Cancelar", onClick = onCancel, modifier = Modifier.weight(1f))
             FinanzaPrimaryButton(

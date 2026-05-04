@@ -29,6 +29,20 @@ Legenda sugerida:
 - [ ] `4.2`, `4.7`, `4.8`, `5.0` e boa parte de `6.0` ainda estao mais como direcao do que como entrega fechada.
 - [x] Decisao de fase tomada: o `Finanza` fica como base financeira consolidada enquanto a expansao de organizacao pessoal segue no `Finvita`.
 
+## Prioridade imediata - banco online e continuidade dos dados
+
+Decisao registrada em `2026-05-04`: tirar o Finanza da dependencia de banco gratuito com expiracao curta e manter a base online com custo zero viavel, sem perder a capacidade de restaurar por backup.
+
+- [ ] Migrar o banco principal para **Neon Free Postgres** como melhor opcao free gerenciada para o momento.
+- [ ] Manter a API Node/Express atual apontando para o novo `DATABASE_URL` do Neon.
+- [ ] Rodar o schema `db/init.sql` no banco novo quando necessario.
+- [ ] Restaurar o backup JSON exportado no Finanza e validar contagem de transacoes, contas, metas, orcamentos, carro, vencimentos e configuracoes.
+- [ ] Exportar novo JSON depois da restauracao e guardar como backup-mestre pos-migracao.
+- [ ] Adicionar aviso forte no app para ultimo backup, status da API e status do banco online.
+- [ ] Manter rotina de backup JSON semanal como regra minima.
+- [ ] Avaliar **Oracle Always Free VM + PostgreSQL em Docker** como segunda fase para self-host/cloud free com mais controle.
+- [ ] Documentar procedimento de recuperacao: criar banco, aplicar schema, configurar `DATABASE_URL`, importar JSON e validar.
+
 ## Norte do produto
 
 - [x] Fazer o Finanza virar o centro pessoal de decisao financeira, nao so um registrador de gastos.
@@ -297,22 +311,23 @@ Status de implementacao: decisao registrada em `2026-04-26` para considerar a li
 - [x] Manter esta base como fonte principal das operacoes financeiras do ecossistema.
 - [x] Alinhar setup e documentacao ao fluxo atual de login por usuario/senha.
 - [x] Registrar no roadmap a transicao de foco para manutencao e consolidacao.
-
 ## 5.0 - Android nativo premium
 
+Status de implementacao: frente ativa em `android-v4/`, agora com base offline-first, widgets de home para captura e consulta rapida, lembretes persistentes, bloqueio local por biometria/PIN, sync em background e fluxo de backup/importacao local compativel com a linha `4.x`.
+
 - [x] Definir se `android-v4/` vira base oficial da linha `5.0`.
-- [ ] Migrar modelo de dados mantendo compatibilidade com backup 4.x.
+- [x] Migrar modelo de dados mantendo compatibilidade com backup 4.x.
 - [ ] App Android nativo com performance e UX de primeira classe.
-- [ ] Widgets Android na tela inicial.
-- [ ] Widget de saldo.
-- [ ] Widget de vencimentos.
-- [ ] Widget de lancamento rapido.
+- [x] Widgets Android na tela inicial.
+- [x] Widget de saldo.
+- [x] Widget de vencimentos.
+- [x] Widget de lancamento rapido.
 - [ ] Quick Settings tile para lancar despesa.
 - [ ] Notificacoes com acoes: pagar, adiar, abrir.
-- [ ] Offline-first real com banco local.
-- [ ] Sincronizacao em background.
-- [ ] Biometria.
-- [ ] Bloqueio por PIN.
+- [x] Offline-first real com banco local.
+- [x] Sincronizacao em background.
+- [x] Biometria.
+- [x] Bloqueio por PIN.
 - [ ] Atalhos de app.
 - [ ] Compartilhar texto/recibo para o Finanza.
 - [ ] OCR local ou hibrido para comprovantes.

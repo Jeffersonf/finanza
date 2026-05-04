@@ -1,12 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <gradient
-        android:angle="135"
-        android:centerColor="#CC10131B"
-        android:endColor="#EE050608"
-        android:startColor="#E61A1F2B" />
-    <corners android:radius="22dp" />
-    <stroke
-        android:width="1dp"
-        android:color="#22FFFFFF" />
-</shape>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape>
+            <gradient
+                android:angle="135"
+                android:startColor="#F012151E"
+                android:centerColor="#ED0D0F16"
+                android:endColor="#FF08090D" />
+            <corners android:radius="22dp" />
+            <stroke
+                android:width="1dp"
+                android:color="#18FFFFFF" />
+        </shape>
+    </item>
+
+    <item
+        android:gravity="top|start"
+        android:width="150dp"
+        android:height="92dp">
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:centerColor="#38C8F55A"
+                android:endColor="#00C8F55A"
+                android:gradientRadius="92dp" />
+        </shape>
+    </item>
+
+    <item
+        android:gravity="center_vertical|end"
+        android:width="128dp"
+        android:height="96dp">
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:centerColor="#225AF5C8"
+                android:endColor="#005AF5C8"
+                android:gradientRadius="84dp" />
+        </shape>
+    </item>
+
+    <item
+        android:gravity="bottom|start"
+        android:width="116dp"
+        android:height="72dp">
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:centerColor="#16A78BFA"
+                android:endColor="#00A78BFA"
+                android:gradientRadius="68dp" />
+        </shape>
+    </item>
+</layer-list>

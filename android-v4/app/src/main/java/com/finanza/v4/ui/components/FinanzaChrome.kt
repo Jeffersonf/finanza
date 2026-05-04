@@ -52,11 +52,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.finanza.v4.ui.theme.FinanzaBg
 import com.finanza.v4.ui.theme.FinanzaBg2
+import com.finanza.v4.ui.theme.FinanzaBlue
 import com.finanza.v4.ui.theme.FinanzaBorder
 import com.finanza.v4.ui.theme.DmSans
 import com.finanza.v4.ui.theme.FinanzaGreen
 import com.finanza.v4.ui.theme.FinanzaMint
 import com.finanza.v4.ui.theme.FinanzaMuted
+import com.finanza.v4.ui.theme.FinanzaPurple
 import com.finanza.v4.ui.theme.FinanzaSurface
 import com.finanza.v4.ui.theme.FinanzaSurface2
 import com.finanza.v4.ui.theme.FinanzaText
@@ -106,6 +108,17 @@ fun FinanzaBackground(content: @Composable BoxScope.() -> Unit) {
             modifier = Modifier
                 .matchParentSize()
                 .background(
+                    Brush.radialGradient(
+                        colors = listOf(FinanzaPurple.copy(alpha = .065f), Color.Transparent),
+                        center = Offset(160f, 520f),
+                        radius = 720f
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
                     Brush.verticalGradient(
                         listOf(
                             FinanzaBg2.copy(alpha = .42f),
@@ -129,28 +142,39 @@ fun FinanzaCard(
 ) {
     Card(
         modifier = modifier.shadow(
-            8.dp,
+            14.dp,
             RoundedCornerShape(radius),
-            ambientColor = Color.Black.copy(alpha = .08f),
-            spotColor = Color.Black.copy(alpha = .10f)
+            ambientColor = Color.Black.copy(alpha = .12f),
+            spotColor = Color.Black.copy(alpha = .16f)
         ),
         shape = RoundedCornerShape(radius),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .82f)),
-        border = BorderStroke(0.8.dp, MaterialTheme.colorScheme.outline.copy(alpha = .22f))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .88f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = .26f))
     ) {
         Box(
             modifier = Modifier
                 .background(
-                    Brush.linearGradient(
+                    Brush.verticalGradient(
                         listOf(
-                            Color.White.copy(alpha = .05f),
+                            Color.White.copy(alpha = .06f),
                             Color.Transparent,
-                            FinanzaMint.copy(alpha = .016f)
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .28f)
                         )
                     )
                 )
                 .padding(padding)
         ) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(FinanzaBlue.copy(alpha = .04f), Color.Transparent),
+                            center = Offset(480f, 520f),
+                            radius = 420f
+                        )
+                    )
+            )
             if (glowColor != null) {
                 Box(
                     modifier = Modifier
@@ -158,8 +182,8 @@ fun FinanzaCard(
                         .background(
                             Brush.radialGradient(
                                 colors = listOf(glowColor.copy(alpha = .08f), Color.Transparent),
-                                center = Offset(280f, -60f),
-                                radius = 280f
+                                center = Offset(260f, -40f),
+                                radius = 320f
                             )
                         )
                 )
@@ -210,13 +234,13 @@ fun FinanzaPrimaryButton(
             .height(48.dp)
             .clip(RoundedCornerShape(14.dp))
             .shadow(
-                8.dp,
+                12.dp,
                 RoundedCornerShape(14.dp),
-                ambientColor = FinanzaGreen.copy(alpha = .14f),
-                spotColor = FinanzaGreen.copy(alpha = .22f)
+                ambientColor = FinanzaGreen.copy(alpha = .18f),
+                spotColor = FinanzaGreen.copy(alpha = .28f)
             )
             .background(
-                if (enabled) Brush.linearGradient(listOf(FinanzaGreen, Color(0xFFA8E040)))
+                if (enabled) Brush.linearGradient(listOf(Color(0xFFD7FF72), FinanzaGreen, Color(0xFFA8E040)))
                 else Brush.linearGradient(listOf(FinanzaSurface2, FinanzaSurface2)),
                 RoundedCornerShape(14.dp)
             )
@@ -251,8 +275,16 @@ fun FinanzaGhostButton(
         modifier = modifier
             .height(46.dp)
             .clip(RoundedCornerShape(14.dp))
-            .border(1.dp, color.copy(alpha = if (enabled) .18f else .08f), RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .24f), RoundedCornerShape(14.dp))
+            .border(1.dp, color.copy(alpha = if (enabled) .24f else .10f), RoundedCornerShape(14.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .34f),
+                        MaterialTheme.colorScheme.surface.copy(alpha = .22f)
+                    )
+                ),
+                RoundedCornerShape(14.dp)
+            )
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -284,7 +316,7 @@ fun FinanzaTextField(
         TextField(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, FinanzaBorder, RoundedCornerShape(14.dp)),
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = .26f), RoundedCornerShape(14.dp)),
             value = value,
             onValueChange = onValueChange,
             placeholder = placeholder?.let { { Text(it, color = FinanzaMuted) } },
@@ -295,8 +327,8 @@ fun FinanzaTextField(
             textStyle = MaterialTheme.typography.bodyLarge,
             shape = RoundedCornerShape(14.dp),
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = FinanzaSurface2.copy(alpha = .78f),
-                unfocusedContainerColor = FinanzaSurface2.copy(alpha = .58f),
+                focusedContainerColor = FinanzaSurface2.copy(alpha = .84f),
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .52f),
                 disabledContainerColor = FinanzaSurface2.copy(alpha = .38f),
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
@@ -424,7 +456,10 @@ fun MetricPill(
         text = text,
         modifier = modifier
             .border(1.dp, color.copy(alpha = .20f), RoundedCornerShape(999.dp))
-            .background(color.copy(alpha = .075f), RoundedCornerShape(999.dp))
+            .background(
+                Brush.horizontalGradient(listOf(color.copy(alpha = .13f), color.copy(alpha = .07f))),
+                RoundedCornerShape(999.dp)
+            )
             .padding(horizontal = 9.dp, vertical = 4.dp),
         color = color,
         style = MaterialTheme.typography.labelMedium,
@@ -440,8 +475,12 @@ fun CenteredIconBubble(
     Row(
         modifier = Modifier
             .size(38.dp)
+            .shadow(8.dp, RoundedCornerShape(12.dp), ambientColor = color.copy(alpha = .12f), spotColor = color.copy(alpha = .18f))
             .border(1.dp, color.copy(alpha = .18f), RoundedCornerShape(12.dp))
-            .background(color.copy(alpha = .12f), RoundedCornerShape(12.dp)),
+            .background(
+                Brush.linearGradient(listOf(color.copy(alpha = .18f), color.copy(alpha = .09f))),
+                RoundedCornerShape(12.dp)
+            ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
         content = content
@@ -458,13 +497,13 @@ fun PageHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = 10.dp),
+            .padding(top = 8.dp, bottom = 2.dp),
         verticalAlignment = Alignment.Top
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.displaySmall, color = FinanzaText)
-            Spacer(Modifier.height(4.dp))
-            Text(subtitle, color = FinanzaMuted, style = MaterialTheme.typography.bodyLarge)
+            Text(title, style = MaterialTheme.typography.displaySmall, color = FinanzaText, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(2.dp))
+            Text(subtitle, color = FinanzaMuted, style = MaterialTheme.typography.bodyMedium)
         }
         trailing?.invoke()
     }
@@ -481,13 +520,17 @@ fun FinanzaSection(
     FinanzaCard(
         modifier = modifier.fillMaxWidth(),
         radius = 28.dp,
-        padding = PaddingValues(horizontal = 16.dp, vertical = 15.dp)
+        padding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Column(Modifier.weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.titleMedium, color = FinanzaText, fontWeight = FontWeight.ExtraBold)
+                    Text(title, style = MaterialTheme.typography.titleLarge, color = FinanzaText, fontWeight = FontWeight.Bold)
                     if (subtitle != null) {
+                        Spacer(Modifier.height(2.dp))
                         Text(subtitle, color = FinanzaMuted, style = MaterialTheme.typography.bodySmall)
                     }
                 }
@@ -537,7 +580,16 @@ fun FinanzaToggleRow(
         modifier = modifier
             .fillMaxWidth()
             .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = .16f), RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .22f), RoundedCornerShape(16.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        color.copy(alpha = .07f),
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .18f),
+                        MaterialTheme.colorScheme.surface.copy(alpha = .22f)
+                    )
+                ),
+                RoundedCornerShape(16.dp)
+            )
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -570,7 +622,10 @@ fun EmojiBubble(
             .size(38.dp)
             .clip(RoundedCornerShape(12.dp))
             .border(1.dp, color.copy(alpha = .16f), RoundedCornerShape(12.dp))
-            .background(color.copy(alpha = .10f), RoundedCornerShape(12.dp)),
+            .background(
+                Brush.linearGradient(listOf(color.copy(alpha = .18f), color.copy(alpha = .08f))),
+                RoundedCornerShape(12.dp)
+            ),
         contentAlignment = Alignment.Center
     ) {
         Text(emoji, style = MaterialTheme.typography.titleMedium)
@@ -597,10 +652,18 @@ fun FinanzaListItem(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(17.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = .14f), RoundedCornerShape(17.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .16f), RoundedCornerShape(17.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = .12f), RoundedCornerShape(17.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .18f),
+                        MaterialTheme.colorScheme.surface.copy(alpha = .10f)
+                    )
+                ),
+                RoundedCornerShape(17.dp)
+            )
             .clickable(enabled = onClick != null) { onClick?.invoke() }
-            .padding(horizontal = 11.dp, vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (stripColor != null) {
@@ -620,8 +683,8 @@ fun FinanzaListItem(
             Text(
                 title,
                 color = FinanzaText,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -673,7 +736,12 @@ fun PeriodPillBar(
         modifier = modifier
             .fillMaxWidth()
             .border(1.dp, FinanzaBorder, RoundedCornerShape(999.dp))
-            .background(FinanzaSurface.copy(alpha = .74f), RoundedCornerShape(999.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(FinanzaSurface.copy(alpha = .82f), FinanzaSurface2.copy(alpha = .68f))
+                ),
+                RoundedCornerShape(999.dp)
+            )
             .padding(horizontal = 6.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),

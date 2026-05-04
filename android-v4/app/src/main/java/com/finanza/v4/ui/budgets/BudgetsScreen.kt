@@ -50,7 +50,7 @@ fun BudgetsScreen(
         item {
             PageHeader(
                 title = "Limites",
-                subtitle = "Veja onde o mes esta no controle e onde ja pede atencao",
+                subtitle = "Veja onde o mês está no controle e onde já pede atenção",
                 trailing = { MetricPill("${budgets.size}", FinanzaGreen) }
             )
         }
@@ -64,6 +64,13 @@ fun BudgetsScreen(
             }
         }
         item { BudgetSummary(budgets) }
+        item {
+            FinanzaSection(
+                title = "Categorias monitoradas",
+                subtitle = "Cada bloco segue o mesmo padrão visual de risco da versão web",
+                trailing = { MetricPill("mensal", FinanzaAmber) }
+            ) {}
+        }
         items(budgets, key = { it.category }) { budget ->
             val remaining = budget.limitCents - budget.spentCents
             val alertColor = if (remaining < 0) FinanzaRed else FinanzaGreen
@@ -114,8 +121,8 @@ private fun BudgetSummary(budgets: List<BudgetUsage>) {
     }
 
     FinanzaSection(
-        title = "Panorama do mes",
-        subtitle = "Leitura rapida do consumo por categoria",
+        title = "Panorama do mês",
+        subtitle = "Leitura rápida do consumo por categoria",
         trailing = { MetricPill("${progress}%", color) }
     ) {
         FinanzaListItem(
@@ -129,8 +136,8 @@ private fun BudgetSummary(budgets: List<BudgetUsage>) {
         )
         FinanzaListItem(
             emoji = if (remaining >= 0L) "\uD83D\uDFE2" else "\uD83D\uDD34",
-            title = if (remaining >= 0L) "Ainda disponivel" else "Acima do limite",
-            subtitle = "Gasto ate agora: ${money(spent)}",
+            title = if (remaining >= 0L) "Ainda disponível" else "Acima do limite",
+            subtitle = "Gasto até agora: ${money(spent)}",
             amount = money(kotlin.math.abs(remaining)),
             amountColor = color,
             iconColor = color,

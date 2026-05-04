@@ -66,6 +66,16 @@ Observacao importante:
 - [x] `financas.html` reduzido a entrada leve apontando para `index.html`.
 - [x] Home com texto e organizacao mais orientados ao controle de gastos.
 
+### 5.0 - Android v4 em andamento
+
+- [x] Base offline-first em Room com sync opcional e importacao/exportacao local de backup.
+- [x] Widgets de tela inicial para lancamento rapido, lista de compras, saldo consolidado e vencimentos pendentes.
+- [x] Atualizacao dos widgets conectada ao ciclo real dos dados locais.
+- [x] Visual dos widgets alinhado a paleta e hierarquia do site atual.
+- [x] Sincronizacao em background com WorkManager para envio automatico quando a conta online estiver conectada.
+- [x] Bloqueio local do app por biometria ou PIN salvo apenas neste aparelho.
+- [x] Compatibilidade ampliada com backup `4.x`, aceitando aliases antigos de `settings`, categorias, compras, metas, orcamentos e vencimentos.
+
 ## 4.0.0 - Linha principal web + Capacitor + API
 
 Status: concluida e pronta para evolucao incremental.

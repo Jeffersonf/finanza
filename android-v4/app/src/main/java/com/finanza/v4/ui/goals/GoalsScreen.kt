@@ -14,6 +14,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -60,6 +61,17 @@ fun GoalsScreen(
             }
         }
         item { GoalsSummary(goals) }
+        item {
+            FinanzaSection(
+                title = "Metas em andamento",
+                subtitle = "Acompanhamento visual no mesmo clima da área de metas do web",
+                trailing = { MetricPill("planejado", FinanzaPurple) }
+            ) {
+                if (goals.isEmpty()) {
+                    Text("Quando você criar metas, elas aparecem aqui com progresso e prazo.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
         items(goals, key = { it.id }) { goal ->
             GoalRow(goal, onEdit = onEdit, onDelete = onDelete)
         }

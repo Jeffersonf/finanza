@@ -173,15 +173,15 @@ private fun QuickAddSection(
     showIcons: Boolean
 ) {
     FinanzaSection(
-        title = "Atalhos rapidos",
-        subtitle = "Adicionar dados sem trocar de tela",
-        trailing = { MetricPill("agil", FinanzaGreen) }
+        title = "Ações rápidas",
+        subtitle = "Menos cliques para o que você faz toda hora",
+        trailing = { MetricPill("ágil", FinanzaGreen) }
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             QuickAddTile(
                 modifier = Modifier.weight(1f),
                 label = "Gasto",
-                hint = "lancamento",
+                hint = "lançamento",
                 icon = Icons.Rounded.Add,
                 color = FinanzaGreen,
                 showIcon = showIcons,
@@ -210,7 +210,7 @@ private fun QuickAddSection(
             QuickAddTile(
                 modifier = Modifier.weight(1f),
                 label = "Limite",
-                hint = "orcamento",
+                hint = "orçamento",
                 icon = Icons.Rounded.PieChart,
                 color = FinanzaAmber,
                 showIcon = showIcons,
@@ -310,7 +310,7 @@ private fun Header(
                     style = MaterialTheme.typography.displaySmall
                 )
                 Text(
-                    text = "Visao geral do seu mes financeiro",
+                    text = "Centro do dia para lançar, revisar e decidir seus gastos",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -328,10 +328,10 @@ private fun Header(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    MetricPill("Mes atual", FinanzaMint)
+                    MetricPill("Mês atual", FinanzaMint)
                     Spacer(Modifier.weight(1f))
                     Text(
-                        text = if (salary > 0L) "ritmo diario" else "configure a renda",
+                        text = if (salary > 0L) "ritmo diário" else "configure a renda",
                         color = FinanzaText2,
                         style = MaterialTheme.typography.labelMedium
                     )
@@ -352,7 +352,7 @@ private fun Header(
                     text = if (salary > 0L) {
                         "limite seguro por dia ate o fechamento do mes"
                     } else {
-                        "toque para informar salario ou renda mensal"
+                        "toque para informar salário ou renda mensal"
                     },
                     color = FinanzaText2,
                     style = MaterialTheme.typography.bodyMedium
@@ -379,7 +379,7 @@ private fun SummarySection(
 
     FinanzaSection(
         title = "Resumo financeiro",
-        subtitle = "Blocos rapidos do que entrou, saiu e falta pagar"
+        subtitle = "Blocos rápidos do que entrou, saiu e falta pagar"
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             SummaryTile(
@@ -396,7 +396,7 @@ private fun SummarySection(
                 modifier = Modifier.weight(1f),
                 label = "Gasto",
                 value = money(spent),
-                hint = "Consumo do mes",
+                hint = "Consumo do mês",
                 color = FinanzaRed,
                 emoji = "\u2B07",
                 showIcon = showIcons,
@@ -408,7 +408,7 @@ private fun SummarySection(
                 modifier = Modifier.weight(1f),
                 label = "Sobra",
                 value = money(remaining),
-                hint = "Salario menos gastos",
+                hint = "Salário menos gastos",
                 color = if (remaining >= 0L) FinanzaMint else FinanzaRed,
                 emoji = "\uD83D\uDCB9",
                 showIcon = showIcons,
@@ -487,7 +487,7 @@ private fun InsightSection(
 
     FinanzaSection(
         title = "Indicadores",
-        subtitle = "Leitura rapida do desempenho do mes",
+        subtitle = "Leitura rápida do desempenho do mês",
         trailing = { MetricPill("${savingsRate}%", if (savings >= 0) FinanzaGreen else FinanzaRed) },
         modifier = Modifier
             .clip(RoundedCornerShape(28.dp))
@@ -513,8 +513,8 @@ private fun InsightSection(
         )
         FinanzaListItem(
             emoji = "\uD83D\uDD2D",
-            title = "Projecao simples",
-            subtitle = "Saldo atual somado ao resultado do mes",
+            title = "Projeção simples",
+            subtitle = "Saldo atual somado ao resultado do mês",
             amount = money(projected),
             amountColor = if (projected >= snapshot.summary.balanceCents) FinanzaGreen else FinanzaAmber,
             iconColor = FinanzaPurple,
@@ -540,7 +540,7 @@ private fun BudgetAlertSection(
     val overBudget = criticalBudget?.takeIf { it.progress >= 1f }
 
     FinanzaSection(
-        title = if (overBudget != null) "Alerta de limite" else "Limites do mes",
+        title = if (overBudget != null) "Alerta de limite" else "Limites do mês",
         subtitle = if (overBudget != null) "Categoria com gasto acima do previsto" else "Tudo sob controle por enquanto",
         trailing = {
             MetricPill(
@@ -553,7 +553,7 @@ private fun BudgetAlertSection(
             .clickable { onNavigate(AppScreen.Budgets) }
     ) {
         if (criticalBudget == null) {
-            Text("Crie um orcamento para receber alertas e acompanhar limites.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Crie um orçamento para receber alertas e acompanhar limites.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             return@FinanzaSection
         }
         FinanzaListItem(
@@ -583,7 +583,7 @@ private fun BudgetAlertSection(
 @Composable
 private fun GoalsSection(goals: List<Goal>, onNavigate: (AppScreen) -> Unit, showIcons: Boolean) {
     FinanzaSection(
-        title = "Metas rapidas",
+        title = "Metas rápidas",
         subtitle = "${goals.size} meta(s)",
         trailing = { MetricPill("${goals.size}", FinanzaPurple) },
         modifier = Modifier
@@ -591,7 +591,7 @@ private fun GoalsSection(goals: List<Goal>, onNavigate: (AppScreen) -> Unit, sho
             .clickable { onNavigate(AppScreen.Goals) }
     ) {
         if (goals.isEmpty()) {
-            Text("Suas metas aparecem aqui para acompanhamento rapido.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Suas metas aparecem aqui para acompanhamento rápido.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         goals.take(3).forEach { goal ->
             val progress = if (goal.targetCents <= 0) 0f else {
@@ -600,7 +600,7 @@ private fun GoalsSection(goals: List<Goal>, onNavigate: (AppScreen) -> Unit, sho
             FinanzaListItem(
                 emoji = goal.icon,
                 title = goal.name,
-                subtitle = "${(progress * 100).toInt()}% ate ${goal.deadline}",
+                subtitle = "${(progress * 100).toInt()}% até ${goal.deadline}",
                 amount = "${money(goal.currentCents)} / ${money(goal.targetCents)}",
                 amountColor = FinanzaPurple,
                 badge = "${(progress * 100).toInt()}%",
@@ -668,7 +668,7 @@ private fun AccountsSection(snapshot: DashboardSnapshot, onNavigate: (AppScreen)
             .clickable { onNavigate(AppScreen.Accounts) }
     ) {
         if (snapshot.accounts.isEmpty()) {
-            Text("As contas aparecerao aqui.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("As contas aparecerão aqui.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         snapshot.accounts.forEach { account ->
             FinanzaListItem(
@@ -687,15 +687,15 @@ private fun AccountsSection(snapshot: DashboardSnapshot, onNavigate: (AppScreen)
 @Composable
 private fun BudgetsSection(budgets: List<BudgetUsage>, onNavigate: (AppScreen) -> Unit, showIcons: Boolean) {
     FinanzaSection(
-        title = "Orcamentos",
-        subtitle = "Limites do mes",
+        title = "Orçamentos",
+        subtitle = "Limites do mês",
         trailing = { MetricPill("${budgets.size}", FinanzaPurple) },
         modifier = Modifier
             .clip(RoundedCornerShape(28.dp))
             .clickable { onNavigate(AppScreen.Budgets) }
     ) {
         if (budgets.isEmpty()) {
-            Text("Os limites do mes aparecerao aqui.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Os limites do mês aparecerão aqui.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         budgets.forEach { budget ->
             FinanzaListItem(
@@ -729,16 +729,16 @@ private fun RecentTransactionsSection(
 ) {
     if (recent.isEmpty()) {
         EmptyStateCard(
-            title = "Nenhum lancamento",
-            subtitle = "Use o botao + para comecar o mes.",
+            title = "Nenhum lançamento",
+            subtitle = "Use o botão + para começar o mês.",
             icon = Icons.Rounded.CreditCard
         )
         return
     }
 
     FinanzaSection(
-        title = "Ultimos lancamentos",
-        subtitle = "${recent.size} movimentacoes recentes",
+        title = "Últimos lançamentos",
+        subtitle = "${recent.size} movimentações recentes",
         trailing = { MetricPill("ver tudo", FinanzaGreen) },
         modifier = Modifier
             .clip(RoundedCornerShape(28.dp))

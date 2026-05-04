@@ -1,5 +1,6 @@
 ﻿package com.finanza.v4.ui.home
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -12,6 +13,9 @@ import com.finanza.v4.data.repository.TransactionFilters
 import com.finanza.v4.data.repository.BudgetUsage
 import com.finanza.v4.data.repository.AppPreferences
 import com.finanza.v4.data.repository.DueItem
+import com.finanza.v4.data.security.AppLockConfig
+import com.finanza.v4.data.security.SecurityPreferences
+import com.finanza.v4.data.sync.BackgroundSyncWorker
 import com.finanza.v4.data.sync.SyncConfig
 import com.finanza.v4.domain.Account
 import com.finanza.v4.domain.AccountDraft
@@ -32,6 +36,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -40,7 +45,9 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
-    private val repository: FinanzaRepository
+    private val repository: FinanzaRepository,
+    private val securityPreferences: SecurityPreferences,
+    private val appContext: Context
 ) : ViewModel() {
     val state: StateFlow<DashboardSnapshot> = repository
         .observeDashboard(YearMonth.now())
@@ -62,9 +69,17 @@ class HomeViewModel(
     val shoppingFormState: StateFlow<ShoppingFormUiState> = _shoppingFormState.asStateFlow()
 
     private val _settingsState = MutableStateFlow(SettingsUiState())
-    val settingsState: StateFlow<SettingsUiState> = repository.syncConfig
-        .mapToSettingsState(_settingsState)
+    val settingsState: StateFlow<SettingsUiState> = combine(
+        repository.syncConfig,
+        securityPreferences.config,
+        _settingsState
+    ) { syncConfig, lockConfig, draft ->
+        draft.withConfigs(syncConfig, lockConfig)
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
+
+    private val _appLockState = MutableStateFlow(AppLockUiState())
+    val appLockState: StateFlow<AppLockUiState> = _appLockState.asStateFlow()
 
     private val _currentScreen = MutableStateFlow(AppScreen.Home)
     val currentScreen: StateFlow<AppScreen> = _currentScreen.asStateFlow()
@@ -100,9 +115,23 @@ class HomeViewModel(
         .observeAppPreferences()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppPreferences())
 
+    private var relockOnForeground = true
+
     init {
         viewModelScope.launch {
             repository.seedIfNeeded()
+        }
+        viewModelScope.launch {
+            securityPreferences.config.collect { config ->
+                _appLockState.update { current ->
+                    current.copy(
+                        enabled = config.enabled,
+                        biometricsEnabled = config.biometricsEnabled,
+                        hasPin = config.hasPin,
+                        locked = if (!config.enabled) false else current.locked
+                    )
+                }
+            }
         }
     }
 
@@ -566,16 +595,24 @@ class HomeViewModel(
             _settingsState.update {
                 result.fold(
                     onSuccess = { (config, imported) ->
+                        if (current.autoSyncEnabled) BackgroundSyncWorker.schedule(appContext)
+                        viewModelScope.launch {
+                            repository.markSyncResult("Login concluido e dados baixados", true)
+                        }
                         it.copy(
                             syncing = false,
                             password = "",
                             apiKey = config.apiKey,
                             userName = config.userName,
+                            autoSyncEnabled = current.autoSyncEnabled,
                             message = "Conectado como ${config.userName}. Baixado: ${imported.transactions} lancamentos, ${imported.accounts} contas, ${imported.budgets} limites e ${imported.goals} metas."
                         )
                     },
                     onFailure = { error -> it.copy(syncing = false, message = "Falha no login: ${error.message}") }
                 )
+            }
+            if (result.isFailure) {
+                repository.markSyncResult(result.exceptionOrNull()?.message ?: "Falha no login", false)
             }
         }
     }
@@ -591,8 +628,14 @@ class HomeViewModel(
                     }
                     _settingsState.update { s ->
                         result.fold(
-                            onSuccess = { s.copy(syncing = false, message = "Dados locais enviados para a API.") },
-                            onFailure = { e -> s.copy(syncing = false, message = "Falha ao enviar: ${e.message}") }
+                            onSuccess = {
+                                viewModelScope.launch { repository.markSyncResult("Dados locais enviados para a API.", true) }
+                                s.copy(syncing = false, message = "Dados locais enviados para a API.")
+                            },
+                            onFailure = { e ->
+                                viewModelScope.launch { repository.markSyncResult("Falha ao enviar: ${e.message}", false) }
+                                s.copy(syncing = false, message = "Falha ao enviar: ${e.message}")
+                            }
                         )
                     }
                 }
@@ -612,10 +655,14 @@ class HomeViewModel(
                     _settingsState.update { s ->
                         result.fold(
                             onSuccess = { imported ->
+                                viewModelScope.launch { repository.markSyncResult("Dados baixados da nuvem para este aparelho.", true) }
                                 if (imported.error != null) s.copy(syncing = false, message = imported.error)
                                 else s.copy(syncing = false, message = "Baixado: ${imported.transactions} lancamentos, ${imported.accounts} contas, ${imported.budgets} limites, ${imported.goals} metas e ${imported.shoppingItems} itens.")
                             },
-                            onFailure = { e -> s.copy(syncing = false, message = "Falha ao baixar: ${e.message}") }
+                            onFailure = { e ->
+                                viewModelScope.launch { repository.markSyncResult("Falha ao baixar: ${e.message}", false) }
+                                s.copy(syncing = false, message = "Falha ao baixar: ${e.message}")
+                            }
                         )
                     }
                 }
@@ -626,6 +673,7 @@ class HomeViewModel(
     fun disconnectSync() {
         viewModelScope.launch {
             repository.disconnectSync()
+            BackgroundSyncWorker.cancel(appContext)
             _settingsState.update {
                 it.copy(apiKey = "", userName = "", password = "", message = "Conta desconectada deste aparelho.")
             }
@@ -653,14 +701,129 @@ class HomeViewModel(
         val result = runCatching { repository.pushLocalToRemote(config) }
         _settingsState.update { state ->
             result.fold(
-                onSuccess = { state.copy(syncing = false, message = "Alteracoes sincronizadas.") },
-                onFailure = { error -> state.copy(syncing = false, message = "Alteracao salva localmente. Sync falhou: ${error.message}") }
+                onSuccess = {
+                    viewModelScope.launch { repository.markSyncResult("Alteracoes sincronizadas.", true) }
+                    state.copy(syncing = false, message = "Alteracoes sincronizadas.")
+                },
+                onFailure = { error ->
+                    viewModelScope.launch { repository.markSyncResult("Alteracao salva localmente. Sync falhou: ${error.message}", false) }
+                    state.copy(syncing = false, message = "Alteracao salva localmente. Sync falhou: ${error.message}")
+                }
             )
         }
     }
 
     fun updateSettings(transform: (SettingsUiState) -> SettingsUiState) {
         _settingsState.update { transform(it) }
+    }
+
+    fun setAutoSyncEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setAutoSyncEnabled(enabled)
+            if (enabled) {
+                BackgroundSyncWorker.schedule(appContext)
+                BackgroundSyncWorker.kick(appContext)
+            } else {
+                BackgroundSyncWorker.cancel(appContext)
+            }
+        }
+    }
+
+    fun setAppLockEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            val config = securityPreferences.get()
+            if (enabled && !config.hasPin && !config.biometricsEnabled) {
+                _settingsState.update { it.copy(message = "Crie um PIN ou ative biometria antes de ligar o bloqueio.") }
+                return@launch
+            }
+            securityPreferences.setLockEnabled(enabled)
+            if (!enabled) {
+                _appLockState.update { it.copy(locked = false, error = null) }
+                relockOnForeground = false
+            } else {
+                relockOnForeground = true
+            }
+        }
+    }
+
+    fun setBiometricsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            val config = securityPreferences.get()
+            if (!enabled && config.enabled && !config.hasPin) {
+                _settingsState.update { it.copy(message = "Mantenha um PIN salvo antes de desligar a biometria.") }
+                return@launch
+            }
+            securityPreferences.setBiometricsEnabled(enabled)
+        }
+    }
+
+    fun saveAppPin(pin: String) {
+        val cleanPin = pin.trim()
+        if (cleanPin.length < 4) {
+            _appLockState.update { it.copy(error = "Use um PIN com pelo menos 4 digitos.") }
+            return
+        }
+        viewModelScope.launch {
+            securityPreferences.savePin(cleanPin)
+            relockOnForeground = true
+            _appLockState.update { it.copy(error = null, hasPin = true) }
+            _settingsState.update { it.copy(message = "PIN salvo neste aparelho.") }
+        }
+    }
+
+    fun clearAppPin() {
+        viewModelScope.launch {
+            val config = securityPreferences.get()
+            if (config.enabled && !config.biometricsEnabled) {
+                _settingsState.update { it.copy(message = "Ative a biometria ou desligue o bloqueio antes de remover o PIN.") }
+                return@launch
+            }
+            securityPreferences.clearPin()
+            _appLockState.update { it.copy(error = null, hasPin = false) }
+            _settingsState.update { it.copy(message = "PIN removido deste aparelho.") }
+        }
+    }
+
+    fun onAppForegrounded() {
+        viewModelScope.launch {
+            val config = securityPreferences.get()
+            if (config.enabled && relockOnForeground) {
+                _appLockState.update {
+                    it.copy(
+                        locked = true,
+                        error = null,
+                        enabled = config.enabled,
+                        biometricsEnabled = config.biometricsEnabled,
+                        hasPin = config.hasPin
+                    )
+                }
+            }
+        }
+    }
+
+    fun onAppBackgrounded() {
+        relockOnForeground = true
+    }
+
+    fun unlockWithPin(pin: String) {
+        viewModelScope.launch {
+            val ok = securityPreferences.verifyPin(pin)
+            if (ok) {
+                relockOnForeground = false
+                _appLockState.update { it.copy(locked = false, error = null) }
+            } else {
+                _appLockState.update { it.copy(error = "PIN incorreto. Tente novamente.") }
+            }
+        }
+    }
+
+    fun unlockWithBiometricSuccess() {
+        relockOnForeground = false
+        _appLockState.update { it.copy(locked = false, error = null) }
+    }
+
+    fun reportUnlockError(message: String) {
+        _appLockState.update { it.copy(error = message) }
     }
 
     fun updateAppPreferences(transform: (AppPreferences) -> AppPreferences) {
@@ -961,11 +1124,41 @@ data class SettingsUiState(
     val password: String = "",
     val apiKey: String = "",
     val userName: String = "",
+    val autoSyncEnabled: Boolean = false,
+    val lastSyncAt: Long = 0L,
+    val lastSyncMessage: String = "",
+    val lastSyncSuccess: Boolean = false,
+    val appLockEnabled: Boolean = false,
+    val biometricsEnabled: Boolean = false,
+    val hasPin: Boolean = false,
     val message: String? = null,
     val confirm: ConfirmAction? = null
 ) {
     val connected: Boolean get() = baseUrl.isNotBlank() && apiKey.isNotBlank()
+
+    fun withConfigs(syncConfig: SyncConfig, appLockConfig: AppLockConfig): SettingsUiState {
+        return copy(
+            baseUrl = if (baseUrl.isBlank()) syncConfig.baseUrl else baseUrl,
+            apiKey = syncConfig.apiKey.ifBlank { apiKey },
+            userName = syncConfig.userName.ifBlank { userName },
+            autoSyncEnabled = syncConfig.autoSyncEnabled,
+            lastSyncAt = syncConfig.lastSyncAt,
+            lastSyncMessage = syncConfig.lastSyncMessage,
+            lastSyncSuccess = syncConfig.lastSyncSuccess,
+            appLockEnabled = appLockConfig.enabled,
+            biometricsEnabled = appLockConfig.biometricsEnabled,
+            hasPin = appLockConfig.hasPin
+        )
+    }
 }
+
+data class AppLockUiState(
+    val enabled: Boolean = false,
+    val biometricsEnabled: Boolean = false,
+    val hasPin: Boolean = false,
+    val locked: Boolean = false,
+    val error: String? = null
+)
 
 data class ConfirmAction(
     val title: String,
@@ -973,30 +1166,28 @@ data class ConfirmAction(
     val onConfirm: () -> Unit
 )
 
-private fun Flow<SyncConfig>.mapToSettingsState(
-    draft: StateFlow<SettingsUiState>
-): Flow<SettingsUiState> {
-    return combine(draft) { config, current ->
-        current.copy(
-            baseUrl = current.baseUrl.ifBlank { config.baseUrl },
-            apiKey = config.apiKey.ifBlank { current.apiKey },
-            userName = config.userName.ifBlank { current.userName }
-        )
-    }
-}
-
 private fun SettingsUiState.toSyncConfig(): SyncConfig {
-    return SyncConfig(baseUrl = baseUrl, apiKey = apiKey, userName = userName)
+    return SyncConfig(
+        baseUrl = baseUrl,
+        apiKey = apiKey,
+        userName = userName,
+        autoSyncEnabled = autoSyncEnabled,
+        lastSyncAt = lastSyncAt,
+        lastSyncMessage = lastSyncMessage,
+        lastSyncSuccess = lastSyncSuccess
+    )
 }
 
 private const val DEFAULT_API_URL = "https://finanza-api.onrender.com"
 
 class HomeViewModelFactory(
-    private val repository: FinanzaRepository
+    private val repository: FinanzaRepository,
+    private val securityPreferences: SecurityPreferences,
+    private val appContext: Context
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return HomeViewModel(repository) as T
+        return HomeViewModel(repository, securityPreferences, appContext) as T
     }
 }
 

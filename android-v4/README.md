@@ -2,6 +2,17 @@
 
 Base nativa do app Android v4.
 
+## Estado atual
+
+Entregas ja visiveis nesta base:
+
+- Room local-first como fonte principal de dados.
+- Sincronizacao opcional com a API do Finanza, incluindo sync em background.
+- Backup local com exportacao v4 e importacao compativel com backup legado `4.x`.
+- Widgets de tela inicial para lancamento rapido, lista de compras, saldo e vencimentos.
+- Notificacao persistente com atalhos rapidos.
+- Bloqueio local por biometria ou PIN do app.
+
 ## Arquitetura
 
 - Kotlin + Jetpack Compose para a interface.

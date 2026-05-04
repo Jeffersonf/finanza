@@ -12,6 +12,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -44,7 +45,7 @@ fun AccountsScreen(
         item {
             PageHeader(
                 title = "Contas",
-                subtitle = "Acompanhe saldo, reserva e investimentos em um unico lugar",
+                subtitle = "Corrente, carteira, investimento e reserva em um só lugar",
                 trailing = { MetricPill("${accounts.size}", FinanzaGreen) }
             )
         }
@@ -58,6 +59,17 @@ fun AccountsScreen(
             }
         }
         item { AccountSummary(accounts) }
+        item {
+            FinanzaSection(
+                title = "Central de contas",
+                subtitle = "Toque para editar saldo, tipo e detalhes da conta",
+                trailing = { MetricPill("ativo", FinanzaMint) }
+            ) {
+                if (accounts.isEmpty()) {
+                    Text("Suas contas vão aparecer aqui com o mesmo resumo rápido da versão web.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
         items(accounts, key = { it.id }) { account ->
             FinanzaListItem(
                 emoji = account.icon,
@@ -87,7 +99,7 @@ private fun AccountSummary(accounts: List<Account>) {
     val investments = accounts.filter { it.type == "investment" }.sumOf { it.balanceCents }
     FinanzaSection(
         title = "Resumo de saldo",
-        subtitle = "Leitura rapida das contas registradas",
+        subtitle = "Leitura rápida das contas registradas",
         trailing = { MetricPill(money(total), FinanzaGreen) }
     ) {
         FinanzaListItem(
@@ -102,7 +114,7 @@ private fun AccountSummary(accounts: List<Account>) {
         FinanzaListItem(
             emoji = "\uD83D\uDCC8",
             title = "Investimentos",
-            subtitle = "Reserva de medio prazo e contas com rendimento",
+            subtitle = "Reserva de médio prazo e contas com rendimento",
             amount = money(investments),
             amountColor = FinanzaMint,
             iconColor = FinanzaMint,

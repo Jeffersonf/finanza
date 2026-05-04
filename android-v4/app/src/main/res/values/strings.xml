@@ -8,6 +8,16 @@
     <string name="widget_shopping_description">Atalhos da lista de compras do Finanza.</string>
     <string name="widget_shopping_title">Lista de compras</string>
     <string name="widget_shopping_subtitle">Abra a lista ativa ou adicione item</string>
+    <string name="widget_balance_description">Resumo rapido do saldo consolidado e do que ainda falta pagar.</string>
+    <string name="widget_balance_title">Saldo total</string>
+    <string name="widget_balance_action">Abrir app</string>
+    <string name="widget_balance_clear">Sem pendencias agora</string>
+    <string name="widget_balance_pending">A pagar %1$s</string>
+    <string name="widget_due_description">Acesso rapido aos vencimentos pendentes.</string>
+    <string name="widget_due_title">Vencimentos</string>
+    <string name="widget_due_action_open">Abrir agenda</string>
+    <string name="widget_due_empty">Nenhum lancamento pendente no momento</string>
+    <string name="widget_due_next">%1$s • %2$s • %3$s</string>
     <string name="widget_action_open_shopping">Abrir lista</string>
     <string name="widget_action_add_item">Adicionar</string>
     <string name="persistent_notification_channel">Atalhos do Finanza</string>
@@ -16,4 +26,15 @@
     <string name="persistent_notification_text">Adicionar gasto rapido ou abrir a lista de compras.</string>
     <string name="persistent_notification_add_expense">+ gasto</string>
     <string name="persistent_notification_open_shopping">Lista</string>
+    <string name="due_notification_title">%1$d vencimento(s) para revisar</string>
+    <string name="due_notification_pending_title">%1$d despesa(s) pendente(s)</string>
+    <string name="due_notification_pending_text">Saldo pendente: %1$s</string>
+    <string name="due_notification_next">%1$s • %2$s • %3$s</string>
+    <string name="due_notification_open">Abrir</string>
+    <string name="due_notification_pay">Pagar</string>
+    <string name="due_notification_postpone">Adiar</string>
+    <plurals name="widget_due_count">
+        <item quantity="one">%d pendente</item>
+        <item quantity="other">%d pendentes</item>
+    </plurals>
 </resources>

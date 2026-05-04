@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/dm_sans_700"
+        android:includeFontPadding="false"
+        android:text="@string/widget_balance_title"
+        android:textColor="#F0F3FF"
+        android:textSize="15sp" />
+
+    <TextView
+        android:id="@+id/widget_balance_amount"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:fontFamily="@font/dm_sans_700"
+        android:includeFontPadding="false"
+        android:text="R$ 0,00"
+        android:textColor="#C8F55A"
+        android:textSize="20sp" />
+
+    <TextView
+        android:id="@+id/widget_balance_subtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:fontFamily="@font/dm_sans_500"
+        android:includeFontPadding="false"
+        android:text="@string/widget_balance_clear"
+        android:textColor="#B8F0F3FF"
+        android:textSize="11sp" />
+
+    <TextView
+        android:id="@+id/widget_balance_action"
+        style="@style/WidgetQuickAction"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_marginTop="12dp"
+        android:text="@string/widget_balance_action" />
+</LinearLayout>

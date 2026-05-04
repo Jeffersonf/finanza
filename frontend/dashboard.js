@@ -162,6 +162,51 @@ function widgetRangeDate(scope='month'){
   if(scope==='30d')return iso(offD(new Date(),-29));
   return '';
 }
+function txCreatedTime(tx){
+  const raw=tx?.createdAt||tx?.created_at;
+  if(raw){
+    const parsed=new Date(raw).getTime();
+    if(Number.isFinite(parsed))return parsed;
+    const numeric=Number(raw);
+    if(Number.isFinite(numeric))return numeric;
+  }
+  const id=String(tx?.id||'');
+  const fromUid=parseInt(id.slice(0,8),36);
+  if(id[8]!=='-'&&Number.isFinite(fromUid)&&fromUid>946684800000&&fromUid<4102444800000)return fromUid;
+  const fromDate=new Date(`${tx?.date||today()}T12:00:00`).getTime();
+  return Number.isFinite(fromDate)?fromDate:0;
+}
+function fmtDashDateTime(ms){
+  const d=new Date(ms);
+  if(!Number.isFinite(d.getTime()))return '';
+  const now=new Date();
+  const startToday=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
+  const startYesterday=startToday-864e5;
+  const dateLabel=d.getTime()>=startToday?'hoje':d.getTime()>=startYesterday?'ontem':d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
+  return `${dateLabel}, ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
+}
+function lastDataNoticeInfo(){
+  const txs=[...(S.transactions||[])];
+  if(!txs.length)return null;
+  const latest=[...txs].sort((a,b)=>txCreatedTime(b)-txCreatedTime(a))[0];
+  const latestMs=txCreatedTime(latest);
+  const latestDay=new Date(latestMs).toDateString();
+  const sameDay=txs.filter(t=>new Date(txCreatedTime(t)).toDateString()===latestDay).length;
+  const latestDate=[...txs].map(t=>t.date).filter(Boolean).sort().pop();
+  const inferred=!(latest?.createdAt||latest?.created_at);
+  return {latest,latestMs,sameDay,latestDate,inferred};
+}
+function renderLastDataNotice(){
+  const el=document.getElementById('lastDataNotice');
+  if(!el)return;
+  const info=lastDataNoticeInfo();
+  if(!info){
+    el.innerHTML=`<button class="last-data-card empty" onclick="openModal()"><span class="last-data-ico">⏱</span><span><strong>Nenhum dado inserido ainda</strong><small>Crie ou importe sua primeira transação para acompanhar a última atualização.</small></span><span class="last-data-action">Lançar</span></button>`;
+    return;
+  }
+  const source=info.inferred?'estimado pelas transações salvas':'registrado no histórico de transações';
+  el.innerHTML=`<button class="last-data-card" onclick="showPage('transactions')"><span class="last-data-ico">⏱</span><span><strong>Últimos dados inseridos: ${esc(fmtDashDateTime(info.latestMs))}</strong><small>${info.sameDay} lançamento${info.sameDay===1?'':'s'} nesse dia • transação mais recente em ${fmtD(info.latestDate)} • ${source}</small></span><span class="last-data-action">Ver</span></button>`;
+}
 function widgetCards(){
   const txM=getMonthTx(curDt);
   const showFuture=((widgetFilters?.cards?.future)||'on')!=='off';
@@ -445,6 +490,7 @@ function renderDash(force=false) {
   const container = document.getElementById('dashWidgets');
   if (container) container.innerHTML = sections.join('');
   dashDirty = false;
+  renderLastDataNotice();
   renderDashboardManager();
 
   dashboardVisibleWidgetIds().forEach(id=>dashboardWidgetPostRender(id,isDark));
