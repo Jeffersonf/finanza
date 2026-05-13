@@ -17,11 +17,19 @@ const { buildAdminOverview } = require('./adminOverview');
 const app  = express();
 const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
+const DATABASE_URL = process.env.DATABASE_URL;
+
+function shouldUseSsl(connectionString = '') {
+  return isProd
+    || /sslmode=require/i.test(connectionString)
+    || /neon\.tech/i.test(connectionString)
+    || process.env.PGSSL === 'true';
+}
 
 // ── DB ──────────────────────────────────────
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: isProd ? { rejectUnauthorized: false } : false
+  connectionString: DATABASE_URL,
+  ssl: shouldUseSsl(DATABASE_URL) ? { rejectUnauthorized: false } : false
 });
 pool.connect()
   .then(c => { console.log('✅ PostgreSQL conectado'); c.release(); })
@@ -69,7 +77,7 @@ app.use(cors({
   methods: ['GET','POST','PUT','PATCH','DELETE'],
   allowedHeaders: ['Content-Type','x-api-key']
 }));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '10mb' }));
 
 function toJsonb(value, fallback) {
   try {

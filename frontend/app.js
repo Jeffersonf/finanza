@@ -1,5 +1,5 @@
 ﻿'use strict';
-const APP_VERSION='4.3.1';
+const APP_VERSION='4.3.2';
 const DEFAULT_API_URL='https://finanza-api.onrender.com';
 const CK='fz_cfg',LK='fz_local',CCK='fz_cats',VK='fz_view',AVK='fz_avatar',PRIVK='fz_privacy',CAR_KEY='fz_car',PAGE_KEY='fz_page';
 const RATES_KEY='fz_rates', WIDGET_ORDER_KEY='fz_widget_order', WIDGET_FILTER_KEY='fz_widget_filters', DUE_KEY='fz_due_items', TX_FILTERS_KEY='fz_tx_filters', COMMITMENTS_KEY='fz_commitments', SIDEBAR_SHORTCUTS_KEY='fz_sidebar_shortcuts';
@@ -867,6 +867,7 @@ function setImportSource(src){
   importDraft.files=[];
   importDraft.headers=[];
   importDraft.rows=[];
+  importDraft.text='';
   importDraft.balanceDivergence=null;
   renderImportCenter();
 }
@@ -876,28 +877,43 @@ function renderImportSourceBody(){
   const ruleSummary=`${importCenterState.rules.categories.length} regra(s) de categoria • ${importCenterState.rules.subscriptions.length} regra(s) de assinatura`;
   const textBody=src=>`<div class="import-source-panel"><label class="fl">${importSourceLabel(src)}</label><textarea class="ta import-textarea" id="importTextArea" placeholder="${esc(importSourcePlaceholder(src))}" oninput="importDraft.text=this.value">${esc(importDraft.text||'')}</textarea><div class="import-helper">${importSourceHint(src)}</div></div>`;
   const sourceBody={
-    csv:`<div class="import-source-panel"><label class="import-file-drop"><span>Selecionar CSV</span><small>Escolha .csv ou .txt exportado do banco.</small><input type="file" accept=".csv,text/csv,.txt" onchange="handleImportFiles(this.files)"></label><div class="import-inline-grid"><label><span>Perfil</span><select class="fi sel" onchange="applyImportProfile(this.value)">${profileOptions}</select></label><label><span>Deduplicação</span><select class="fi sel" id="importDedupe" onchange="importDraft.dedupe=this.value"><option value="exact" ${importDraft.dedupe==='exact'?'selected':''}>Exata</option><option value="soft" ${importDraft.dedupe==='soft'?'selected':''}>Descrição + valor</option><option value="off" ${importDraft.dedupe==='off'?'selected':''}>Não ignorar</option></select></label></div><div class="import-helper">${ruleSummary}</div></div>`,
+    csv:`<div class="import-source-panel"><label class="import-file-drop"><span>Selecionar CSV/XLSX</span><small>Escolha .csv, .txt, .xlsx ou .xls exportado do banco/cartão.</small><input type="file" accept=".csv,text/csv,.txt,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" onchange="handleImportFiles(this.files)"></label><div class="import-inline-grid"><label><span>Perfil</span><select class="fi sel" onchange="applyImportProfile(this.value)">${profileOptions}</select></label><label><span>Deduplicação</span><select class="fi sel" id="importDedupe" onchange="importDraft.dedupe=this.value"><option value="exact" ${importDraft.dedupe==='exact'?'selected':''}>Exata</option><option value="soft" ${importDraft.dedupe==='soft'?'selected':''}>Descrição + valor</option><option value="off" ${importDraft.dedupe==='off'?'selected':''}>Não ignorar</option></select></label></div><div class="import-helper">${ruleSummary}</div></div>`,
     ofx:`<div class="import-source-panel"><label class="import-file-drop"><span>Selecionar OFX</span><small>Use .ofx ou .qfx exportado pelo banco/cartão.</small><input type="file" accept=".ofx,.qfx,.txt" onchange="handleImportFiles(this.files)"></label><div class="import-helper">${ruleSummary}</div></div>`,
-    pdf:textBody('pdf'),
+    pdf:`<div class="import-source-panel"><label class="import-file-drop"><span>Selecionar PDF</span><small>Use PDF com texto selecionável; PDF escaneado precisa de OCR.</small><input type="file" accept=".pdf,application/pdf" onchange="handleImportFiles(this.files)"></label></div>${textBody('pdf')}`,
     ocr:textBody('ocr'),
     pix:textBody('pix'),
     qr:textBody('qr'),
     text:textBody('text'),
-    folder:`<div class="import-source-panel"><label class="import-file-drop"><span>Selecionar pasta</span><small>Importa lotes de CSV, OFX e textos extraídos de uma pasta local.</small><input type="file" multiple webkitdirectory directory accept=".csv,.txt,.ofx,.qfx" onchange="handleImportFiles(this.files)"></label></div>`
+    folder:`<div class="import-source-panel"><label class="import-file-drop"><span>Selecionar pasta</span><small>Importa lotes de CSV, XLSX, PDF, OFX e textos extraídos de uma pasta local.</small><input type="file" multiple webkitdirectory directory accept=".csv,.txt,.xlsx,.xls,.pdf,.ofx,.qfx" onchange="handleImportFiles(this.files)"></label></div>`
   };
   el.innerHTML=sourceBody[importDraft.source]||'';
 }
 async function handleImportFiles(fileList){
   importDraft.files=asArr([...fileList]);
   if(!importDraft.files.length)return;
+  importDraft.rows=[];
+  importDraft.balanceDivergence=null;
   const first=importDraft.files[0];
   if(importDraft.source==='csv'){
-    const text=await first.text();
-    const parsed=parseCsvMatrix(text);
+    importDraft.headers=[];
+    importDraft.mapping={};
+    const parsed=await parseTabularImportFile(first);
     importDraft.headers=parsed.headers;
     importDraft.mapping=detectImportMapping(parsed.headers);
+  }else if(importDraft.source==='pdf'){
+    importDraft.text='';
+    try{
+      importDraft.text=await extractPdfText(first);
+      toast('Texto do PDF extraído. Agora prepare a revisão.','success');
+    }catch(err){toast(err.message,'error');}
   }
   renderImportCenter();
+}
+function isXlsxImportFile(file){
+  return /\.(xlsx|xls)$/i.test(file?.name||'');
+}
+function isPdfImportFile(file){
+  return /\.pdf$/i.test(file?.name||'')||file?.type==='application/pdf';
 }
 function parseCsvMatrix(text=''){
   const lines=String(text).replace(/\r/g,'').split('\n').filter(Boolean);
@@ -914,8 +930,46 @@ function parseCsvMatrix(text=''){
     out.push(cur.trim());
     return out;
   });
-  const [headers,...rows]=matrix;
+  const [headers,...rawRows]=matrix;
+  const rows=rawRows.map(row=>{
+    if(headers.length&&row.length>headers.length){
+      return [...row.slice(0,headers.length-1),row.slice(headers.length-1).join(delimiter)];
+    }
+    return row;
+  });
   return {headers,rows};
+}
+async function parseXlsxMatrix(file){
+  if(!window.XLSX)throw new Error('Leitor XLSX indisponível. Verifique a conexão e tente novamente.');
+  const workbook=window.XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:false});
+  const sheet=workbook.Sheets[workbook.SheetNames[0]];
+  const matrix=window.XLSX.utils.sheet_to_json(sheet,{header:1,raw:false,defval:''})
+    .map(row=>row.map(cell=>String(cell||'').trim()))
+    .filter(row=>row.some(Boolean));
+  if(!matrix.length)return{headers:[],rows:[]};
+  const [headers,...rows]=matrix;
+  return{headers,rows};
+}
+async function parseTabularImportFile(file){
+  return isXlsxImportFile(file)?parseXlsxMatrix(file):parseCsvMatrix(await file.text());
+}
+async function extractPdfText(file){
+  if(!isPdfImportFile(file))throw new Error('Escolha um arquivo PDF.');
+  if(!window.pdfjsLib)throw new Error('Leitor PDF indisponível. Selecione e copie o texto do PDF no campo abaixo.');
+  const pdfjs=window.pdfjsLib;
+  if(pdfjs.GlobalWorkerOptions&&!pdfjs.GlobalWorkerOptions.workerSrc){
+    pdfjs.GlobalWorkerOptions.workerSrc='vendor/pdf.worker.min.js';
+  }
+  const pdf=await pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+  const pages=[];
+  for(let i=1;i<=pdf.numPages;i++){
+    const page=await pdf.getPage(i);
+    const content=await page.getTextContent();
+    pages.push(content.items.map(item=>item.str).join(' '));
+  }
+  const text=pages.join('\n').trim();
+  if(!text)throw new Error('Não consegui extrair texto desse PDF. Se for imagem/escaneado, use OCR e cole o texto.');
+  return text;
 }
 function importFieldOptions(){
   return [
@@ -926,8 +980,8 @@ function keyImportHeader(v=''){return normalizeTxText(String(v).replace(/[^\p{L}
 function detectImportMapping(headers=[]){
   const aliases={
     date:['data','date','posted','lancamento','lançamento'],
-    description:['descricao','descrição','historico','histórico','memo','description','titulo','title'],
-    amount:['valor','amount','valor rs','amount rs','total','saida','saída','entrada'],
+    description:['descricao','descrição','historico','histórico','memo','description','titulo','title','compra','compras','estabelecimento','merchant','local'],
+    amount:['valor','amount','valor rs','amount rs','total','saida','saída','entrada','preco','preço'],
     type:['tipo','type','natureza','dc','debito credito','d/c'],
     category:['categoria','category'],
     account:['conta','account','cartao','cartão','bank'],
@@ -996,8 +1050,7 @@ function applyImportRules(row){
   }
   return row;
 }
-function buildImportRowsFromCsv(text,fileName=''){
-  const parsed=parseCsvMatrix(text);
+function buildImportRowsFromMatrix(parsed,fileName=''){
   if(!importDraft.headers.length){importDraft.headers=parsed.headers;importDraft.mapping=detectImportMapping(parsed.headers);}
   return parsed.rows.map((cols,idx)=>{
     const mapped={source:fileName,rowNumber:idx+2};
@@ -1019,6 +1072,12 @@ function buildImportRowsFromCsv(text,fileName=''){
       raw:mapped
     });
   }).filter(row=>row.amount>0&&row.description);
+}
+async function buildImportRowsFromTabularFile(file){
+  return buildImportRowsFromMatrix(await parseTabularImportFile(file),file.name);
+}
+function buildImportRowsFromCsv(text,fileName=''){
+  return buildImportRowsFromMatrix(parseCsvMatrix(text),fileName);
 }
 function findImportAccount(raw='',description=''){
   const source=normalizeTxText(`${raw} ${description}`);
@@ -1119,8 +1178,11 @@ async function parseImportDraft(){
   try{
     let rows=[];
     if(importDraft.source==='csv'){
-      if(!importDraft.files.length)throw new Error('Escolha um CSV primeiro');
-      for(const file of importDraft.files)rows.push(...buildImportRowsFromCsv(await file.text(),file.name));
+      if(!importDraft.files.length)throw new Error('Escolha um CSV ou XLSX primeiro');
+      for(const file of importDraft.files){
+        const tabularRows=await buildImportRowsFromTabularFile(file);
+        rows.push(...tabularRows);
+      }
     }else if(importDraft.source==='ofx'){
       if(!importDraft.files.length)throw new Error('Escolha um OFX primeiro');
       for(const file of importDraft.files)rows.push(...parseOfxRows(await file.text(),file.name));
@@ -1130,9 +1192,12 @@ async function parseImportDraft(){
     }else if(importDraft.source==='folder'){
       if(!importDraft.files.length)throw new Error('Escolha uma pasta ou arquivos');
       for(const file of importDraft.files){
-        const content=await file.text();
-        if(/\.(ofx|qfx)$/i.test(file.name))rows.push(...parseOfxRows(content,file.name));
-        else rows.push(...buildImportRowsFromCsv(content,file.name));
+        if(/\.(ofx|qfx)$/i.test(file.name))rows.push(...parseOfxRows(await file.text(),file.name));
+        else if(isPdfImportFile(file))rows.push(...parseTextImportRows(await extractPdfText(file)));
+        else{
+          const tabularRows=await buildImportRowsFromTabularFile(file);
+          rows.push(...tabularRows);
+        }
       }
     }
     if(!rows.length)throw new Error('Nada reconhecido para importar');
@@ -1263,49 +1328,58 @@ function restoreImportSnapshot(id){
 async function confirmImportTransactions(){
   const rows=importDraft.rows||[];
   if(!rows.length){toast('Nada preparado para importar','info');return;}
+  if(!requireWriteAccess('importar transações'))return;
   createImportSnapshot();
   let created=0,reconciled=0,replaced=0,merged=0,skipped=0;
-  for(const row of rows){
-    const match=row.matchId?S.transactions.find(t=>t.id===row.matchId):null;
-    if(row.decision==='skip'){skipped++;continue;}
-    if(row.decision==='reconcile'&&match){
-      setTxImportMeta(match.id,{reconciled:true,reconciledAt:Date.now(),imported:true,source:importSourceLabel(importDraft.source),batchId:importDraft.batchId});
-      if(match.category==='A classificar'&&row.category!=='A classificar')match.category=row.category;
-      if(cfg.mode==='api')await api('PUT',`/api/transactions/${match.id}`,{type:match.type,description:match.desc,amount:match.amount,category:match.category,date:match.date,note:match.note||'',account_id:match.accountId,paid:match.paid,pending:match.pending});
-      else saveLocal();
-      reconciled++;
-      continue;
+  try{
+    for(const row of rows){
+      const match=row.matchId?S.transactions.find(t=>t.id===row.matchId):null;
+      if(row.decision==='skip'){skipped++;continue;}
+      if(row.decision==='reconcile'&&match){
+        const nextCategory=match.category==='A classificar'&&row.category!=='A classificar'?row.category:match.category;
+        if(cfg.mode==='api')await api('PUT',`/api/transactions/${match.id}`,{type:match.type,description:match.desc,amount:match.amount,category:nextCategory,date:match.date,note:match.note||'',account_id:match.accountId,paid:match.paid,pending:match.pending});
+        match.category=nextCategory;
+        if(cfg.mode==='local')saveLocal();
+        setTxImportMeta(match.id,{reconciled:true,reconciledAt:Date.now(),imported:true,source:importSourceLabel(importDraft.source),batchId:importDraft.batchId});
+        reconciled++;
+        continue;
+      }
+      if((row.decision==='replace'||row.decision==='merge')&&match){
+        const payload={
+          type:row.type||match.type,
+          description:row.description||match.desc,
+          amount:row.amount||match.amount,
+          category:row.category||match.category,
+          date:row.date||match.date,
+          note:row.decision==='merge'?[match.note,row.note].filter(Boolean).join(' • '):(row.note||match.note||''),
+          account_id:row.accountId||match.accountId,
+          paid:match.paid,
+          pending:match.pending
+        };
+        if(cfg.mode==='api')await api('PUT',`/api/transactions/${match.id}`,payload);
+        Object.assign(match,{type:payload.type,desc:payload.description,amount:payload.amount,category:payload.category,date:payload.date,note:payload.note,accountId:payload.account_id||null});
+        if(cfg.mode==='local')saveLocal();
+        setTxImportMeta(match.id,{reconciled:true,reconciledAt:Date.now(),imported:true,source:importSourceLabel(importDraft.source),batchId:importDraft.batchId});
+        row.decision==='merge'?merged++:replaced++;
+        continue;
+      }
+      const tx={id:uid(),type:row.type,desc:row.description,amount:row.amount,category:row.category||'A classificar',date:row.date,note:row.note||'',accountId:row.accountId||null,installmentGroup:null,installmentNum:null,installmentTotal:null,recurGroup:null,paid:false,pending:row.category==='A classificar'};
+      if(cfg.mode==='api'){
+        const saved=await api('POST','/api/transactions',{type:tx.type,description:tx.desc,amount:tx.amount,category:tx.category,date:tx.date,note:tx.note,account_id:tx.accountId,paid:false,pending:tx.pending});
+        S.transactions.unshift(nTx({...saved,accountId:tx.accountId,pending:tx.pending}));
+        setTxImportMeta(saved.id,{imported:true,importedAt:Date.now(),source:importSourceLabel(importDraft.source),batchId:importDraft.batchId});
+      }else{
+        S.transactions.unshift(tx);
+        saveLocal();
+        setTxImportMeta(tx.id,{imported:true,importedAt:Date.now(),source:importSourceLabel(importDraft.source),batchId:importDraft.batchId});
+      }
+      created++;
     }
-    if((row.decision==='replace'||row.decision==='merge')&&match){
-      const payload={
-        type:row.type||match.type,
-        description:row.description||match.desc,
-        amount:row.amount||match.amount,
-        category:row.category||match.category,
-        date:row.date||match.date,
-        note:row.decision==='merge'?[match.note,row.note].filter(Boolean).join(' • '):(row.note||match.note||''),
-        account_id:row.accountId||match.accountId,
-        paid:match.paid,
-        pending:match.pending
-      };
-      if(cfg.mode==='api')await api('PUT',`/api/transactions/${match.id}`,payload);
-      Object.assign(match,{type:payload.type,desc:payload.description,amount:payload.amount,category:payload.category,date:payload.date,note:payload.note,accountId:payload.account_id||null});
-      setTxImportMeta(match.id,{reconciled:true,reconciledAt:Date.now(),imported:true,source:importSourceLabel(importDraft.source),batchId:importDraft.batchId});
-      if(cfg.mode==='local')saveLocal();
-      row.decision==='merge'?merged++:replaced++;
-      continue;
-    }
-    const tx={id:uid(),type:row.type,desc:row.description,amount:row.amount,category:row.category||'A classificar',date:row.date,note:row.note||'',accountId:row.accountId||null,installmentGroup:null,installmentNum:null,installmentTotal:null,recurGroup:null,paid:false,pending:row.category==='A classificar'};
-    if(cfg.mode==='api'){
-      const saved=await api('POST','/api/transactions',{type:tx.type,description:tx.desc,amount:tx.amount,category:tx.category,date:tx.date,note:tx.note,account_id:tx.accountId,paid:false,pending:tx.pending});
-      S.transactions.unshift(nTx({...saved,accountId:tx.accountId,pending:tx.pending}));
-      setTxImportMeta(saved.id,{imported:true,importedAt:Date.now(),source:importSourceLabel(importDraft.source),batchId:importDraft.batchId});
-    }else{
-      S.transactions.unshift(tx);
-      saveLocal();
-      setTxImportMeta(tx.id,{imported:true,importedAt:Date.now(),source:importSourceLabel(importDraft.source),batchId:importDraft.batchId});
-    }
-    created++;
+  }catch(err){
+    refreshAll();
+    renderImportCenter();
+    toast(`Importação interrompida: ${created} novos • ${reconciled} conciliados • ${replaced} substituídos • ${merged} mesclados • ${skipped} ignorados. Erro: ${err.message}`,'error');
+    return;
   }
   refreshAll();
   renderImportCenter();
@@ -1913,9 +1987,22 @@ function saveCar(){
   noteLocalSave('Carro atualizado localmente');
   if(cfg.mode==='api')saveRemoteState().catch(e=>toast('Erro ao salvar carro: '+e.message,'error'));
 }
+function compactImportCenterForSync(raw=importCenterState){
+  const state=normalizeImportCenterState(raw);
+  const txIds=new Set((S.transactions||[]).slice(0,600).map(t=>String(t.id)));
+  const txMeta={};
+  Object.entries(state.txMeta||{}).forEach(([id,meta])=>{
+    if(txIds.has(String(id)))txMeta[id]=meta;
+  });
+  return {...state,snapshots:[],txMeta};
+}
+function avatarDataForSync(){
+  const data=localStorage.getItem(AVK)||'';
+  return data.length<=300000?data:'';
+}
 function getAppSettings(){
-  const avatarData=localStorage.getItem(AVK)||'';
-  return {theme:document.documentElement.dataset.theme||localStorage.getItem('fz_t')||'dark',rates:{cdi:RATES.cdi,selic:RATES.selic,monthlyIncomeCents,monthly_income_cents:monthlyIncomeCents,dueItems,car:carState?.vehicles?.length?carState:normalizeCarState(),sharedSpace,shared_space:sharedSpace,avatarData,avatar_data:avatarData},widgetPrefs,widgetOrder,widgetFilters,sidebarShortcuts:sidebarShortcutPrefs,txView:curView,activeList:slActiveList,importCenter:importCenterState,commitments:commitmentsState};
+  const avatarData=avatarDataForSync();
+  return {theme:document.documentElement.dataset.theme||localStorage.getItem('fz_t')||'dark',rates:{cdi:RATES.cdi,selic:RATES.selic,monthlyIncomeCents,monthly_income_cents:monthlyIncomeCents,dueItems,car:carState?.vehicles?.length?carState:normalizeCarState(),sharedSpace,shared_space:sharedSpace,avatarData,avatar_data:avatarData},widgetPrefs,widgetOrder,widgetFilters,sidebarShortcuts:sidebarShortcutPrefs,txView:curView,activeList:slActiveList,importCenter:compactImportCenterForSync(),commitments:commitmentsState};
 }
 function applyRemoteSettings(settings={}){
   if(settings.theme)applyTheme(settings.theme);

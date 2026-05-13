@@ -2352,7 +2352,17 @@ select:focus-visible,
     padding:22px 16px calc(18px + env(safe-area-inset-bottom));
   }
   .import-modal-head{gap:10px;padding-right:38px;}
-  .import-status-strip{gap:6px;}
+  .import-status-strip{
+    display:flex;
+    gap:6px;
+    overflow-x:auto;
+    padding-bottom:2px;
+    scrollbar-width:none;
+  }
+  .import-status-strip::-webkit-scrollbar{display:none;}
+  .import-status-strip div{min-width:118px;padding:9px 11px;}
+  .import-status-strip div:first-child{min-width:148px;}
+  .import-status-strip strong{font-size:15px;}
   .import-center-grid{overflow:auto;}
   .import-center-pane{overflow:visible;}
   .import-review-list{overflow:visible;}

@@ -1,6 +1,6 @@
 {
   "name": "finanza",
-  "version": "4.3.1",
+  "version": "4.3.2",
   "description": "App de controle financeiro pessoal",
   "scripts": {
     "sync": "npx cap sync",
@@ -10,7 +10,8 @@
     "check": "node --check server/index.js && node --check server/permissions.js && node --check server/transactionParser.js && node --check server/backupSchema.js && node --check server/backupMigrations.js && node --check frontend/app.js && node --check frontend/dashboard.js && node --check frontend/bootstrap.js && node --check frontend/transactions.js && node --check frontend/future.js",
     "test": "node --test tests/*.test.js",
     "migrate": "node migrate-local-to-db.js",
-    "migrate:fisiosaas": "python tools/fisiosaas_to_finanza.py"
+    "migrate:fisiosaas": "python tools/fisiosaas_to_finanza.py",
+    "doctor:db": "node tools/neon-doctor.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",
