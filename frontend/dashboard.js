@@ -207,7 +207,8 @@ function dashboardPeriodBounds(period='week'){
 function countDaysInclusive(from,to){
   const a=new Date(`${from}T12:00:00`);
   const b=new Date(`${to}T12:00:00`);
-  return Math.max(1,Math.round((b-a)/864e5)+1);
+  const days=Math.round((b-a)/864e5)+1;
+  return Number.isFinite(days)?Math.max(1,days):1;
 }
 function daysLeftInclusive(to){
   const todayIso=today();
@@ -219,6 +220,22 @@ function daysRemainingInPeriod(from,to){
   if(todayIso<from)return countDaysInclusive(from,to);
   if(todayIso>to)return 0;
   return countDaysInclusive(todayIso,to);
+}
+function dailyFlowAmount(tx){
+  const amount=Number(tx?.amount);
+  return Number.isFinite(amount)?amount:0;
+}
+function dailyFlowMoney(value){
+  const amount=Number(value);
+  return Number.isFinite(amount)?amount:0;
+}
+function dailyFlowPeriodTabs(current){
+  const options=[
+    {value:'week',label:'Semana'},
+    {value:'month',label:'Mês'},
+    {value:'year',label:'Ano'}
+  ];
+  return `<div class="daily-flow-tabs" role="tablist" aria-label="Período do ritmo diário">${options.map(opt=>`<button class="daily-flow-tab ${current===opt.value?'active':''}" type="button" role="tab" aria-selected="${current===opt.value?'true':'false'}" onclick="setWidgetFilter('dailyflow','period','${opt.value}')">${opt.label}</button>`).join('')}</div>`;
 }
 function txCreatedTime(tx){
   const raw=tx?.createdAt||tx?.created_at;
@@ -290,27 +307,58 @@ function widgetCards(){
     ${showFuture?`<div class="sc sc-glow-fut" style="cursor:pointer" onclick="showPage('future')"><span class="ci">🔮</span><div class="cl">A pagar</div><div class="cv fut">${fmt(fut)}</div><div class="cc" style="color:var(--fut)">ver contas futuras</div></div>`:''}
   </div>`;
 }
-function widgetDailyFlow(){
-  const period=(widgetFilters?.dailyflow?.period)||'week';
+function widgetDailyFlowLegacy(){
+  const savedPeriod=(widgetFilters?.dailyflow?.period)||'week';
+  const period=['week','month','year'].includes(savedPeriod)?savedPeriod:'week';
   const bounds=dashboardPeriodBounds(period);
   const txs=(S.transactions||[]).filter(t=>t.date>=bounds.from&&t.date<=bounds.to&&!isFut(t.date)&&!t.paid);
-  const spent=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  const earned=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const spent=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+dailyFlowAmount(t),0);
+  const earned=txs.filter(t=>t.type==='income').reduce((s,t)=>s+dailyFlowAmount(t),0);
   const totalDays=countDaysInclusive(bounds.from,bounds.to);
   const elapsedDays=Math.max(1,countDaysInclusive(bounds.from,Math.min(today(),bounds.to)));
   const remainingDays=daysRemainingInPeriod(bounds.from,bounds.to);
-  const monthlyBase=monthlyIncomeCents/100;
-  const projectedBase=monthlyBase
+  const monthlyBase=dailyFlowMoney(monthlyIncomeCents)/100;
+  const projectedBase=dailyFlowMoney(monthlyBase
     ? (period==='week'?monthlyBase*12/52:period==='year'?monthlyBase*12:monthlyBase)
-    : earned;
+    : earned);
   const canSpend=projectedBase?Math.max((projectedBase-spent)/Math.max(remainingDays,1),0):0;
-  const balance=projectedBase-spent;
-  const spentPerDay=spent/elapsedDays;
-  const earnedPerDay=earned/elapsedDays;
+  const balance=dailyFlowMoney(projectedBase-spent);
+  const spentPerDay=dailyFlowMoney(spent/elapsedDays);
+  const earnedPerDay=dailyFlowMoney(earned/elapsedDays);
   const periodLabel=period==='week'?'Semana':period==='year'?'Ano':'Mês';
   const source=monthlyBase?'renda configurada':'receitas registradas';
   return `<div class="daily-flow-widget dash-section">
     <div class="bh"><div><div class="ct">🧮 Ritmo diário</div><div class="cs">${periodLabel} • ${bounds.label} • base por ${source}</div></div><button class="btn btn-g btn-sm" onclick="showPage('transactions')">Ver lançamentos</button></div>
+    <div class="daily-flow-grid">
+      <div class="daily-flow-card danger"><span>Gastei por dia</span><strong>${fmt(spentPerDay)}</strong><small>${fmt(spent)} em ${elapsedDays} dia${elapsedDays===1?'':'s'}</small></div>
+      <div class="daily-flow-card income"><span>Ganhei por dia</span><strong>${fmt(earnedPerDay)}</strong><small>${fmt(earned)} recebido no período</small></div>
+      <div class="daily-flow-card safe"><span>Posso gastar por dia</span><strong>${fmt(canSpend)}</strong><small>${remainingDays?`${remainingDays} dia${remainingDays===1?'':'s'} restantes`:'período fechado'}</small></div>
+    </div>
+    <div class="daily-flow-foot ${balance>=0?'pos':'neg'}">${balance>=0?'Sobra prevista':'Passou da base'}: <strong>${fmt(Math.abs(balance))}</strong> de ${fmt(projectedBase)} planejado para ${totalDays} dia${totalDays===1?'':'s'}.</div>
+  </div>`;
+}
+function widgetDailyFlow(){
+  const savedPeriod=(widgetFilters?.dailyflow?.period)||'week';
+  const period=['week','month','year'].includes(savedPeriod)?savedPeriod:'week';
+  const bounds=dashboardPeriodBounds(period);
+  const txs=(S.transactions||[]).filter(t=>t.date>=bounds.from&&t.date<=bounds.to&&!isFut(t.date)&&!t.paid);
+  const spent=txs.filter(t=>t.type==='expense').reduce((sum,tx)=>sum+dailyFlowAmount(tx),0);
+  const earned=txs.filter(t=>t.type==='income').reduce((sum,tx)=>sum+dailyFlowAmount(tx),0);
+  const totalDays=countDaysInclusive(bounds.from,bounds.to);
+  const elapsedDays=Math.max(1,countDaysInclusive(bounds.from,Math.min(today(),bounds.to)));
+  const remainingDays=daysRemainingInPeriod(bounds.from,bounds.to);
+  const monthlyBase=dailyFlowMoney(monthlyIncomeCents)/100;
+  const projectedBase=dailyFlowMoney(monthlyBase
+    ? (period==='week'?monthlyBase*12/52:period==='year'?monthlyBase*12:monthlyBase)
+    : earned);
+  const canSpend=dailyFlowMoney(projectedBase?Math.max((projectedBase-spent)/Math.max(remainingDays,1),0):0);
+  const balance=dailyFlowMoney(projectedBase-spent);
+  const spentPerDay=dailyFlowMoney(spent/elapsedDays);
+  const earnedPerDay=dailyFlowMoney(earned/elapsedDays);
+  const periodLabel=period==='week'?'Semana':period==='year'?'Ano':'Mês';
+  const source=monthlyBase?'renda configurada':'receitas registradas';
+  return `<div class="daily-flow-widget dash-section">
+    <div class="bh daily-flow-head"><div><div class="ct">🧮 Ritmo diário</div><div class="cs">${periodLabel} • ${bounds.label} • base por ${source}</div></div>${dailyFlowPeriodTabs(period)}</div>
     <div class="daily-flow-grid">
       <div class="daily-flow-card danger"><span>Gastei por dia</span><strong>${fmt(spentPerDay)}</strong><small>${fmt(spent)} em ${elapsedDays} dia${elapsedDays===1?'':'s'}</small></div>
       <div class="daily-flow-card income"><span>Ganhei por dia</span><strong>${fmt(earnedPerDay)}</strong><small>${fmt(earned)} recebido no período</small></div>
