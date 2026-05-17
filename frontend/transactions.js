@@ -58,16 +58,17 @@ function txHTML(tx){
   return`<div style="border-radius:14px;overflow:hidden;margin-bottom:0"><div class="ti" id="tx-${tx.id}"><div class="tico" style="background:${cat.col}20">${cat.ico}</div><div class="tinf"><div class="tnm">${tx.desc}</div><div class="tcat"><span class="bdg" style="background:${cat.col}20;color:${cat.col}">${tx.category}</span>${acc?`<span style="font-size:11px;color:var(--mt)">${acc.icon}</span>`:''}${bdgs}${tx.note?`<span style="color:var(--mt);font-size:9px">${tx.note}</span>`:''}</div></div><div class="tr"><div class="tam ${amtCls}">${tx.type==='income'?'+':'-'}${fmt(tx.amount)}</div><div class="tdt">${fmtD(tx.date)}</div></div><div class="tact">${fut||tx.pending?`<button class="ib ok" ${writeActionAttrs('alterar status de pagamento')} onclick="markPaid('${tx.id}')">${tx.paid?'↩':'✓'}</button>`:''}<button class="ib" ${writeActionAttrs('editar transações')} onclick="openModal('${tx.id}')">✏️</button><button class="ib" ${writeActionAttrs('duplicar transações')} onclick="dupTx('${tx.id}')">⧉</button>${delBtn}</div><button class="ib" ${writeActionAttrs('editar transações')} onclick="openInlineEdit('${tx.id}')" title="Edição rápida" style="font-size:11px;color:var(--ac)">⚡</button></div></div><div class="ti-edit-wrap" id="ie-${tx.id}"></div></div>`;
 }
 
-function setView(v){
+function setView(v,options={}){
+  const {render=true,persist=true,syncRemote=false}=options;
   if(v==='cal')v='n';
   curView=v;
-  localStorage.setItem(VK,v);
-  if(cfg.mode==='api')saveRemoteState().catch(()=>{});
+  if(persist)localStorage.setItem(VK,v);
+  if(syncRemote&&cfg.mode==='api')saveRemoteState().catch(()=>{});
   ['N','C','Chart'].forEach(n=>document.getElementById('v'+n)?.classList.toggle('active',n.toLowerCase()===v));
   const chartWrap=document.getElementById('txChartWrap');
   if(chartWrap)chartWrap.style.display=v==='chart'?'block':'none';
-  renderTx();
-  if(v==='chart')renderTxCharts();
+  if(render)renderTx();
+  if(render&&v==='chart')renderTxCharts();
 }
 
 function renderTx(){

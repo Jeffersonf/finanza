@@ -2,6 +2,14 @@
 
 Ideias guardadas para uma etapa posterior, depois do aprofundamento da previsao na `4.1`.
 
+## Prioridade alta registrada em 2026-05-13
+
+- corrigir lag alto percebido no site, com investigacao de boot, dashboard, graficos, listas, localStorage e sincronizacao
+- reformular a barra lateral como ferramenta de trabalho diaria, com hierarquia melhor, atalhos configuraveis, indicadores de estado e comportamento mobile/desktop consistente
+- reconstruir a previsao de gastos como pilar do produto, usando dados reais e separando fixos, recorrentes, parcelados, vencimentos, variaveis por categoria e entradas esperadas
+- entregar previsao com cenarios conservador, realista e otimista, explicacao dos numeros, margem segura para gastar hoje e risco de fechar o mes negativo
+- transformar previsao em decisao: cortes sugeridos, limites por categoria, alertas de compromisso futuro e proximas acoes claras
+
 ## Sugestoes de produto
 
 - metas com simulador: "se eu guardar X por mes, chego quando?"

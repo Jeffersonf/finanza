@@ -3,4 +3,4 @@
 
 initTheme();
 initPrivacy();
-(function boot(){const s=localStorage.getItem(CK);if(s){cfg=JSON.parse(s);initApp();}else showSetup();})();
+(function boot(){applyPerformanceMode();const s=localStorage.getItem(CK);if(s){cfg=JSON.parse(s);initApp();}else showSetup();})();
