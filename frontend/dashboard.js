@@ -4,6 +4,7 @@ function dashboardWidgetRenderers(){
     quickactions:widgetQuickActions,
     workbench:widgetWorkbench,
     ministats:widgetMiniStats,
+    dailyflow:widgetDailyFlow,
     accounts:widgetAccounts,
     commitments:widgetCommitments,
     renewals:widgetRenewals,
@@ -98,6 +99,9 @@ function renderWidgetMenuPanel(id){
     case 'commitments':
       sections.push(widgetSelectControl('commitments','scope','Mostrar',[{value:'monthly',label:'Mensal'},{value:'debts',label:'Dívidas'},{value:'all',label:'Tudo'}],'monthly'));
       break;
+    case 'dailyflow':
+      sections.push(widgetSelectControl('dailyflow','period','Período',[{value:'week',label:'Semana'},{value:'month',label:'Mês'},{value:'year',label:'Ano'}],'week'));
+      break;
     case 'renewals':
       sections.push(widgetSelectControl('renewals','limit','Linhas',[{value:'3',label:'3 alertas'},{value:'5',label:'5 alertas'},{value:'8',label:'8 alertas'}],'5'));
       break;
@@ -161,6 +165,60 @@ function renderDashboardManager(){
 function widgetRangeDate(scope='month'){
   if(scope==='30d')return iso(offD(new Date(),-29));
   return '';
+}
+function dashLocalIso(date){
+  const d=new Date(date);
+  d.setHours(12,0,0,0);
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function dashboardPeriodBounds(period='week'){
+  const now=new Date();
+  const inViewedMonth=curDt.getMonth()===now.getMonth()&&curDt.getFullYear()===now.getFullYear();
+  const base=inViewedMonth?now:new Date(curDt.getFullYear(),curDt.getMonth(),Math.min(curDt.getDate(),28));
+  base.setHours(12,0,0,0);
+  if(period==='year'){
+    return {
+      from:dashLocalIso(new Date(curDt.getFullYear(),0,1)),
+      to:dashLocalIso(new Date(curDt.getFullYear(),11,31)),
+      label:`${curDt.getFullYear()}`
+    };
+  }
+  if(period==='month'){
+    return {
+      from:dashLocalIso(new Date(curDt.getFullYear(),curDt.getMonth(),1)),
+      to:dashLocalIso(new Date(curDt.getFullYear(),curDt.getMonth()+1,0)),
+      label:`${MO[curDt.getMonth()]} ${curDt.getFullYear()}`
+    };
+  }
+  const start=new Date(base);
+  const day=(start.getDay()+6)%7;
+  start.setDate(start.getDate()-day);
+  const end=new Date(start);
+  end.setDate(start.getDate()+6);
+  return {
+    from:dashLocalIso(start),
+    to:dashLocalIso(end),
+    label:`${fmtD(dashLocalIso(start))} a ${fmtD(dashLocalIso(end))}`
+  };
+}
+function countDaysInclusive(from,to){
+  const a=new Date(`${from}T12:00:00`);
+  const b=new Date(`${to}T12:00:00`);
+  return Math.max(1,Math.round((b-a)/864e5)+1);
+}
+function daysLeftInclusive(to){
+  const todayIso=today();
+  if(to<todayIso)return 0;
+  return countDaysInclusive(todayIso,to);
+}
+function daysRemainingInPeriod(from,to){
+  const todayIso=today();
+  if(todayIso<from)return countDaysInclusive(from,to);
+  if(todayIso>to)return 0;
+  return countDaysInclusive(todayIso,to);
 }
 function txCreatedTime(tx){
   const raw=tx?.createdAt||tx?.created_at;
@@ -230,6 +288,35 @@ function widgetCards(){
     <div class="sc sc-glow-ac" style="cursor:pointer" onclick="showPage('transactions')"><span class="ci">🧭</span><div class="cl">Seguro por dia</div><div class="cv ${safeDay>0?'pos':'neg'}">${fmt(safeDay)}</div><div class="cc">${daysLeft} dia${daysLeft===1?'':'s'} ate fechar</div></div>
     <div class="sc sc-glow-ac" style="cursor:pointer" onclick="showPage('transactions')"><span class="ci">🌱</span><div class="cl">Sobra projetada</div><div class="cv ${remaining>=0?'pos':'neg'}">${fmt(remaining)}</div><div class="cc">${fmt(inc)} recebido no mes</div></div>
     ${showFuture?`<div class="sc sc-glow-fut" style="cursor:pointer" onclick="showPage('future')"><span class="ci">🔮</span><div class="cl">A pagar</div><div class="cv fut">${fmt(fut)}</div><div class="cc" style="color:var(--fut)">ver contas futuras</div></div>`:''}
+  </div>`;
+}
+function widgetDailyFlow(){
+  const period=(widgetFilters?.dailyflow?.period)||'week';
+  const bounds=dashboardPeriodBounds(period);
+  const txs=(S.transactions||[]).filter(t=>t.date>=bounds.from&&t.date<=bounds.to&&!isFut(t.date)&&!t.paid);
+  const spent=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const earned=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const totalDays=countDaysInclusive(bounds.from,bounds.to);
+  const elapsedDays=Math.max(1,countDaysInclusive(bounds.from,Math.min(today(),bounds.to)));
+  const remainingDays=daysRemainingInPeriod(bounds.from,bounds.to);
+  const monthlyBase=monthlyIncomeCents/100;
+  const projectedBase=monthlyBase
+    ? (period==='week'?monthlyBase*12/52:period==='year'?monthlyBase*12:monthlyBase)
+    : earned;
+  const canSpend=projectedBase?Math.max((projectedBase-spent)/Math.max(remainingDays,1),0):0;
+  const balance=projectedBase-spent;
+  const spentPerDay=spent/elapsedDays;
+  const earnedPerDay=earned/elapsedDays;
+  const periodLabel=period==='week'?'Semana':period==='year'?'Ano':'Mês';
+  const source=monthlyBase?'renda configurada':'receitas registradas';
+  return `<div class="daily-flow-widget dash-section">
+    <div class="bh"><div><div class="ct">🧮 Ritmo diário</div><div class="cs">${periodLabel} • ${bounds.label} • base por ${source}</div></div><button class="btn btn-g btn-sm" onclick="showPage('transactions')">Ver lançamentos</button></div>
+    <div class="daily-flow-grid">
+      <div class="daily-flow-card danger"><span>Gastei por dia</span><strong>${fmt(spentPerDay)}</strong><small>${fmt(spent)} em ${elapsedDays} dia${elapsedDays===1?'':'s'}</small></div>
+      <div class="daily-flow-card income"><span>Ganhei por dia</span><strong>${fmt(earnedPerDay)}</strong><small>${fmt(earned)} recebido no período</small></div>
+      <div class="daily-flow-card safe"><span>Posso gastar por dia</span><strong>${fmt(canSpend)}</strong><small>${remainingDays?`${remainingDays} dia${remainingDays===1?'':'s'} restantes`:'período fechado'}</small></div>
+    </div>
+    <div class="daily-flow-foot ${balance>=0?'pos':'neg'}">${balance>=0?'Sobra prevista':'Passou da base'}: <strong>${fmt(Math.abs(balance))}</strong> de ${fmt(projectedBase)} planejado para ${totalDays} dia${totalDays===1?'':'s'}.</div>
   </div>`;
 }
 function widgetMiniStats(){

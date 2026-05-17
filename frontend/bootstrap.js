@@ -1,6 +1,6 @@
 'use strict';
 
-const INITIAL_BOOT_TX_LIMIT=250;
+const INITIAL_BOOT_TX_LIMIT=1000;
 let fullTxHydrationPromise=null;
 
 function applyRemotePayload(txR,buds,goals,state){
@@ -107,7 +107,7 @@ async function initApp(){
   applyWriteAccessUI();
   renderSidebarShortcuts();
   const sv=localStorage.getItem(VK)||'n';
-  setView(sv);
+  setView(sv,{render:false,persist:false,syncRemote:false});
   const savedPage=sessionStorage.getItem(PAGE_KEY)||'dashboard';
   if(savedPage!=='dashboard')showPage(savedPage);
   applySavedTxFilters();

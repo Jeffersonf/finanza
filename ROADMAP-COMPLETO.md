@@ -11,7 +11,7 @@ Legenda sugerida:
 
 ## Status atual de versao
 
-- [x] Versao atual alinhada em frontend, pacotes e Android: `4.3.1`.
+- [x] Versao atual alinhada em frontend, pacotes e Android: `4.3.2`.
 - [x] Fechamento desta fase registrado em `2026-04-26`.
 - Ciclo de produto concluido nesta linha: `4.11 - Performance e foco no controle de gastos`.
 - Escopo fechado da `4.11`: reduzir re-render da dashboard, priorizar widgets essenciais, diminuir duplicacao estrutural no frontend e manter a home orientada a captura, revisao e decisao de gasto.
@@ -33,15 +33,29 @@ Legenda sugerida:
 
 Decisao registrada em `2026-05-04`: tirar o Finanza da dependencia de banco gratuito com expiracao curta e manter a base online com custo zero viavel, sem perder a capacidade de restaurar por backup.
 
-- [ ] Migrar o banco principal para **Neon Free Postgres** como melhor opcao free gerenciada para o momento.
-- [ ] Manter a API Node/Express atual apontando para o novo `DATABASE_URL` do Neon.
+- [x] Migrar o banco principal para **Neon Free Postgres** como melhor opcao free gerenciada para o momento.
+- [x] Manter a API Node/Express atual apontando para o novo `DATABASE_URL` do Neon.
 - [ ] Rodar o schema `db/init.sql` no banco novo quando necessario.
-- [ ] Restaurar o backup JSON exportado no Finanza e validar contagem de transacoes, contas, metas, orcamentos, carro, vencimentos e configuracoes.
+- [x] Restaurar o backup JSON exportado no Finanza e validar contagem de transacoes, contas, metas, orcamentos, carro, vencimentos e configuracoes.
 - [ ] Exportar novo JSON depois da restauracao e guardar como backup-mestre pos-migracao.
 - [ ] Adicionar aviso forte no app para ultimo backup, status da API e status do banco online.
 - [ ] Manter rotina de backup JSON semanal como regra minima.
 - [ ] Avaliar **Oracle Always Free VM + PostgreSQL em Docker** como segunda fase para self-host/cloud free com mais controle.
 - [ ] Documentar procedimento de recuperacao: criar banco, aplicar schema, configurar `DATABASE_URL`, importar JSON e validar.
+
+## Prioridade maxima - experiencia diaria e previsao de gastos
+
+Registro de dor em `2026-05-13`: sincronizacao voltou a funcionar, mas o site apresenta lag alto, com sensacao de travamento de hardware mesmo quando o computador esta normal. Alem disso, a barra lateral e a previsao de gastos nao estao suprindo as necessidades principais do projeto.
+
+- [ ] Investigar e corrigir lag percebido no frontend: medir tempo de boot, re-render, listas grandes, graficos, handlers globais, localStorage e chamadas de sync.
+- [ ] Criar perfil de performance em desktop e mobile com cenarios reais: abrir app, trocar paginas, lancar transacao, importar, sincronizar e navegar na dashboard.
+- [ ] Reformular a barra lateral como navegacao principal de trabalho: menos ruido, hierarquia clara, atalhos configuraveis, indicadores uteis e comportamento mobile/desktop previsivel.
+- [ ] Redesenhar a previsao de gastos como modulo central, nao apenas grafico auxiliar.
+- [ ] Previsao precisa separar fixos, recorrentes, parcelados, vencimentos, variaveis por categoria e entradas esperadas.
+- [ ] Incluir cenarios conservador, realista e otimista com explicacao do motivo de cada numero.
+- [ ] Mostrar risco de estouro do mes, saldo projetado por data, gastos ja comprometidos e margem segura para gastar hoje.
+- [ ] Fazer a previsao virar acao: sugerir cortes, adiamentos, limites por categoria e proximas decisoes sem moralismo.
+- [ ] Validar o modulo com os dados reais restaurados do Jefferson antes de considerar a entrega fechada.
 
 ## Norte do produto
 

@@ -32,6 +32,9 @@ let importDraft={source:'csv',files:[],rows:[],headers:[],mapping:{},dedupe:'exa
 let srchScope='all';
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2);
 function persistCfg(){localStorage.setItem(CK,JSON.stringify(cfg));}
+function applyPerformanceMode(){
+  document.documentElement.dataset.perf=localStorage.getItem('fz_perf_mode')||'lite';
+}
 const rawFmt=n=>'R$ '+Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmt=n=>privacyMode?'R$ •••':rawFmt(n);
 const fmtD=d=>{if(!d)return'';const[y,m,day]=d.substring(0,10).split('-');return`${day}/${m}/${y}`;};
@@ -915,6 +918,20 @@ function isXlsxImportFile(file){
 function isPdfImportFile(file){
   return /\.pdf$/i.test(file?.name||'')||file?.type==='application/pdf';
 }
+const vendorScriptPromises={};
+function loadVendorScript(src,globalName){
+  if(globalName&&window[globalName])return Promise.resolve(window[globalName]);
+  if(vendorScriptPromises[src])return vendorScriptPromises[src];
+  vendorScriptPromises[src]=new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    s.src=src;
+    s.async=true;
+    s.onload=()=>resolve(globalName?window[globalName]:true);
+    s.onerror=()=>reject(new Error(`Não consegui carregar ${src}`));
+    document.head.appendChild(s);
+  });
+  return vendorScriptPromises[src];
+}
 function parseCsvMatrix(text=''){
   const lines=String(text).replace(/\r/g,'').split('\n').filter(Boolean);
   if(!lines.length)return{headers:[],rows:[]};
@@ -940,6 +957,7 @@ function parseCsvMatrix(text=''){
   return {headers,rows};
 }
 async function parseXlsxMatrix(file){
+  if(!window.XLSX)await loadVendorScript('vendor/xlsx.full.min.js?v=4.3.2','XLSX');
   if(!window.XLSX)throw new Error('Leitor XLSX indisponível. Verifique a conexão e tente novamente.');
   const workbook=window.XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:false});
   const sheet=workbook.Sheets[workbook.SheetNames[0]];
@@ -955,6 +973,7 @@ async function parseTabularImportFile(file){
 }
 async function extractPdfText(file){
   if(!isPdfImportFile(file))throw new Error('Escolha um arquivo PDF.');
+  if(!window.pdfjsLib)await loadVendorScript('vendor/pdf.min.js?v=4.3.2','pdfjsLib');
   if(!window.pdfjsLib)throw new Error('Leitor PDF indisponível. Selecione e copie o texto do PDF no campo abaixo.');
   const pdfjs=window.pdfjsLib;
   if(pdfjs.GlobalWorkerOptions&&!pdfjs.GlobalWorkerOptions.workerSrc){
@@ -3049,7 +3068,7 @@ function showPage(id){
   document.querySelectorAll('.nav-item,.fn-item,[data-page]').forEach(n=>n.classList.toggle('active',n.dataset.page===id));
   if(prev&&prev!==id)pgHist.push(prev);
   sessionStorage.setItem(PAGE_KEY,id);
-  window.scrollTo({top:0,behavior:'smooth'});
+  window.scrollTo({top:0,behavior:'auto'});
   if(id==='dashboard')renderDash(true);
   else if(id==='accounts'){renderAccs();popAccSels();}
   else if(id==='transactions')renderTx();
@@ -5108,7 +5127,7 @@ const WIDGETS_KEY = 'fz_widgets';
 const MIN_DASH_WIDGETS = 3;
 const PINNED_WIDGET_IDS = ['workbench'];
 const FOCUSED_WIDGET_IDS = ['workbench','cards','commitments','quickactions','budalerts','renewals'];
-const DEFAULT_DASH_WIDGET_ORDER = ['workbench','cards','commitments','budalerts','quickactions','renewals','recent','accounts','budgets','goals','shopping','vehicles','compare','charts','barcats','ministats','saverate','projection','weekly','anomaly'];
+const DEFAULT_DASH_WIDGET_ORDER = ['workbench','cards','commitments','budalerts','quickactions','dailyflow','renewals','recent','accounts','budgets','goals','shopping','vehicles','compare','charts','barcats','ministats','saverate','projection','weekly','anomaly'];
 
 // Definição de todos os widgets disponíveis
 const WIDGET_DEFS = [
@@ -5118,6 +5137,7 @@ const WIDGET_DEFS = [
   { id:'recent',    ico:'💸', name:'Últimas transações',    desc:'Lançamentos recentes',               default:false, group:'core' },
   { id:'budalerts', ico:'⚠️', name:'Alertas de orçamento',  desc:'Riscos que pedem decisão hoje',      default:true,  group:'core' },
   { id:'commitments', ico:'📦', name:'Compromissos fixos',  desc:'Assinaturas, dívidas e contratos',   default:true,  group:'support' },
+  { id:'dailyflow', ico:'🧮', name:'Ritmo diário',          desc:'Gasto, ganho e limite por dia',       default:true,  group:'core' },
   { id:'renewals',  ico:'🔔', name:'Renovações próximas',   desc:'Alertas de reajuste e vencimento',   default:true,  group:'support' },
   { id:'accounts',  ico:'🏦', name:'Saldos das contas',     desc:'Saldo de cada conta bancária',       default:false, group:'support' },
   { id:'budgets',   ico:'🎯', name:'Orçamentos rápidos',    desc:'Uso mensal por categoria',            default:false, group:'support' },
