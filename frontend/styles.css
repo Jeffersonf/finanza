@@ -855,7 +855,8 @@ body::before {
   display: block;
   font-size: 10px;
   color: var(--mt);
-  font-weight: 800;
+  font-weight: 700;
+  letter-spacing: .025em;
   text-transform: uppercase;
 }
 .daily-flow-card strong {
@@ -863,6 +864,7 @@ body::before {
   margin-top: 5px;
   font-family: var(--font-money);
   font-size: clamp(16px, 1.25vw, 19px);
+  font-weight: 650;
   line-height: 1.15;
   letter-spacing: 0;
   white-space: nowrap;
@@ -913,28 +915,31 @@ body::before {
 .daily-flow-foot span {
   color: var(--mt);
   font-size: 10px;
-  font-weight: 900;
-  letter-spacing: .04em;
+  font-weight: 700;
+  letter-spacing: .025em;
   line-height: 1.2;
   text-transform: uppercase;
 }
 .daily-flow-foot-main strong {
   font-family: var(--font-money);
-  font-size: clamp(19px, 1.65vw, 24px);
-  line-height: 1.08;
+  font-size: clamp(18px, 1.45vw, 22px);
+  font-weight: 650;
+  line-height: 1.12;
   letter-spacing: 0;
   overflow-wrap: anywhere;
 }
 .daily-flow-foot-detail strong {
   color: var(--tx);
   font-family: var(--font-money);
-  font-size: clamp(14px, 1vw, 17px);
-  line-height: 1.15;
+  font-size: clamp(13px, .92vw, 16px);
+  font-weight: 550;
+  line-height: 1.18;
   letter-spacing: 0;
 }
 .daily-flow-foot-detail small {
   color: var(--mt);
   font-size: 11px;
+  font-weight: 500;
   line-height: 1.25;
 }
 .daily-flow-foot.pos .daily-flow-foot-main strong { color: var(--ac); }
