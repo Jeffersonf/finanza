@@ -410,9 +410,9 @@ function dailyFlowMonthlyCharts(bounds,todayIso,scheduledFrom,txScheduledFrom,mo
     ...combined.map(item=>item.balance)
   ];
   const dataMax=Math.max(1,...allValues);
-  const valuePad=Math.max(120,dataMax*.08);
   const minValue=0;
-  const maxValue=dataMax+valuePad;
+  const tickStep=1000;
+  const maxValue=Math.max(tickStep,Math.ceil(dataMax/tickStep)*tickStep);
   const range=Math.max(1,maxValue-minValue);
   const xFor=idx=>padL+(idx*Math.max(1,(chartW-padL-padR)/(days-1||1)));
   const yFor=value=>lineBottom-(((value-minValue)/range)*(lineBottom-top));
@@ -441,7 +441,8 @@ function dailyFlowMonthlyCharts(bounds,todayIso,scheduledFrom,txScheduledFrom,mo
   const rawTodayIndex=values.findIndex(item=>item.date===todayIso);
   const todayIndex=rawTodayIndex>=0?rawTodayIndex:(todayIso<bounds.from?0:days-1);
   const todayX=xFor(todayIndex);
-  const ticks=Array.from({length:5},(_,idx)=>maxValue-(range*idx/4));
+  const ticks=[];
+  for(let value=maxValue;value>=minValue;value-=tickStep)ticks.push(value);
   const yAxis=ticks.map(value=>{
     const y=yFor(value).toFixed(2);
     return `<g class="daily-flow-y"><line x1="${padL}" y1="${y}" x2="${chartW-padR}" y2="${y}"></line><text x="${padL-12}" y="${Number(y)+3}" text-anchor="end">${shortMoney(value)}</text></g>`;
