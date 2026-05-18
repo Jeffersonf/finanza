@@ -366,13 +366,16 @@ function widgetDailyFlowPeriod(period){
   return `<div class="daily-flow-widget dash-section">
     <div class="bh daily-flow-head"><div><div class="ct">${icon} ${title}</div><div class="cs">${periodLabel} • ${stats.bounds.label} • até agora: ${stats.elapsedDays} dia${stats.elapsedDays===1?'':'s'}${canPlan?` • base por ${stats.source}`:''}</div></div></div>
     <div class="daily-flow-grid">
-      <div class="daily-flow-card danger"><span>Gasto total</span><strong>${fmt(stats.spent)}</strong><small>${canPlan?`${fmt(stats.spentPerDay)}/dia até agora`:'realizado até agora'}</small></div>
       <div class="daily-flow-card income"><span>Ganho total</span><strong>${fmt(stats.earned)}</strong><small>${canPlan?`${fmt(stats.earnedPerDay)}/dia até agora`:'recebido até agora'}</small></div>
+      <div class="daily-flow-card danger"><span>Gasto total</span><strong>${fmt(stats.spent)}</strong><small>${canPlan?`${fmt(stats.spentPerDay)}/dia até agora`:'realizado até agora'}</small></div>
       ${canPlan?`<div class="daily-flow-card forecast"><span>Previsto</span><strong>${fmt(stats.scheduledExpenses)}</strong><small>${stats.scheduledMeta}</small></div>
-      <div class="daily-flow-card safe"><span>Pode gastar</span><strong>${fmt(stats.freeUntilEnd)}</strong><small>${fmt(stats.canSpend)}/dia em ${stats.remainingDays||0} dia${stats.remainingDays===1?'':'s'}</small></div>`:`<div class="daily-flow-card danger"><span>Gasto/dia</span><strong>${fmt(stats.spentPerDay)}</strong><small>média realizada no ano</small></div>
-      <div class="daily-flow-card income"><span>Ganho/dia</span><strong>${fmt(stats.earnedPerDay)}</strong><small>média realizada no ano</small></div>`}
+      <div class="daily-flow-card safe"><span>Pode gastar</span><strong>${fmt(stats.freeUntilEnd)}</strong><small>${fmt(stats.canSpend)}/dia em ${stats.remainingDays||0} dia${stats.remainingDays===1?'':'s'}</small></div>`:`<div class="daily-flow-card income"><span>Ganho/dia</span><strong>${fmt(stats.earnedPerDay)}</strong><small>média realizada no ano</small></div>
+      <div class="daily-flow-card danger"><span>Gasto/dia</span><strong>${fmt(stats.spentPerDay)}</strong><small>média realizada no ano</small></div>`}
     </div>
-    <div class="daily-flow-foot ${(canPlan?stats.balance:stats.actualBalance)>=0?'pos':'neg'}"><span>${canPlan?(stats.balance>=0?'Livre até o fim':'Atenção ao período'):'Saldo do ano'}: <strong>${fmt(Math.abs(canPlan?stats.balance:stats.actualBalance))}</strong></span><span>${canPlan?'Gasto realizado + agenda':'Resultado até agora'}: <strong>${fmt(canPlan?stats.plannedExpenses:stats.actualBalance)}</strong>${canPlan?` (${fmt(stats.plannedPerDay)}/dia)`:''}</span></div>
+    <div class="daily-flow-foot ${(canPlan?stats.balance:stats.actualBalance)>=0?'pos':'neg'}">
+      <span><em>${canPlan?(stats.balance>=0?'Livre até o fim':'Atenção ao período'):'Saldo do ano'}</em><strong>${fmt(Math.abs(canPlan?stats.balance:stats.actualBalance))}</strong></span>
+      <span><em>${canPlan?'Gasto realizado + agenda':'Resultado até agora'}</em><strong>${fmt(canPlan?stats.plannedExpenses:stats.actualBalance)}</strong>${canPlan?`<small>${fmt(stats.plannedPerDay)}/dia até agora</small>`:''}</span>
+    </div>
   </div>`;
 }
 function widgetDailyWeek(){return widgetDailyFlowPeriod('week');}
