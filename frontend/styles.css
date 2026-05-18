@@ -952,8 +952,8 @@ body::before {
 }
 .daily-flow-y-axis text {
   fill: color-mix(in srgb, var(--mt) 82%, transparent);
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 8px;
+  font-weight: 600;
 }
 .daily-flow-grid-lines line {
   stroke: rgba(148,163,184,.055);
@@ -3136,7 +3136,7 @@ select:focus-visible,
   .daily-flow-metric { min-height: 0; }
   .daily-flow-chart-head { align-items: flex-start; flex-direction: column; gap: 4px; }
   .daily-flow-line-chart { min-height: 190px; }
-  .daily-flow-y-axis text { font-size: 15px; }
+  .daily-flow-y-axis text { font-size: 8px; }
   .daily-flow-labels text { font-size: 13px; }
 }
 

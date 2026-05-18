@@ -361,8 +361,8 @@ function dailyFlowMonthlyCharts(bounds,todayIso,scheduledFrom,txScheduledFrom,mo
   const days=countDaysInclusive(bounds.from,bounds.to);
   const shortMoney=value=>{
     const abs=Math.abs(value);
-    if(abs>=1000)return `R$ ${(value/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})}k`;
-    return `R$ ${Math.round(value).toLocaleString('pt-BR')}`;
+    if(abs>=1000)return `${(value/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})}k`;
+    return Math.round(value).toLocaleString('pt-BR');
   };
   const realByDay=new Map();
   (S.transactions||[]).filter(t=>t.type==='expense'&&t.date>=bounds.from&&t.date<=todayIso&&t.date<=bounds.to&&!t.paid).forEach(tx=>{
