@@ -359,6 +359,11 @@ function dailyFlowMetric(label,value,meta,tone='neutral',icon='•',page=''){
 }
 function dailyFlowMonthlyCharts(bounds,todayIso,scheduledFrom,txScheduledFrom,monthlyBase,spendingBase){
   const days=countDaysInclusive(bounds.from,bounds.to);
+  const shortMoney=value=>{
+    const abs=Math.abs(value);
+    if(abs>=1000)return `R$ ${(value/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})}k`;
+    return `R$ ${Math.round(value).toLocaleString('pt-BR')}`;
+  };
   const realByDay=new Map();
   (S.transactions||[]).filter(t=>t.type==='expense'&&t.date>=bounds.from&&t.date<=todayIso&&t.date<=bounds.to&&!t.paid).forEach(tx=>{
     realByDay.set(tx.date,(realByDay.get(tx.date)||0)+dailyFlowAmount(tx));
@@ -387,22 +392,27 @@ function dailyFlowMonthlyCharts(bounds,todayIso,scheduledFrom,txScheduledFrom,mo
     };
   });
   let realizedSpent=0;
-  const balances=values.map(item=>{
+  const realizedSeries=values.map(item=>{
     if(item.date<=todayIso)realizedSpent+=item.real;
-    return {...item,balance:spendingBase-realizedSpent};
+    return {...item,spent:realizedSpent,balance:spendingBase-realizedSpent};
   });
   let plannedSpent=realizedSpent;
-  const plannedBalances=values.map(item=>{
+  const plannedSeries=values.map(item=>{
     if(item.date>todayIso)plannedSpent+=item.scheduled;
-    return {...item,balance:spendingBase-plannedSpent};
+    return {...item,spent:plannedSpent,balance:spendingBase-plannedSpent};
   });
-  const allBalances=[spendingBase,...balances.map(item=>item.balance),...plannedBalances.map(item=>item.balance)];
-  const dataMin=Math.min(...allBalances);
-  const dataMax=Math.max(...allBalances);
-  const dataRange=Math.max(1,dataMax-dataMin);
-  const valuePad=Math.max(80,dataRange*.12);
-  const minValue=Math.max(0,dataMin-valuePad);
-  const maxValue=Math.max(1,dataMax+valuePad);
+  const combined=values.map((item,idx)=>item.date>todayIso?plannedSeries[idx]:realizedSeries[idx]);
+  const allValues=[
+    0,
+    spendingBase,
+    ...realizedSeries.map(item=>item.spent),
+    ...plannedSeries.map(item=>item.spent),
+    ...combined.map(item=>item.balance)
+  ];
+  const dataMax=Math.max(1,...allValues);
+  const valuePad=Math.max(120,dataMax*.08);
+  const minValue=0;
+  const maxValue=dataMax+valuePad;
   const range=Math.max(1,maxValue-minValue);
   const xFor=idx=>padL+(idx*Math.max(1,(chartW-padL-padR)/(days-1||1)));
   const yFor=value=>lineBottom-(((value-minValue)/range)*(lineBottom-top));
@@ -422,27 +432,37 @@ function dailyFlowMonthlyCharts(bounds,todayIso,scheduledFrom,txScheduledFrom,mo
     }
     return path;
   };
-  const realPoints=balances.map((item,idx)=>item.date<=todayIso?toPoint(idx,item.balance):null).filter(Boolean);
-  const plannedPoints=plannedBalances.map((item,idx)=>item.date>=todayIso?toPoint(idx,item.balance):null).filter(Boolean);
+  const realPoints=realizedSeries.map((item,idx)=>item.date<=todayIso?toPoint(idx,item.spent):null).filter(Boolean);
+  const plannedPoints=plannedSeries.map((item,idx)=>item.date>=todayIso?toPoint(idx,item.spent):null).filter(Boolean);
+  const balancePoints=combined.map((item,idx)=>toPoint(idx,item.balance));
   const realPath=smoothPath(realPoints);
   const plannedPath=smoothPath(plannedPoints);
+  const balancePath=smoothPath(balancePoints);
   const rawTodayIndex=values.findIndex(item=>item.date===todayIso);
   const todayIndex=rawTodayIndex>=0?rawTodayIndex:(todayIso<bounds.from?0:days-1);
   const todayX=xFor(todayIndex);
   const ticks=Array.from({length:5},(_,idx)=>maxValue-(range*idx/4));
   const yAxis=ticks.map(value=>{
     const y=yFor(value).toFixed(2);
-    return `<g class="daily-flow-y"><line x1="${padL}" y1="${y}" x2="${chartW-padR}" y2="${y}"></line><text x="${padL-10}" y="${Number(y)+4}" text-anchor="end">${fmt(value)}</text></g>`;
+    return `<g class="daily-flow-y"><line x1="${padL}" y1="${y}" x2="${chartW-padR}" y2="${y}"></line><text x="${padL-10}" y="${Number(y)+4}" text-anchor="end">${shortMoney(value)}</text></g>`;
   }).join('');
   const dots=values.map((item,idx)=>{
     const date=item.date;
     const future=date>todayIso;
-    const balance=future?plannedBalances[idx].balance:balances[idx].balance;
+    const point=future?plannedSeries[idx]:realizedSeries[idx];
     const x=xFor(idx).toFixed(2);
-    const y=yFor(balance).toFixed(2);
+    const y=yFor(point.spent).toFixed(2);
     const cls=date===todayIso?'today':future?'planned':'real';
     const page=future?'future':'transactions';
-    return `<g class="daily-flow-dot ${cls}" onclick="showPage('${page}')" tabindex="0" role="button" aria-label="${fmtD(date)}: saldo ${fmt(balance)}" onkeydown="if(event.key==='Enter'||event.key===' ')showPage('${page}')"><circle cx="${x}" cy="${y}" r="${date===todayIso?4.4:3.2}"></circle><title>${fmtD(date)} • saldo ${fmt(balance)} • gasto ${fmt(item.real)} • agenda ${fmt(item.scheduled)}</title></g>`;
+    return `<g class="daily-flow-dot ${cls}" onclick="showPage('${page}')" tabindex="0" role="button" aria-label="${fmtD(date)}: gasto acumulado ${fmt(point.spent)}" onkeydown="if(event.key==='Enter'||event.key===' ')showPage('${page}')"><circle cx="${x}" cy="${y}" r="${date===todayIso?4:2.8}"></circle><title>${fmtD(date)} • gasto acumulado ${fmt(point.spent)} • saldo ${fmt(point.balance)} • gasto do dia ${fmt(item.real)} • agenda ${fmt(item.scheduled)}</title></g>`;
+  }).join('');
+  const balanceDots=combined.map((item,idx)=>{
+    const date=item.date;
+    if(idx%3!==0&&date!==todayIso&&idx!==days-1)return '';
+    const x=xFor(idx).toFixed(2);
+    const y=yFor(item.balance).toFixed(2);
+    const page=date>todayIso?'future':'transactions';
+    return `<g class="daily-flow-dot balance" onclick="showPage('${page}')" tabindex="0" role="button" aria-label="${fmtD(date)}: saldo ${fmt(item.balance)}" onkeydown="if(event.key==='Enter'||event.key===' ')showPage('${page}')"><circle cx="${x}" cy="${y}" r="${date===todayIso?4.2:2.6}"></circle><title>${fmtD(date)} • saldo disponível ${fmt(item.balance)} • gastos acumulados ${fmt(item.spent)}</title></g>`;
   }).join('');
   const labels=values.map((item,idx)=>{
     const x=xFor(idx).toFixed(2);
@@ -460,23 +480,25 @@ function dailyFlowMonthlyCharts(bounds,todayIso,scheduledFrom,txScheduledFrom,mo
     const x=xFor(idx);
     const zoneW=Math.max(10,(chartW-padL-padR)/(days||1));
     const page=date>todayIso?'future':'transactions';
-    const balance=(date>todayIso?plannedBalances[idx]:balances[idx]).balance;
-    return `<rect class="daily-flow-hit" x="${(x-zoneW/2).toFixed(2)}" y="0" width="${zoneW.toFixed(2)}" height="${chartH}" onclick="showPage('${page}')"><title>${day} • saldo ${fmt(balance)} • gasto ${fmt(item.real)} • agenda ${fmt(item.scheduled)}</title></rect>`;
+    const point=date>todayIso?plannedSeries[idx]:realizedSeries[idx];
+    return `<rect class="daily-flow-hit" x="${(x-zoneW/2).toFixed(2)}" y="0" width="${zoneW.toFixed(2)}" height="${chartH}" onclick="showPage('${page}')"><title>${day} • gasto acumulado ${fmt(point.spent)} • saldo ${fmt(point.balance)} • gasto do dia ${fmt(item.real)} • agenda ${fmt(item.scheduled)}</title></rect>`;
   }).join('');
   return `<div class="daily-flow-graphs">
     <div class="daily-flow-chart-card">
-      <div class="daily-flow-chart-head"><strong>Saldo do mês</strong><span>recebido/base ${fmt(monthlyBase||spendingBase)} • cai conforme os gastos</span></div>
-      <svg class="daily-flow-line-chart" viewBox="0 0 ${chartW} ${chartH}" role="img" aria-label="Saldo do mês realizado e previsto">
+      <div class="daily-flow-chart-head"><strong>Gasto x saldo</strong><span>recebido/base ${fmt(monthlyBase||spendingBase)} • vermelho/roxo sobe, verde cai</span></div>
+      <svg class="daily-flow-line-chart" viewBox="0 0 ${chartW} ${chartH}" role="img" aria-label="Gastos acumulados e saldo disponível do mês">
         <g class="daily-flow-y-axis">${yAxis}</g>
         <g class="daily-flow-grid-lines">${grid}</g>
         <line class="daily-flow-today-line" x1="${todayX.toFixed(2)}" y1="${top}" x2="${todayX.toFixed(2)}" y2="${lineBottom}"></line>
+        <path class="daily-flow-line-balance" d="${balancePath}"></path>
         <path class="daily-flow-line-real" d="${realPath}"></path>
         <path class="daily-flow-line-planned" d="${plannedPath}"></path>
         <g class="daily-flow-labels">${labels}</g>
         <g>${dots}</g>
+        <g>${balanceDots}</g>
         <g>${hoverZones}</g>
       </svg>
-      <div class="daily-flow-legend"><span><i class="real"></i>Saldo realizado</span><span><i class="scheduled"></i>Saldo previsto</span><span><i class="today"></i>Hoje</span></div>
+      <div class="daily-flow-legend"><span><i class="real"></i>Gasto realizado</span><span><i class="scheduled"></i>Gasto previsto</span><span><i class="balance"></i>Saldo disponível</span><span><i class="today"></i>Hoje</span></div>
     </div>
   </div>`;
 }

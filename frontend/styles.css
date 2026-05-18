@@ -947,13 +947,13 @@ body::before {
   overflow: visible;
 }
 .daily-flow-y-axis line {
-  stroke: rgba(148,163,184,.1);
+  stroke: rgba(148,163,184,.075);
   stroke-width: 1;
 }
 .daily-flow-y-axis text {
-  fill: var(--mt);
-  font-size: 17px;
-  font-weight: 800;
+  fill: color-mix(in srgb, var(--mt) 82%, transparent);
+  font-size: 13px;
+  font-weight: 700;
 }
 .daily-flow-grid-lines line {
   stroke: rgba(148,163,184,.055);
@@ -973,20 +973,25 @@ body::before {
   filter: drop-shadow(0 0 7px rgba(167,139,250,.36));
 }
 .daily-flow-line-real,
-.daily-flow-line-planned {
+.daily-flow-line-planned,
+.daily-flow-line-balance {
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 3;
+  stroke-width: 2.6;
 }
 .daily-flow-line-real {
   stroke: var(--dan);
-  filter: drop-shadow(0 6px 12px rgba(245,112,90,.12));
+  filter: drop-shadow(0 6px 12px rgba(245,112,90,.1));
 }
 .daily-flow-line-planned {
   stroke: var(--fut);
   stroke-dasharray: 6 8;
-  filter: drop-shadow(0 6px 12px rgba(167,139,250,.12));
+  filter: drop-shadow(0 6px 12px rgba(167,139,250,.1));
+}
+.daily-flow-line-balance {
+  stroke: var(--grn);
+  filter: drop-shadow(0 6px 12px rgba(90,245,160,.1));
 }
 .daily-flow-labels text {
   fill: var(--mt);
@@ -1014,6 +1019,10 @@ body::before {
 }
 .daily-flow-dot.planned circle {
   stroke: var(--fut);
+}
+.daily-flow-dot.balance circle {
+  stroke: var(--grn);
+  fill: color-mix(in srgb, var(--sf) 86%, var(--grn));
 }
 .daily-flow-dot.today circle {
   stroke: var(--ac);
@@ -1049,6 +1058,7 @@ body::before {
 }
 .daily-flow-legend .real { background: var(--dan); }
 .daily-flow-legend .scheduled { background: var(--fut); }
+.daily-flow-legend .balance { background: var(--grn); }
 .daily-flow-legend .today {
   background: var(--ac);
   box-shadow: 0 0 12px rgba(200,245,90,.35);
