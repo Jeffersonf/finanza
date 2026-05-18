@@ -348,10 +348,9 @@ function widgetCards(){
   </div>`;
 }
 function dailyFlowMetric(label,value,meta,tone='neutral',icon='•'){
-  const glow={income:'sc-glow-ac2',danger:'sc-glow-dan',safe:'sc-glow-ac',forecast:'sc-glow-fut',muted:'sc-glow-ac'}[tone]||'';
   const valueClass={income:'neu',danger:'neg',safe:'pos',forecast:'fut',muted:''}[tone]||'';
   const detailClass=tone==='danger'?'dn':tone==='safe'?'up':'';
-  return `<div class="sc daily-flow-metric ${glow}"><span class="ci">${icon}</span><div class="cl">${label}</div><div class="cv ${valueClass}">${fmt(value)}</div>${meta?`<div class="cc ${detailClass}">${meta}</div>`:''}</div>`;
+  return `<div class="daily-flow-metric ${tone}"><span class="daily-flow-ico">${icon}</span><div class="daily-flow-copy"><div class="cl">${label}</div><div class="cv ${valueClass}">${fmt(value)}</div>${meta?`<div class="cc ${detailClass}">${meta}</div>`:''}</div></div>`;
 }
 function widgetDailyWeek(){
   const bounds=dashboardPeriodBounds('week');
