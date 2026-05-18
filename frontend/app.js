@@ -5127,7 +5127,7 @@ const WIDGETS_KEY = 'fz_widgets';
 const MIN_DASH_WIDGETS = 3;
 const PINNED_WIDGET_IDS = ['workbench'];
 const FOCUSED_WIDGET_IDS = ['workbench','cards','commitments','quickactions','budalerts','renewals'];
-const DEFAULT_DASH_WIDGET_ORDER = ['workbench','cards','commitments','budalerts','quickactions','dailyflow','renewals','recent','accounts','budgets','goals','shopping','vehicles','compare','charts','barcats','ministats','saverate','projection','weekly','anomaly'];
+const DEFAULT_DASH_WIDGET_ORDER = ['workbench','cards','commitments','budalerts','quickactions','dailyweek','dailymonth','dailyyear','renewals','recent','accounts','budgets','goals','shopping','vehicles','compare','charts','barcats','ministats','saverate','projection','weekly','anomaly'];
 
 // Definição de todos os widgets disponíveis
 const WIDGET_DEFS = [
@@ -5137,7 +5137,9 @@ const WIDGET_DEFS = [
   { id:'recent',    ico:'💸', name:'Últimas transações',    desc:'Lançamentos recentes',               default:false, group:'core' },
   { id:'budalerts', ico:'⚠️', name:'Alertas de orçamento',  desc:'Riscos que pedem decisão hoje',      default:true,  group:'core' },
   { id:'commitments', ico:'📦', name:'Compromissos fixos',  desc:'Assinaturas, dívidas e contratos',   default:true,  group:'support' },
-  { id:'dailyflow', ico:'🧮', name:'Ritmo diário',          desc:'Gasto, ganho e limite por dia',       default:true,  group:'core' },
+  { id:'dailyweek', ico:'🗓️', name:'Ritmo semanal',        desc:'Semana: totais, média e livre',       default:true,  group:'core' },
+  { id:'dailymonth',ico:'📆', name:'Ritmo mensal',         desc:'Mês: totais, média e livre',          default:true,  group:'core' },
+  { id:'dailyyear', ico:'📅', name:'Ritmo anual',          desc:'Ano: total ganho, gasto e média',     default:true,  group:'core' },
   { id:'renewals',  ico:'🔔', name:'Renovações próximas',   desc:'Alertas de reajuste e vencimento',   default:true,  group:'support' },
   { id:'accounts',  ico:'🏦', name:'Saldos das contas',     desc:'Saldo de cada conta bancária',       default:false, group:'support' },
   { id:'budgets',   ico:'🎯', name:'Orçamentos rápidos',    desc:'Uso mensal por categoria',            default:false, group:'support' },

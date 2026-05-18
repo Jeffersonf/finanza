@@ -4,7 +4,9 @@ function dashboardWidgetRenderers(){
     quickactions:widgetQuickActions,
     workbench:widgetWorkbench,
     ministats:widgetMiniStats,
-    dailyflow:widgetDailyFlow,
+    dailyweek:widgetDailyWeek,
+    dailymonth:widgetDailyMonth,
+    dailyyear:widgetDailyYear,
     accounts:widgetAccounts,
     commitments:widgetCommitments,
     renewals:widgetRenewals,
@@ -98,9 +100,6 @@ function renderWidgetMenuPanel(id){
       break;
     case 'commitments':
       sections.push(widgetSelectControl('commitments','scope','Mostrar',[{value:'monthly',label:'Mensal'},{value:'debts',label:'Dívidas'},{value:'all',label:'Tudo'}],'monthly'));
-      break;
-    case 'dailyflow':
-      sections.push(widgetSelectControl('dailyflow','period','Período',[{value:'week',label:'Semana'},{value:'month',label:'Mês'},{value:'year',label:'Ano'}],'week'));
       break;
     case 'renewals':
       sections.push(widgetSelectControl('renewals','limit','Linhas',[{value:'3',label:'3 alertas'},{value:'5',label:'5 alertas'},{value:'8',label:'8 alertas'}],'5'));
@@ -229,14 +228,6 @@ function dailyFlowMoney(value){
   const amount=Number(value);
   return Number.isFinite(amount)?amount:0;
 }
-function dailyFlowPeriodTabs(current){
-  const options=[
-    {value:'week',label:'Semana'},
-    {value:'month',label:'Mês'},
-    {value:'year',label:'Ano'}
-  ];
-  return `<div class="daily-flow-tabs" role="tablist" aria-label="Período do ritmo diário">${options.map(opt=>`<button class="daily-flow-tab ${current===opt.value?'active':''}" type="button" role="tab" aria-selected="${current===opt.value?'true':'false'}" onclick="setWidgetFilter('dailyflow','period','${opt.value}')">${opt.label}</button>`).join('')}</div>`;
-}
 function dailyFlowDueDateForMonth(item,ym){
   const [y,m]=ym.split('-').map(Number);
   const last=new Date(y,m,0).getDate();
@@ -334,12 +325,11 @@ function widgetCards(){
     ${showFuture?`<div class="sc sc-glow-fut" style="cursor:pointer" onclick="showPage('future')"><span class="ci">🔮</span><div class="cl">A pagar</div><div class="cv fut">${fmt(fut)}</div><div class="cc" style="color:var(--fut)">ver contas futuras</div></div>`:''}
   </div>`;
 }
-function widgetDailyFlow(){
-  const savedPeriod=(widgetFilters?.dailyflow?.period)||'week';
-  const period=['week','month','year'].includes(savedPeriod)?savedPeriod:'week';
+function dailyFlowStats(period){
   const bounds=dashboardPeriodBounds(period);
   const todayIso=today();
-  const periodDays=countDaysInclusive(bounds.from,bounds.to);
+  const periodEndForElapsed=todayIso<bounds.from?bounds.from:(todayIso>bounds.to?bounds.to:todayIso);
+  const elapsedDays=countDaysInclusive(bounds.from,periodEndForElapsed);
   const scheduledFrom=todayIso>bounds.from?todayIso:bounds.from;
   const periodTxs=(S.transactions||[]).filter(t=>t.date>=bounds.from&&t.date<=bounds.to&&!t.paid);
   const realizedTxs=periodTxs.filter(t=>t.date<=todayIso);
@@ -352,31 +342,42 @@ function widgetDailyFlow(){
     : 0;
   const scheduledExpenses=scheduledTxTotal+scheduledDueTotal;
   const plannedExpenses=spent+scheduledExpenses;
+  const actualBalance=dailyFlowMoney(earned-spent);
   const remainingDays=daysRemainingInPeriod(bounds.from,bounds.to);
   const monthlyBase=dailyFlowMoney(monthlyIncomeCents)/100;
   const projectedBase=dailyFlowMoney(monthlyBase
     ? (period==='week'?monthlyBase*12/52:period==='year'?monthlyBase*12:monthlyBase)
     : earned);
-  const canSpend=dailyFlowMoney(projectedBase?Math.max((projectedBase-plannedExpenses)/Math.max(remainingDays,1),0):0);
+  const freeUntilEnd=dailyFlowMoney(projectedBase?Math.max(projectedBase-plannedExpenses,0):0);
+  const canSpend=dailyFlowMoney(freeUntilEnd/Math.max(remainingDays,1));
   const balance=dailyFlowMoney(projectedBase-plannedExpenses);
-  const spentPerDay=dailyFlowMoney(spent/periodDays);
-  const earnedPerDay=dailyFlowMoney(earned/periodDays);
-  const scheduledPerDay=dailyFlowMoney(scheduledExpenses/periodDays);
-  const plannedPerDay=dailyFlowMoney(plannedExpenses/periodDays);
-  const periodLabel=period==='week'?'Semana':period==='year'?'Ano':'Mês';
-  const source=monthlyBase?'renda configurada':'receitas registradas';
+  const spentPerDay=dailyFlowMoney(spent/elapsedDays);
+  const earnedPerDay=dailyFlowMoney(earned/elapsedDays);
+  const plannedPerDay=dailyFlowMoney(plannedExpenses/elapsedDays);
   const scheduledMeta=[scheduledTxTotal?`lançamentos ${fmt(scheduledTxTotal)}`:'',scheduledDueTotal?`vencimentos ${fmt(scheduledDueTotal)}`:''].filter(Boolean).join(' • ')||'sem agenda no período';
+  return {bounds,elapsedDays,remainingDays,spent,earned,scheduledExpenses,plannedExpenses,actualBalance,projectedBase,freeUntilEnd,canSpend,balance,spentPerDay,earnedPerDay,plannedPerDay,scheduledMeta,source:monthlyBase?'renda configurada':'receitas registradas'};
+}
+function widgetDailyFlowPeriod(period){
+  const stats=dailyFlowStats(period);
+  const periodLabel=period==='week'?'Semana':period==='month'?'Mês':'Ano';
+  const icon=period==='week'?'🗓️':period==='month'?'📆':'📅';
+  const title=`Ritmo ${period==='week'?'semanal':period==='month'?'mensal':'anual'}`;
+  const canPlan=period!=='year';
   return `<div class="daily-flow-widget dash-section">
-    <div class="bh daily-flow-head"><div><div class="ct">🧮 Ritmo diário</div><div class="cs">${periodLabel} • ${bounds.label} • média em ${periodDays} dia${periodDays===1?'':'s'} • base por ${source}</div></div>${dailyFlowPeriodTabs(period)}</div>
+    <div class="bh daily-flow-head"><div><div class="ct">${icon} ${title}</div><div class="cs">${periodLabel} • ${stats.bounds.label} • até agora: ${stats.elapsedDays} dia${stats.elapsedDays===1?'':'s'}${canPlan?` • base por ${stats.source}`:''}</div></div></div>
     <div class="daily-flow-grid">
-      <div class="daily-flow-card danger"><span>Gasto/dia</span><strong>${fmt(spentPerDay)}</strong><small>${fmt(spent)} realizado / ${periodDays} dia${periodDays===1?'':'s'}</small></div>
-      <div class="daily-flow-card income"><span>Ganho/dia</span><strong>${fmt(earnedPerDay)}</strong><small>${fmt(earned)} recebido / ${periodDays} dia${periodDays===1?'':'s'}</small></div>
-      <div class="daily-flow-card forecast"><span>Previsto/dia</span><strong>${fmt(scheduledPerDay)}</strong><small>${scheduledMeta}</small></div>
-      <div class="daily-flow-card safe"><span>Livre/dia</span><strong>${fmt(canSpend)}</strong><small>${remainingDays?`${remainingDays} dia${remainingDays===1?'':'s'} para usar`:'período fechado'}</small></div>
+      <div class="daily-flow-card danger"><span>Gasto total</span><strong>${fmt(stats.spent)}</strong><small>${canPlan?`${fmt(stats.spentPerDay)}/dia até agora`:'realizado até agora'}</small></div>
+      <div class="daily-flow-card income"><span>Ganho total</span><strong>${fmt(stats.earned)}</strong><small>${canPlan?`${fmt(stats.earnedPerDay)}/dia até agora`:'recebido até agora'}</small></div>
+      ${canPlan?`<div class="daily-flow-card forecast"><span>Previsto</span><strong>${fmt(stats.scheduledExpenses)}</strong><small>${stats.scheduledMeta}</small></div>
+      <div class="daily-flow-card safe"><span>Pode gastar</span><strong>${fmt(stats.freeUntilEnd)}</strong><small>${fmt(stats.canSpend)}/dia em ${stats.remainingDays||0} dia${stats.remainingDays===1?'':'s'}</small></div>`:`<div class="daily-flow-card danger"><span>Gasto/dia</span><strong>${fmt(stats.spentPerDay)}</strong><small>média realizada no ano</small></div>
+      <div class="daily-flow-card income"><span>Ganho/dia</span><strong>${fmt(stats.earnedPerDay)}</strong><small>média realizada no ano</small></div>`}
     </div>
-    <div class="daily-flow-foot ${balance>=0?'pos':'neg'}"><span>${balance>=0?'Ainda cabe no período':'Atenção ao período'}: <strong>${fmt(Math.abs(balance))}</strong></span><span>Gasto realizado + agenda: <strong>${fmt(plannedExpenses)}</strong> (${fmt(plannedPerDay)}/dia)</span></div>
+    <div class="daily-flow-foot ${(canPlan?stats.balance:stats.actualBalance)>=0?'pos':'neg'}"><span>${canPlan?(stats.balance>=0?'Livre até o fim':'Atenção ao período'):'Saldo do ano'}: <strong>${fmt(Math.abs(canPlan?stats.balance:stats.actualBalance))}</strong></span><span>${canPlan?'Gasto realizado + agenda':'Resultado até agora'}: <strong>${fmt(canPlan?stats.plannedExpenses:stats.actualBalance)}</strong>${canPlan?` (${fmt(stats.plannedPerDay)}/dia)`:''}</span></div>
   </div>`;
 }
+function widgetDailyWeek(){return widgetDailyFlowPeriod('week');}
+function widgetDailyMonth(){return widgetDailyFlowPeriod('month');}
+function widgetDailyYear(){return widgetDailyFlowPeriod('year');}
 function widgetMiniStats(){
   const scope=(widgetFilters?.ministats?.scope)||'month';
   const txM=(scope==='30d'?S.transactions.filter(t=>t.date>=widgetRangeDate('30d')):getMonthTx(curDt)).filter(t=>!isFut(t.date)&&!t.paid&&t.type==='expense');

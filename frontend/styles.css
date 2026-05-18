@@ -838,34 +838,6 @@ body::before {
   align-items: flex-start;
   gap: 12px;
 }
-.daily-flow-tabs {
-  display: inline-flex;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--bd);
-  border-radius: 999px;
-  background: var(--sf2);
-  flex-shrink: 0;
-}
-.daily-flow-tab {
-  min-height: 30px;
-  padding: 0 11px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--mt);
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 800;
-}
-.daily-flow-tab.active {
-  background: linear-gradient(135deg, var(--ac), var(--ac2));
-  color: #0d0f14;
-}
-.daily-flow-tab:not(.active):hover {
-  color: var(--tx);
-  background: rgba(255,255,255,.05);
-}
 .daily-flow-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2988,8 +2960,6 @@ select:focus-visible,
   .g4 { gap: 10px !important; }
   .month-compare { gap: 10px !important; }
   .daily-flow-head { flex-direction: column; }
-  .daily-flow-tabs { width: 100%; }
-  .daily-flow-tab { flex: 1; }
   .daily-flow-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mini-stats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .mini-stat { padding: 12px 10px; }
