@@ -938,90 +938,88 @@ body::before {
   font-size: 11px;
   line-height: 1.2;
 }
-.daily-flow-bars {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10px, 1fr));
-  align-items: end;
-  gap: 2px;
-  min-height: 126px;
-  padding: 8px 4px 18px;
-  border-bottom: 1px solid var(--bd2);
-}
-.daily-flow-day {
-  position: relative;
-  display: flex;
-  align-items: end;
-  justify-content: center;
-  min-width: 0;
-  height: 104px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-}
-.daily-flow-day span {
+.daily-flow-line-chart {
+  display: block;
   width: 100%;
-  min-height: 3px;
-  border-radius: 999px 999px 2px 2px;
-  background: rgba(148,163,184,.22);
-  transition: transform .16s ease, filter .16s ease;
+  min-height: 178px;
+  overflow: visible;
 }
-.daily-flow-day.real span {
-  background: linear-gradient(180deg, rgba(245,112,90,.92), rgba(245,112,90,.4));
+.daily-flow-grid-lines line {
+  stroke: rgba(148,163,184,.1);
+  stroke-width: 1;
 }
-.daily-flow-day.scheduled span {
-  background: linear-gradient(180deg, rgba(167,139,250,.9), rgba(167,139,250,.36));
+.daily-flow-grid-lines line.planned {
+  stroke: rgba(167,139,250,.14);
 }
-.daily-flow-day.is-future span {
-  background: linear-gradient(180deg, rgba(167,139,250,.52), rgba(167,139,250,.18));
+.daily-flow-grid-lines line.today {
+  stroke: transparent;
 }
-.daily-flow-day.is-future.real span {
-  background: linear-gradient(180deg, rgba(167,139,250,.86), rgba(245,112,90,.34));
+.daily-flow-today-line {
+  stroke: var(--fut);
+  stroke-width: 3;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 7px rgba(167,139,250,.5));
 }
-.daily-flow-day.is-today::after {
-  content: "";
-  position: absolute;
-  top: -8px;
-  right: -3px;
-  bottom: -26px;
-  width: 2px;
-  border-radius: 999px;
-  background: var(--fut);
-  box-shadow: 0 0 16px rgba(167,139,250,.44);
-  pointer-events: none;
+.daily-flow-line-real,
+.daily-flow-line-planned {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 5;
 }
-.daily-flow-day.is-today span {
-  box-shadow: 0 0 0 1px rgba(200,245,90,.54), 0 0 16px rgba(200,245,90,.2);
+.daily-flow-line-real {
+  stroke: var(--dan);
 }
-.daily-flow-day:hover span,
-.daily-flow-day:focus-visible span {
-  filter: brightness(1.15);
-  transform: translateY(-2px);
+.daily-flow-line-planned {
+  stroke: var(--fut);
+  stroke-dasharray: 8 8;
 }
-.daily-flow-day:focus-visible {
-  outline: 1px solid rgba(200,245,90,.48);
-  outline-offset: 3px;
-  border-radius: 8px;
-}
-.daily-flow-day small {
-  position: absolute;
-  bottom: -18px;
-  color: var(--mt);
-  font-size: 8px;
+.daily-flow-labels text {
+  fill: var(--mt);
+  font-size: 21px;
   font-weight: 800;
-  line-height: 1;
 }
-.daily-flow-day.is-future small {
-  color: color-mix(in srgb, var(--fut) 72%, var(--mt));
+.daily-flow-labels text.planned {
+  fill: color-mix(in srgb, var(--fut) 76%, var(--mt));
 }
-.daily-flow-day.is-today small {
-  color: var(--ac);
+.daily-flow-labels text.today {
+  fill: var(--ac);
+}
+.daily-flow-dot {
+  cursor: pointer;
+  outline: none;
+}
+.daily-flow-dot circle {
+  fill: var(--sf);
+  stroke: rgba(148,163,184,.45);
+  stroke-width: 3;
+  transition: r .16s ease, stroke-width .16s ease, filter .16s ease;
+}
+.daily-flow-dot.real circle {
+  stroke: var(--dan);
+}
+.daily-flow-dot.planned circle {
+  stroke: var(--fut);
+}
+.daily-flow-dot.today circle {
+  stroke: var(--ac);
+  stroke-width: 4;
+  filter: drop-shadow(0 0 8px rgba(200,245,90,.35));
+}
+.daily-flow-dot:hover circle,
+.daily-flow-dot:focus-visible circle {
+  r: 7;
+  stroke-width: 5;
+}
+.daily-flow-hit {
+  fill: transparent;
+  cursor: pointer;
 }
 .daily-flow-legend {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 22px;
+  margin-top: 8px;
   color: var(--mt);
   font-size: 11px;
 }
@@ -3117,8 +3115,7 @@ select:focus-visible,
   .daily-flow-widget { padding: 16px; }
   .daily-flow-metric { min-height: 0; }
   .daily-flow-chart-head { align-items: flex-start; flex-direction: column; gap: 4px; }
-  .daily-flow-bars { grid-template-columns: repeat(auto-fit, minmax(8px, 1fr)); min-height: 102px; }
-  .daily-flow-day { height: 84px; }
+  .daily-flow-line-chart { min-height: 150px; }
 }
 
 

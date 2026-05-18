@@ -370,25 +370,71 @@ function dailyFlowMonthlyCharts(bounds,todayIso,scheduledFrom,txScheduledFrom){
   dailyFlowScheduledDueExpenses(scheduledFrom,bounds.to).forEach(item=>{
     scheduledByDay.set(item.date,(scheduledByDay.get(item.date)||0)+dailyFlowAmount(item));
   });
-  const maxDay=Math.max(1,...Array.from({length:days},(_,idx)=>{
+  const chartW=1000;
+  const chartH=180;
+  const padX=24;
+  const top=16;
+  const lineBottom=126;
+  const labelY=162;
+  const values=Array.from({length:days},(_,idx)=>{
     const date=dailyFlowShiftIso(bounds.from,idx);
-    return (realByDay.get(date)||0)+(scheduledByDay.get(date)||0);
-  }));
-  const bars=Array.from({length:days},(_,idx)=>{
+    return {
+      date,
+      day:idx+1,
+      real:realByDay.get(date)||0,
+      scheduled:scheduledByDay.get(date)||0
+    };
+  });
+  const maxDay=Math.max(1,...values.map(item=>item.real+item.scheduled));
+  const xFor=idx=>padX+(idx*Math.max(1,(chartW-(padX*2))/(days-1||1)));
+  const yFor=value=>lineBottom-((value/maxDay)*(lineBottom-top));
+  const pointFor=(item,idx,value)=>`${xFor(idx).toFixed(2)},${yFor(value).toFixed(2)}`;
+  const realPoints=values.map((item,idx)=>item.date<=todayIso?pointFor(item,idx,item.real):'').filter(Boolean).join(' ');
+  const plannedPoints=values.map((item,idx)=>item.date>=todayIso?pointFor(item,idx,item.real+item.scheduled):'').filter(Boolean).join(' ');
+  const rawTodayIndex=values.findIndex(item=>item.date===todayIso);
+  const todayIndex=rawTodayIndex>=0?rawTodayIndex:(todayIso<bounds.from?0:days-1);
+  const todayX=xFor(todayIndex);
+  const dots=values.map((item,idx)=>{
+    const total=item.real+item.scheduled;
+    const date=item.date;
+    const future=date>todayIso;
+    const value=future?total:item.real;
+    const x=xFor(idx).toFixed(2);
+    const y=yFor(value).toFixed(2);
+    const cls=date===todayIso?'today':future?'planned':'real';
+    const page=future?'future':'transactions';
+    return `<g class="daily-flow-dot ${cls}" onclick="showPage('${page}')" tabindex="0" role="button" aria-label="${fmtD(date)}: ${fmt(value)}" onkeydown="if(event.key==='Enter'||event.key===' ')showPage('${page}')"><circle cx="${x}" cy="${y}" r="${date===todayIso?5.2:4.2}"></circle><title>${fmtD(date)} • feito ${fmt(item.real)} • agenda ${fmt(item.scheduled)}</title></g>`;
+  }).join('');
+  const labels=values.map((item,idx)=>{
+    const x=xFor(idx).toFixed(2);
+    const cls=item.date===todayIso?'today':item.date>todayIso?'planned':'';
+    return `<text class="${cls}" x="${x}" y="${labelY}" text-anchor="middle">${item.day}</text>`;
+  }).join('');
+  const grid=values.map((item,idx)=>{
+    const x=xFor(idx).toFixed(2);
+    const cls=item.date===todayIso?'today':item.date>todayIso?'planned':'';
+    return `<line class="${cls}" x1="${x}" y1="${top}" x2="${x}" y2="${lineBottom}"></line>`;
+  }).join('');
+  const hoverZones=values.map((item,idx)=>{
     const day=idx+1;
-    const date=dailyFlowShiftIso(bounds.from,idx);
-    const real=realByDay.get(date)||0;
-    const scheduled=scheduledByDay.get(date)||0;
-    const total=real+scheduled;
-    const height=Math.max(total?12:3,Math.round((total/maxDay)*100));
-    const cls=date<todayIso?'is-past':date===todayIso?'is-today':'is-future';
-    const tone=scheduled&&!real?'scheduled':real?'real':'empty';
-    return `<button class="daily-flow-day ${cls} ${tone}" type="button" onclick="showPage('${date>todayIso?'future':'transactions'}')" title="${fmtD(date)} • feito ${fmt(real)} • agenda ${fmt(scheduled)}" aria-label="${fmtD(date)}: ${fmt(total)}"><span style="height:${height}%"></span><small>${day}</small></button>`;
+    const date=item.date;
+    const x=xFor(idx);
+    const zoneW=Math.max(10,(chartW-(padX*2))/(days||1));
+    const page=date>todayIso?'future':'transactions';
+    return `<rect class="daily-flow-hit" x="${(x-zoneW/2).toFixed(2)}" y="0" width="${zoneW.toFixed(2)}" height="${chartH}" onclick="showPage('${page}')"><title>${day} • feito ${fmt(item.real)} • agenda ${fmt(item.scheduled)}</title></rect>`;
   }).join('');
   return `<div class="daily-flow-graphs">
     <div class="daily-flow-chart-card">
-      <div class="daily-flow-chart-head"><strong>Mapa do mês</strong><span>realizado até hoje • previsto em roxo</span></div>
-      <div class="daily-flow-bars">${bars}</div>
+      <div class="daily-flow-chart-head"><strong>Linha do mês</strong><span>realizado até hoje • previsto em roxo</span></div>
+      <svg class="daily-flow-line-chart" viewBox="0 0 ${chartW} ${chartH}" role="img" aria-label="Linha do mês com realizado e previsto">
+        <g class="daily-flow-grid-lines">${grid}</g>
+        <line class="daily-flow-today-line" x1="${todayX.toFixed(2)}" y1="${top}" x2="${todayX.toFixed(2)}" y2="${lineBottom}"></line>
+        <polyline class="daily-flow-line-real" points="${realPoints}"></polyline>
+        <polyline class="daily-flow-line-planned" points="${plannedPoints}"></polyline>
+        <g class="daily-flow-labels">${labels}</g>
+        <g>${dots}</g>
+        <g>${hoverZones}</g>
+      </svg>
       <div class="daily-flow-legend"><span><i class="real"></i>Feito</span><span><i class="scheduled"></i>Agendado</span><span><i class="today"></i>Hoje</span></div>
     </div>
   </div>`;
