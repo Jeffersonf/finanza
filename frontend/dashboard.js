@@ -373,8 +373,8 @@ function widgetDailyFlowPeriod(period){
       <div class="daily-flow-card danger"><span>Gasto/dia</span><strong>${fmt(stats.spentPerDay)}</strong><small>média realizada no ano</small></div>`}
     </div>
     <div class="daily-flow-foot ${(canPlan?stats.balance:stats.actualBalance)>=0?'pos':'neg'}">
-      <span><em>${canPlan?(stats.balance>=0?'Livre até o fim':'Atenção ao período'):'Saldo do ano'}</em><strong>${fmt(Math.abs(canPlan?stats.balance:stats.actualBalance))}</strong></span>
-      <span><em>${canPlan?'Gasto realizado + agenda':'Resultado até agora'}</em><strong>${fmt(canPlan?stats.plannedExpenses:stats.actualBalance)}</strong>${canPlan?`<small>${fmt(stats.plannedPerDay)}/dia até agora</small>`:''}</span>
+      <div class="daily-flow-foot-main"><span>${canPlan?(stats.balance>=0?'Livre até o fim':'Atenção ao período'):'Saldo do ano'}</span><strong>${fmt(Math.abs(canPlan?stats.balance:stats.actualBalance))}</strong></div>
+      <div class="daily-flow-foot-detail"><span>${canPlan?'Gasto realizado + agenda':'Resultado até agora'}</span><strong>${fmt(canPlan?stats.plannedExpenses:stats.actualBalance)}</strong>${canPlan?`<small>${fmt(stats.plannedPerDay)}/dia até agora</small>`:''}</div>
     </div>
   </div>`;
 }
