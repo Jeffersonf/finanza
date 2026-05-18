@@ -868,7 +868,7 @@ body::before {
 }
 .daily-flow-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin-top: 12px;
 }
@@ -890,9 +890,10 @@ body::before {
   display: block;
   margin-top: 5px;
   font-family: var(--font-money);
-  font-size: 19px;
+  font-size: clamp(16px, 1.25vw, 19px);
   line-height: 1.15;
   letter-spacing: 0;
+  white-space: nowrap;
 }
 .daily-flow-card small {
   display: block;
@@ -900,18 +901,28 @@ body::before {
   font-size: 11px;
   color: var(--mt);
   line-height: 1.35;
+  min-height: 30px;
 }
 .daily-flow-card.danger strong { color: var(--dan); }
 .daily-flow-card.income strong { color: var(--ac2); }
+.daily-flow-card.forecast strong { color: var(--warn); }
 .daily-flow-card.safe strong { color: var(--ac); }
 .daily-flow-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
   margin-top: 12px;
-  padding: 10px 12px;
+  padding: 11px 12px;
   border: 1px solid var(--bd);
   border-radius: 8px;
   background: rgba(255,255,255,.035);
   color: var(--tx2);
   font-size: 12px;
+}
+.daily-flow-foot span {
+  min-width: 0;
 }
 .daily-flow-foot.pos strong { color: var(--ac); }
 .daily-flow-foot.neg strong { color: var(--dan); }
@@ -2979,13 +2990,19 @@ select:focus-visible,
   .daily-flow-head { flex-direction: column; }
   .daily-flow-tabs { width: 100%; }
   .daily-flow-tab { flex: 1; }
-  .daily-flow-grid { grid-template-columns: 1fr; }
+  .daily-flow-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mini-stats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .mini-stat { padding: 12px 10px; }
   .mini-stat .ms-val { font-size: 14px; }
   .vehicle-widget-grid { grid-template-columns: 1fr; }
   .vehicle-widget-hero { flex-direction: column; }
   .vehicle-widget-kpi { text-align: left; min-width: 0; }
+}
+
+@media(max-width:520px){
+  .daily-flow-grid { grid-template-columns: 1fr; }
+  .daily-flow-card small { min-height: 0; }
+  .daily-flow-foot { align-items: flex-start; }
 }
 
 

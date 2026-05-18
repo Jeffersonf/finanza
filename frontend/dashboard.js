@@ -361,17 +361,20 @@ function widgetDailyFlow(){
   const balance=dailyFlowMoney(projectedBase-plannedExpenses);
   const spentPerDay=dailyFlowMoney(spent/periodDays);
   const earnedPerDay=dailyFlowMoney(earned/periodDays);
+  const scheduledPerDay=dailyFlowMoney(scheduledExpenses/periodDays);
   const plannedPerDay=dailyFlowMoney(plannedExpenses/periodDays);
   const periodLabel=period==='week'?'Semana':period==='year'?'Ano':'Mês';
   const source=monthlyBase?'renda configurada':'receitas registradas';
+  const scheduledMeta=[scheduledTxTotal?`lançamentos ${fmt(scheduledTxTotal)}`:'',scheduledDueTotal?`vencimentos ${fmt(scheduledDueTotal)}`:''].filter(Boolean).join(' • ')||'sem agenda no período';
   return `<div class="daily-flow-widget dash-section">
-    <div class="bh daily-flow-head"><div><div class="ct">🧮 Ritmo diário</div><div class="cs">${periodLabel} • ${bounds.label} • ${periodDays} dia${periodDays===1?'':'s'} • base por ${source}</div></div>${dailyFlowPeriodTabs(period)}</div>
+    <div class="bh daily-flow-head"><div><div class="ct">🧮 Ritmo diário</div><div class="cs">${periodLabel} • ${bounds.label} • média em ${periodDays} dia${periodDays===1?'':'s'} • base por ${source}</div></div>${dailyFlowPeriodTabs(period)}</div>
     <div class="daily-flow-grid">
-      <div class="daily-flow-card danger"><span>Gastei por dia</span><strong>${fmt(spentPerDay)}</strong><small>${fmt(spent)} / ${periodDays} dia${periodDays===1?'':'s'}</small></div>
-      <div class="daily-flow-card income"><span>Ganhei por dia</span><strong>${fmt(earnedPerDay)}</strong><small>${fmt(earned)} / ${periodDays} dia${periodDays===1?'':'s'}</small></div>
-      <div class="daily-flow-card safe"><span>Posso gastar por dia</span><strong>${fmt(canSpend)}</strong><small>${fmt(scheduledExpenses)} já previsto</small></div>
+      <div class="daily-flow-card danger"><span>Gasto/dia</span><strong>${fmt(spentPerDay)}</strong><small>${fmt(spent)} realizado / ${periodDays} dia${periodDays===1?'':'s'}</small></div>
+      <div class="daily-flow-card income"><span>Ganho/dia</span><strong>${fmt(earnedPerDay)}</strong><small>${fmt(earned)} recebido / ${periodDays} dia${periodDays===1?'':'s'}</small></div>
+      <div class="daily-flow-card forecast"><span>Previsto/dia</span><strong>${fmt(scheduledPerDay)}</strong><small>${scheduledMeta}</small></div>
+      <div class="daily-flow-card safe"><span>Livre/dia</span><strong>${fmt(canSpend)}</strong><small>${remainingDays?`${remainingDays} dia${remainingDays===1?'':'s'} para usar`:'período fechado'}</small></div>
     </div>
-    <div class="daily-flow-foot ${balance>=0?'pos':'neg'}">${balance>=0?'Livre depois do previsto':'Passou da base com o previsto'}: <strong>${fmt(Math.abs(balance))}</strong>. Gasto total previsto: <strong>${fmt(plannedExpenses)}</strong> (${fmt(plannedPerDay)}/dia).</div>
+    <div class="daily-flow-foot ${balance>=0?'pos':'neg'}"><span>${balance>=0?'Ainda cabe no período':'Atenção ao período'}: <strong>${fmt(Math.abs(balance))}</strong></span><span>Gasto realizado + agenda: <strong>${fmt(plannedExpenses)}</strong> (${fmt(plannedPerDay)}/dia)</span></div>
   </div>`;
 }
 function widgetMiniStats(){
