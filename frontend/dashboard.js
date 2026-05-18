@@ -393,14 +393,15 @@ function widgetDailyMonth(){
   const canSpendDaily=dailyFlowMoney(canSpend/Math.max(remainingDays,1));
   const earnedDaily=dailyFlowMoney(realized.earned/elapsedDays);
   const spentDaily=dailyFlowMoney(plannedSpent/periodDays);
+  const canSpendMeta=`${fmt(canSpend)} sobrando após ${fmt(realized.spent)} feitos + ${fmt(agenda)} agendados`;
   return `<div class="daily-flow-widget daily-flow-widget-month dash-section">
     <div class="bh daily-flow-head"><div><div class="ct">📆 Ritmo mensal</div><div class="cs">${bounds.label} • ${elapsedDays} dia${elapsedDays===1?'':'s'} até agora • base: ${monthlyBase?'salário configurado':'ganhos do mês'}</div></div></div>
     <div class="daily-flow-grid daily-flow-grid-wide">
       ${dailyFlowMetric('Ganho por dia',earnedDaily,`${fmt(realized.earned)} no mês`,'income','💼')}
-      ${dailyFlowMetric('Gasto por dia',spentDaily,`${fmt(plannedSpent)} total no mês`,'danger','⬇️')}
-      ${dailyFlowMetric('Gasto real por dia',dailyFlowMoney(realized.spent/elapsedDays),`${fmt(realized.spent)} até hoje`,'danger','🧾')}
-      ${dailyFlowMetric('Agenda por dia',dailyFlowMoney(agenda/Math.max(remainingDays,1)),`${fmt(agenda)} até o fim`,'forecast','🔮')}
-      ${dailyFlowMetric('Pode gastar por dia',canSpendDaily,`${fmt(canSpend)} até fechar`,'safe','🌱')}
+      ${dailyFlowMetric('Gasto diário mensal',spentDaily,`${fmt(plannedSpent)} no mês, incluindo agenda`,'danger','⬇️')}
+      ${dailyFlowMetric('Gasto diário até hoje',dailyFlowMoney(realized.spent/elapsedDays),`${fmt(realized.spent)} já feito no mês`,'danger','🧾')}
+      ${dailyFlowMetric('Agendado até o fim',agenda,`${remainingDays} dia${remainingDays===1?'':'s'} restantes no mês`,'forecast','🔮')}
+      ${dailyFlowMetric('Pode gastar por dia',canSpendDaily,canSpendMeta,'safe','🌱')}
     </div>
   </div>`;
 }
