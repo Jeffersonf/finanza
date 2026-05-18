@@ -446,6 +446,10 @@ function dailyFlowMonthlyCharts(bounds,todayIso,scheduledFrom,txScheduledFrom,mo
     const y=yFor(value).toFixed(2);
     return `<g class="daily-flow-y"><line x1="${padL}" y1="${y}" x2="${chartW-padR}" y2="${y}"></line><text x="${padL-10}" y="${Number(y)+4}" text-anchor="end">${shortMoney(value)}</text></g>`;
   }).join('');
+  const yAxisEnd=ticks.map(value=>{
+    const y=yFor(value).toFixed(2);
+    return `<g class="daily-flow-y daily-flow-y-end"><text x="${chartW-padR+10}" y="${Number(y)+4}" text-anchor="start">${shortMoney(value)}</text></g>`;
+  }).join('');
   const dots=values.map((item,idx)=>{
     const date=item.date;
     const future=date>todayIso;
@@ -453,16 +457,14 @@ function dailyFlowMonthlyCharts(bounds,todayIso,scheduledFrom,txScheduledFrom,mo
     const x=xFor(idx).toFixed(2);
     const y=yFor(point.spent).toFixed(2);
     const cls=date===todayIso?'today':future?'planned':'real';
-    const page=future?'future':'transactions';
-    return `<g class="daily-flow-dot ${cls}" onclick="showPage('${page}')" tabindex="0" role="button" aria-label="${fmtD(date)}: gasto acumulado ${fmt(point.spent)}" onkeydown="if(event.key==='Enter'||event.key===' ')showPage('${page}')"><circle cx="${x}" cy="${y}" r="${date===todayIso?4:2.8}"></circle><title>${fmtD(date)} • gasto acumulado ${fmt(point.spent)} • saldo ${fmt(point.balance)} • gasto do dia ${fmt(item.real)} • agenda ${fmt(item.scheduled)}</title></g>`;
+    return `<g class="daily-flow-dot ${cls}"><circle cx="${x}" cy="${y}" r="${date===todayIso?4:2.8}"></circle><title>${fmtD(date)} • gasto acumulado ${fmt(point.spent)} • saldo ${fmt(point.balance)} • gasto do dia ${fmt(item.real)} • agenda ${fmt(item.scheduled)}</title></g>`;
   }).join('');
   const balanceDots=combined.map((item,idx)=>{
     const date=item.date;
     if(idx%3!==0&&date!==todayIso&&idx!==days-1)return '';
     const x=xFor(idx).toFixed(2);
     const y=yFor(item.balance).toFixed(2);
-    const page=date>todayIso?'future':'transactions';
-    return `<g class="daily-flow-dot balance" onclick="showPage('${page}')" tabindex="0" role="button" aria-label="${fmtD(date)}: saldo ${fmt(item.balance)}" onkeydown="if(event.key==='Enter'||event.key===' ')showPage('${page}')"><circle cx="${x}" cy="${y}" r="${date===todayIso?4.2:2.6}"></circle><title>${fmtD(date)} • saldo disponível ${fmt(item.balance)} • gastos acumulados ${fmt(item.spent)}</title></g>`;
+    return `<g class="daily-flow-dot balance"><circle cx="${x}" cy="${y}" r="${date===todayIso?4.2:2.6}"></circle><title>${fmtD(date)} • saldo disponível ${fmt(item.balance)} • gastos acumulados ${fmt(item.spent)}</title></g>`;
   }).join('');
   const labels=values.map((item,idx)=>{
     const x=xFor(idx).toFixed(2);
@@ -474,20 +476,12 @@ function dailyFlowMonthlyCharts(bounds,todayIso,scheduledFrom,txScheduledFrom,mo
     const cls=item.date===todayIso?'today':item.date>todayIso?'planned':'';
     return `<line class="${cls}" x1="${x}" y1="${top}" x2="${x}" y2="${lineBottom}"></line>`;
   }).join('');
-  const hoverZones=values.map((item,idx)=>{
-    const day=idx+1;
-    const date=item.date;
-    const x=xFor(idx);
-    const zoneW=Math.max(10,(chartW-padL-padR)/(days||1));
-    const page=date>todayIso?'future':'transactions';
-    const point=date>todayIso?plannedSeries[idx]:realizedSeries[idx];
-    return `<rect class="daily-flow-hit" x="${(x-zoneW/2).toFixed(2)}" y="0" width="${zoneW.toFixed(2)}" height="${chartH}" onclick="showPage('${page}')"><title>${day} • gasto acumulado ${fmt(point.spent)} • saldo ${fmt(point.balance)} • gasto do dia ${fmt(item.real)} • agenda ${fmt(item.scheduled)}</title></rect>`;
-  }).join('');
   return `<div class="daily-flow-graphs">
     <div class="daily-flow-chart-card">
-      <div class="daily-flow-chart-head"><strong>Gasto x saldo</strong><span>recebido/base ${fmt(monthlyBase||spendingBase)} • vermelho/roxo sobe, verde cai</span></div>
+      <div class="daily-flow-chart-head"><strong>Gasto x saldo</strong></div>
       <svg class="daily-flow-line-chart" viewBox="0 0 ${chartW} ${chartH}" role="img" aria-label="Gastos acumulados e saldo disponível do mês">
         <g class="daily-flow-y-axis">${yAxis}</g>
+        <g class="daily-flow-y-axis daily-flow-y-axis-end">${yAxisEnd}</g>
         <g class="daily-flow-grid-lines">${grid}</g>
         <line class="daily-flow-today-line" x1="${todayX.toFixed(2)}" y1="${top}" x2="${todayX.toFixed(2)}" y2="${lineBottom}"></line>
         <path class="daily-flow-line-balance" d="${balancePath}"></path>
@@ -496,7 +490,6 @@ function dailyFlowMonthlyCharts(bounds,todayIso,scheduledFrom,txScheduledFrom,mo
         <g class="daily-flow-labels">${labels}</g>
         <g>${dots}</g>
         <g>${balanceDots}</g>
-        <g>${hoverZones}</g>
       </svg>
       <div class="daily-flow-legend"><span><i class="real"></i>Gasto realizado</span><span><i class="scheduled"></i>Gasto previsto</span><span><i class="balance"></i>Saldo disponível</span><span><i class="today"></i>Hoje</span></div>
     </div>
