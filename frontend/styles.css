@@ -829,10 +829,10 @@ body::before {
 .yield-pill { display: inline-flex; align-items: center; border: 1px solid rgba(200,245,90,.18); background: rgba(200,245,90,.08); color: var(--ac); border-radius: 999px; padding: 2px 7px; font-weight: 700; }
 
 .daily-flow-widget {
-  background: linear-gradient(180deg, rgba(200,245,90,.08), transparent 48%), var(--sf);
-  border: 1px solid rgba(200,245,90,.16);
+  background: var(--sf);
+  border: 1px solid var(--bd);
   border-radius: var(--r-lg);
-  padding: 18px 20px;
+  padding: 18px;
 }
 .daily-flow-head {
   align-items: flex-start;
@@ -841,104 +841,69 @@ body::before {
 .daily-flow-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 12px;
+  gap: 12px;
+  margin-top: 14px;
+}
+.daily-flow-grid-wide {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 .daily-flow-card {
+  position: relative;
   min-width: 0;
-  padding: 14px;
+  min-height: 106px;
+  padding: 14px 14px 13px;
   border: 1px solid var(--bd);
-  border-radius: 8px;
-  background: var(--sf2);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.035), transparent 60%),
+    var(--sf2);
+  overflow: hidden;
+}
+.daily-flow-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--mt);
+  opacity: .55;
 }
 .daily-flow-card span {
+  position: relative;
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--mt);
-  font-weight: 800;
-  text-transform: uppercase;
+  font-weight: 650;
+  line-height: 1.25;
 }
 .daily-flow-card strong {
+  position: relative;
   display: block;
-  margin-top: 5px;
+  margin-top: 7px;
   font-family: var(--font-money);
-  font-size: clamp(16px, 1.25vw, 19px);
-  line-height: 1.15;
+  font-size: clamp(17px, 1.18vw, 20px);
+  font-weight: 700;
+  line-height: 1.12;
   letter-spacing: 0;
   white-space: nowrap;
 }
 .daily-flow-card small {
+  position: relative;
   display: block;
-  margin-top: 5px;
+  margin-top: 8px;
   font-size: 11px;
   color: var(--mt);
-  line-height: 1.35;
-  min-height: 30px;
+  line-height: 1.32;
 }
+.daily-flow-card.income::before { background: var(--ac2); opacity: .85; }
+.daily-flow-card.danger::before { background: var(--dan); opacity: .85; }
+.daily-flow-card.forecast::before { background: var(--warn); opacity: .85; }
+.daily-flow-card.safe::before { background: var(--ac); opacity: .85; }
+.daily-flow-card.muted::before { background: var(--mt); opacity: .5; }
 .daily-flow-card.danger strong { color: var(--dan); }
 .daily-flow-card.income strong { color: var(--ac2); }
 .daily-flow-card.forecast strong { color: var(--warn); }
 .daily-flow-card.safe strong { color: var(--ac); }
-.daily-flow-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  margin-top: 12px;
-  padding: 14px 16px;
-  border: 1px solid var(--bd);
-  border-left: 4px solid var(--ac);
-  border-radius: 10px;
-  background: linear-gradient(90deg, rgba(200,245,90,.09), rgba(255,255,255,.025));
-  color: var(--tx);
-}
-.daily-flow-foot.neg {
-  border-left-color: var(--dan);
-  background: linear-gradient(90deg, rgba(255,109,93,.1), rgba(255,255,255,.025));
-}
-.daily-flow-foot-main,
-.daily-flow-foot-detail {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.daily-flow-foot-main {
-  gap: 3px;
-}
-.daily-flow-foot-detail {
-  align-items: flex-end;
-  gap: 2px;
-  text-align: right;
-}
-.daily-flow-foot span {
-  color: var(--mt);
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: .04em;
-  line-height: 1.2;
-  text-transform: uppercase;
-}
-.daily-flow-foot-main strong {
-  font-family: var(--font-money);
-  font-size: clamp(19px, 1.65vw, 24px);
-  line-height: 1.08;
-  letter-spacing: 0;
-  overflow-wrap: anywhere;
-}
-.daily-flow-foot-detail strong {
-  color: var(--tx);
-  font-family: var(--font-money);
-  font-size: clamp(14px, 1vw, 17px);
-  line-height: 1.15;
-  letter-spacing: 0;
-}
-.daily-flow-foot-detail small {
-  color: var(--mt);
-  font-size: 11px;
-  line-height: 1.25;
-}
-.daily-flow-foot.pos .daily-flow-foot-main strong { color: var(--ac); }
-.daily-flow-foot.neg .daily-flow-foot-main strong { color: var(--dan); }
+.daily-flow-card.muted strong { color: var(--tx2); }
 
 /* ═══ CHART CARDS ════════════════════════════════════════════════ */
 .cr { display: grid; grid-template-columns: 1.55fr 1fr; gap: 12px; margin-bottom: 20px; min-width: 0; }
@@ -3012,15 +2977,7 @@ select:focus-visible,
 
 @media(max-width:520px){
   .daily-flow-grid { grid-template-columns: 1fr; }
-  .daily-flow-card small { min-height: 0; }
-  .daily-flow-foot {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-  .daily-flow-foot-detail {
-    align-items: flex-start;
-    text-align: left;
-  }
+  .daily-flow-card { min-height: 0; }
 }
 
 
