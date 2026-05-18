@@ -829,81 +829,27 @@ body::before {
 .yield-pill { display: inline-flex; align-items: center; border: 1px solid rgba(200,245,90,.18); background: rgba(200,245,90,.08); color: var(--ac); border-radius: 999px; padding: 2px 7px; font-weight: 700; }
 
 .daily-flow-widget {
-  background: var(--sf);
-  border: 1px solid var(--bd);
-  border-radius: var(--r-lg);
-  padding: 18px;
+  background: transparent;
+  border: 0;
+  padding: 0;
 }
 .daily-flow-head {
   align-items: flex-start;
   gap: 12px;
+  margin-bottom: 12px;
 }
 .daily-flow-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 14px;
+  gap: 16px;
 }
 .daily-flow-grid-wide {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
-.daily-flow-card {
-  position: relative;
-  min-width: 0;
-  min-height: 106px;
-  padding: 14px 14px 13px;
-  border: 1px solid var(--bd);
-  border-radius: 10px;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.035), transparent 60%),
-    var(--sf2);
-  overflow: hidden;
+.daily-flow-metric {
+  margin-bottom: 0;
+  min-height: 154px;
 }
-.daily-flow-card::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: var(--mt);
-  opacity: .55;
-}
-.daily-flow-card span {
-  position: relative;
-  display: block;
-  font-size: 11px;
-  color: var(--mt);
-  font-weight: 650;
-  line-height: 1.25;
-}
-.daily-flow-card strong {
-  position: relative;
-  display: block;
-  margin-top: 7px;
-  font-family: var(--font-money);
-  font-size: clamp(17px, 1.18vw, 20px);
-  font-weight: 700;
-  line-height: 1.12;
-  letter-spacing: 0;
-  white-space: nowrap;
-}
-.daily-flow-card small {
-  position: relative;
-  display: block;
-  margin-top: 8px;
-  font-size: 11px;
-  color: var(--mt);
-  line-height: 1.32;
-}
-.daily-flow-card.income::before { background: var(--ac2); opacity: .85; }
-.daily-flow-card.danger::before { background: var(--dan); opacity: .85; }
-.daily-flow-card.forecast::before { background: var(--warn); opacity: .85; }
-.daily-flow-card.safe::before { background: var(--ac); opacity: .85; }
-.daily-flow-card.muted::before { background: var(--mt); opacity: .5; }
-.daily-flow-card.danger strong { color: var(--dan); }
-.daily-flow-card.income strong { color: var(--ac2); }
-.daily-flow-card.forecast strong { color: var(--warn); }
-.daily-flow-card.safe strong { color: var(--ac); }
-.daily-flow-card.muted strong { color: var(--tx2); }
 
 /* ═══ CHART CARDS ════════════════════════════════════════════════ */
 .cr { display: grid; grid-template-columns: 1.55fr 1fr; gap: 12px; margin-bottom: 20px; min-width: 0; }
@@ -2977,7 +2923,7 @@ select:focus-visible,
 
 @media(max-width:520px){
   .daily-flow-grid { grid-template-columns: 1fr; }
-  .daily-flow-card { min-height: 0; }
+  .daily-flow-metric { min-height: 132px; }
 }
 
 
