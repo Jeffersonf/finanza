@@ -375,13 +375,13 @@ function dailyFlowMonthlyCharts(bounds,todayIso,scheduledFrom,txScheduledFrom,mo
   dailyFlowScheduledDueExpenses(scheduledFrom,bounds.to).forEach(item=>{
     scheduledByDay.set(item.date,(scheduledByDay.get(item.date)||0)+dailyFlowAmount(item));
   });
-  const chartW=1080;
-  const chartH=240;
-  const padL=86;
-  const padR=26;
+  const chartW=1120;
+  const chartH=220;
+  const padL=100;
+  const padR=100;
   const top=20;
-  const lineBottom=178;
-  const labelY=220;
+  const lineBottom=166;
+  const labelY=202;
   const values=Array.from({length:days},(_,idx)=>{
     const date=dailyFlowShiftIso(bounds.from,idx);
     return {
@@ -444,11 +444,11 @@ function dailyFlowMonthlyCharts(bounds,todayIso,scheduledFrom,txScheduledFrom,mo
   const ticks=Array.from({length:5},(_,idx)=>maxValue-(range*idx/4));
   const yAxis=ticks.map(value=>{
     const y=yFor(value).toFixed(2);
-    return `<g class="daily-flow-y"><line x1="${padL}" y1="${y}" x2="${chartW-padR}" y2="${y}"></line><text x="${padL-10}" y="${Number(y)+4}" text-anchor="end">${shortMoney(value)}</text></g>`;
+    return `<g class="daily-flow-y"><line x1="${padL}" y1="${y}" x2="${chartW-padR}" y2="${y}"></line><text x="${padL-12}" y="${Number(y)+3}" text-anchor="end">${shortMoney(value)}</text></g>`;
   }).join('');
   const yAxisEnd=ticks.map(value=>{
     const y=yFor(value).toFixed(2);
-    return `<g class="daily-flow-y daily-flow-y-end"><text x="${chartW-padR+10}" y="${Number(y)+4}" text-anchor="start">${shortMoney(value)}</text></g>`;
+    return `<g class="daily-flow-y daily-flow-y-end"><text x="${chartW-padR+12}" y="${Number(y)+3}" text-anchor="start">${shortMoney(value)}</text></g>`;
   }).join('');
   const dots=values.map((item,idx)=>{
     const date=item.date;

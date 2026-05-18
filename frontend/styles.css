@@ -995,8 +995,8 @@ body::before {
 }
 .daily-flow-labels text {
   fill: var(--mt);
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 8px;
+  font-weight: 650;
 }
 .daily-flow-labels text.planned {
   fill: color-mix(in srgb, var(--fut) 76%, var(--mt));
@@ -3137,7 +3137,7 @@ select:focus-visible,
   .daily-flow-chart-head { align-items: flex-start; flex-direction: column; gap: 4px; }
   .daily-flow-line-chart { min-height: 190px; }
   .daily-flow-y-axis text { font-size: 8px; }
-  .daily-flow-labels text { font-size: 13px; }
+  .daily-flow-labels text { font-size: 8px; }
 }
 
 
