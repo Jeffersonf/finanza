@@ -943,7 +943,7 @@ body::before {
 .daily-flow-line-chart {
   display: block;
   width: 100%;
-  min-height: 232px;
+  min-height: 198px;
   overflow: visible;
 }
 .daily-flow-y-axis line {
@@ -3135,7 +3135,7 @@ select:focus-visible,
   .daily-flow-widget { padding: 16px; }
   .daily-flow-metric { min-height: 0; }
   .daily-flow-chart-head { align-items: flex-start; flex-direction: column; gap: 4px; }
-  .daily-flow-line-chart { min-height: 190px; }
+  .daily-flow-line-chart { min-height: 176px; }
   .daily-flow-y-axis text { font-size: 8px; }
   .daily-flow-labels text { font-size: 8px; }
 }
