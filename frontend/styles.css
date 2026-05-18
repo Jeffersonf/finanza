@@ -862,6 +862,20 @@ body::before {
   border-radius: 14px;
   background: var(--sf2);
   color: var(--tx);
+  appearance: none;
+  font: inherit;
+  text-align: left;
+}
+.daily-flow-metric.is-clickable {
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease, transform .16s ease;
+}
+.daily-flow-metric.is-clickable:hover,
+.daily-flow-metric.is-clickable:focus-visible {
+  border-color: rgba(200,245,90,.34);
+  background: color-mix(in srgb, var(--sf2) 88%, rgba(200,245,90,.16));
+  transform: translateY(-1px);
+  outline: none;
 }
 .daily-flow-ico {
   display: grid;

@@ -347,10 +347,12 @@ function widgetCards(){
     ${showFuture?`<div class="sc sc-glow-fut" style="cursor:pointer" onclick="showPage('future')"><span class="ci">🔮</span><div class="cl">A pagar</div><div class="cv fut">${fmt(fut)}</div><div class="cc" style="color:var(--fut)">ver contas futuras</div></div>`:''}
   </div>`;
 }
-function dailyFlowMetric(label,value,meta,tone='neutral',icon='•'){
+function dailyFlowMetric(label,value,meta,tone='neutral',icon='•',page=''){
   const valueClass={income:'neu',danger:'neg',safe:'pos',forecast:'fut',muted:''}[tone]||'';
   const detailClass=tone==='danger'?'dn':tone==='safe'?'up':'';
-  return `<div class="daily-flow-metric ${tone}"><span class="daily-flow-ico">${icon}</span><div class="daily-flow-copy"><div class="cl">${label}</div><div class="cv ${valueClass}">${fmt(value)}</div>${meta?`<div class="cc ${detailClass}">${meta}</div>`:''}</div></div>`;
+  const tag=page?'button':'div';
+  const action=page?` type="button" onclick="showPage('${page}')" aria-label="Abrir ${esc(label)}"`:'';
+  return `<${tag} class="daily-flow-metric ${tone} ${page?'is-clickable':''}"${action}><span class="daily-flow-ico">${icon}</span><div class="daily-flow-copy"><div class="cl">${label}</div><div class="cv ${valueClass}">${fmt(value)}</div>${meta?`<div class="cc ${detailClass}">${meta}</div>`:''}</div></${tag}>`;
 }
 function widgetDailyWeek(){
   const bounds=dashboardPeriodBounds('week');
@@ -362,16 +364,19 @@ function widgetDailyWeek(){
   const current=dailyFlowRealizedTotals(bounds.from,bounds.to,todayIso);
   const previous=dailyFlowRealizedTotals(lastFrom,lastTo,lastTo);
   const currentAvg=dailyFlowMoney(current.spent/elapsedDays);
-  const previousAvg=dailyFlowMoney(previous.spent/7);
   const delta=current.spent-previous.spent;
+  const scheduledFrom=todayIso>bounds.from?todayIso:bounds.from;
+  const txScheduledFrom=todayIso>=bounds.from?dailyFlowShiftIso(todayIso,1):bounds.from;
+  const weekAgenda=dailyFlowScheduledExpenses(scheduledFrom,bounds.to,txScheduledFrom);
+  const remainingWeekDays=daysRemainingInPeriod(bounds.from,bounds.to);
   const deltaLabel=delta===0?'mesmo gasto da semana passada':`${delta>0?'+':'-'}${fmt(Math.abs(delta))} vs semana passada`;
   return `<div class="daily-flow-widget daily-flow-widget-week dash-section">
     <div class="bh daily-flow-head"><div><div class="ct">🗓️ Ritmo semanal</div><div class="cs">${bounds.label} • comparado com ${fmtD(lastFrom)} a ${fmtD(lastTo)}</div></div></div>
     <div class="daily-flow-grid">
-      ${dailyFlowMetric('Gasto da semana',current.spent,deltaLabel,'danger','⬇️')}
-      ${dailyFlowMetric('Semana passada',previous.spent,'referência dos 7 dias anteriores','muted','↩️')}
-      ${dailyFlowMetric('Média diária',currentAvg,`${elapsedDays} dia${elapsedDays===1?'':'s'} considerados`,'danger','⏱️')}
-      ${dailyFlowMetric('Média passada',previousAvg,'média dos 7 dias','muted','📊')}
+      ${dailyFlowMetric('Gasto da semana',current.spent,deltaLabel,'danger','⬇️','transactions')}
+      ${dailyFlowMetric('Agendado na semana',weekAgenda,`${remainingWeekDays} dia${remainingWeekDays===1?'':'s'} restantes`,'forecast','🔮','future')}
+      ${dailyFlowMetric('Média diária',currentAvg,`${elapsedDays} dia${elapsedDays===1?'':'s'} considerados`,'danger','⏱️','transactions')}
+      ${dailyFlowMetric('Semana passada',previous.spent,'referência dos 7 dias anteriores','muted','↩️','transactions')}
     </div>
   </div>`;
 }
@@ -397,11 +402,11 @@ function widgetDailyMonth(){
   return `<div class="daily-flow-widget daily-flow-widget-month dash-section">
     <div class="bh daily-flow-head"><div><div class="ct">📆 Ritmo mensal</div><div class="cs">${bounds.label} • ${elapsedDays} dia${elapsedDays===1?'':'s'} até agora • base: ${monthlyBase?'salário configurado':'ganhos do mês'}</div></div></div>
     <div class="daily-flow-grid daily-flow-grid-wide">
-      ${dailyFlowMetric('Ganho por dia',earnedDaily,`${fmt(realized.earned)} no mês`,'income','💼')}
-      ${dailyFlowMetric('Gasto diário mensal',spentDaily,`${fmt(plannedSpent)} no mês, incluindo agenda`,'danger','⬇️')}
-      ${dailyFlowMetric('Gasto diário até hoje',dailyFlowMoney(realized.spent/elapsedDays),`${fmt(realized.spent)} já feito no mês`,'danger','🧾')}
-      ${dailyFlowMetric('Agendado até o fim',agenda,`${remainingDays} dia${remainingDays===1?'':'s'} restantes no mês`,'forecast','🔮')}
-      ${dailyFlowMetric('Pode gastar por dia',canSpendDaily,canSpendMeta,'safe','🌱')}
+      ${dailyFlowMetric('Ganho por dia',earnedDaily,`${fmt(realized.earned)} no mês`,'income','💼','transactions')}
+      ${dailyFlowMetric('Gasto diário mensal',spentDaily,`${fmt(plannedSpent)} no mês, incluindo agenda`,'danger','⬇️','transactions')}
+      ${dailyFlowMetric('Gasto diário até hoje',dailyFlowMoney(realized.spent/elapsedDays),`${fmt(realized.spent)} já feito no mês`,'danger','🧾','transactions')}
+      ${dailyFlowMetric('Agendado até o fim',agenda,`${remainingDays} dia${remainingDays===1?'':'s'} restantes no mês`,'forecast','🔮','future')}
+      ${dailyFlowMetric('Pode gastar por dia',canSpendDaily,canSpendMeta,'safe','🌱','transactions')}
     </div>
   </div>`;
 }
@@ -414,10 +419,10 @@ function widgetDailyYear(){
   return `<div class="daily-flow-widget daily-flow-widget-year dash-section">
     <div class="bh daily-flow-head"><div><div class="ct">📅 Ritmo anual</div><div class="cs">${bounds.label} • acumulado até ${fmtD(endForElapsed)} • ${elapsedDays} dia${elapsedDays===1?'':'s'}</div></div></div>
     <div class="daily-flow-grid">
-      ${dailyFlowMetric('Ganho até hoje',realized.earned,'receitas realizadas no ano','income','💼')}
-      ${dailyFlowMetric('Ganho diário',dailyFlowMoney(realized.earned/elapsedDays),'média anual até agora','income','📈')}
-      ${dailyFlowMetric('Gasto diário',dailyFlowMoney(realized.spent/elapsedDays),'média anual até agora','danger','⏱️')}
-      ${dailyFlowMetric('Gasto anual',realized.spent,'despesas realizadas no ano','danger','⬇️')}
+      ${dailyFlowMetric('Ganho até hoje',realized.earned,'receitas realizadas no ano','income','💼','transactions')}
+      ${dailyFlowMetric('Ganho diário',dailyFlowMoney(realized.earned/elapsedDays),'média anual até agora','income','📈','transactions')}
+      ${dailyFlowMetric('Gasto anual',realized.spent,'despesas realizadas no ano','danger','⬇️','transactions')}
+      ${dailyFlowMetric('Gasto diário',dailyFlowMoney(realized.spent/elapsedDays),'média anual até agora','danger','⏱️','transactions')}
     </div>
   </div>`;
 }
