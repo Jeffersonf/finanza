@@ -244,6 +244,9 @@ function dailyFlowRealizedTotals(from,to,limit=today()){
 function dailyFlowFutureExpenseTransactions(from,to){
   return (S.transactions||[]).filter(t=>t.type==='expense'&&t.date>=from&&t.date<=to&&!t.paid).reduce((sum,tx)=>sum+dailyFlowAmount(tx),0);
 }
+function dailyFlowFutureExpenseItems(from,to){
+  return (S.transactions||[]).filter(t=>t.type==='expense'&&t.date>=from&&t.date<=to&&!t.paid).map(t=>({date:t.date,amount:dailyFlowAmount(t)}));
+}
 function dailyFlowDueDateForMonth(item,ym){
   const [y,m]=ym.split('-').map(Number);
   const last=new Date(y,m,0).getDate();
@@ -354,6 +357,62 @@ function dailyFlowMetric(label,value,meta,tone='neutral',icon='•',page=''){
   const action=page?` type="button" onclick="showPage('${page}')" aria-label="Abrir ${esc(label)}"`:'';
   return `<${tag} class="daily-flow-metric ${tone} ${page?'is-clickable':''}"${action}><span class="daily-flow-ico">${icon}</span><div class="daily-flow-copy"><div class="cl">${label}</div><div class="cv ${valueClass}">${fmt(value)}</div>${meta?`<div class="cc ${detailClass}">${meta}</div>`:''}</div></${tag}>`;
 }
+function dailyFlowMonthlyCharts(bounds,realized,agenda,monthlyBase,spendingBase,plannedSpent,canSpend,todayIso,scheduledFrom,txScheduledFrom){
+  const days=countDaysInclusive(bounds.from,bounds.to);
+  const realByDay=new Map();
+  (S.transactions||[]).filter(t=>t.type==='expense'&&t.date>=bounds.from&&t.date<=todayIso&&t.date<=bounds.to&&!t.paid).forEach(tx=>{
+    realByDay.set(tx.date,(realByDay.get(tx.date)||0)+dailyFlowAmount(tx));
+  });
+  const scheduledByDay=new Map();
+  dailyFlowFutureExpenseItems(txScheduledFrom,bounds.to).forEach(item=>{
+    scheduledByDay.set(item.date,(scheduledByDay.get(item.date)||0)+dailyFlowAmount(item));
+  });
+  dailyFlowScheduledDueExpenses(scheduledFrom,bounds.to).forEach(item=>{
+    scheduledByDay.set(item.date,(scheduledByDay.get(item.date)||0)+dailyFlowAmount(item));
+  });
+  const maxDay=Math.max(1,...Array.from({length:days},(_,idx)=>{
+    const date=dailyFlowShiftIso(bounds.from,idx);
+    return (realByDay.get(date)||0)+(scheduledByDay.get(date)||0);
+  }));
+  const todayDay=Math.max(1,Math.min(days,countDaysInclusive(bounds.from,todayIso)));
+  const bars=Array.from({length:days},(_,idx)=>{
+    const day=idx+1;
+    const date=dailyFlowShiftIso(bounds.from,idx);
+    const real=realByDay.get(date)||0;
+    const scheduled=scheduledByDay.get(date)||0;
+    const total=real+scheduled;
+    const height=Math.max(total?12:3,Math.round((total/maxDay)*100));
+    const cls=date<todayIso?'is-past':date===todayIso?'is-today':'is-future';
+    const tone=scheduled&&!real?'scheduled':real?'real':'empty';
+    return `<button class="daily-flow-day ${cls} ${tone}" type="button" onclick="showPage('${date>todayIso?'future':'transactions'}')" title="${fmtD(date)} • feito ${fmt(real)} • agenda ${fmt(scheduled)}" aria-label="${fmtD(date)}: ${fmt(total)}"><span style="height:${height}%"></span><small>${day===1||day===todayDay||day===days?day:''}</small></button>`;
+  }).join('');
+  const base=Math.max(spendingBase,plannedSpent,1);
+  const donePct=Math.min(100,(realized.spent/base)*100);
+  const agendaPct=Math.min(100,Math.max(0,(agenda/base)*100));
+  const freePct=Math.min(100,Math.max(0,(canSpend/base)*100));
+  const over=Math.max(plannedSpent-spendingBase,0);
+  return `<div class="daily-flow-graphs">
+    <div class="daily-flow-chart-card">
+      <div class="daily-flow-chart-head"><strong>Mapa do mês</strong><span>feito + agendado por dia</span></div>
+      <div class="daily-flow-bars">${bars}</div>
+      <div class="daily-flow-legend"><span><i class="real"></i>Feito</span><span><i class="scheduled"></i>Agendado</span><span><i class="today"></i>Hoje</span></div>
+    </div>
+    <div class="daily-flow-chart-card">
+      <div class="daily-flow-chart-head"><strong>Destino da base</strong><span>${monthlyBase?'salário configurado':'ganhos do mês'}</span></div>
+      <div class="daily-flow-stack" aria-label="Distribuição mensal">
+        <span class="spent" style="width:${donePct}%"></span>
+        <span class="scheduled" style="width:${agendaPct}%"></span>
+        <span class="free" style="width:${freePct}%"></span>
+      </div>
+      <div class="daily-flow-stack-grid">
+        <button type="button" onclick="showPage('transactions')"><small>Feito</small><strong class="neg">${fmt(realized.spent)}</strong></button>
+        <button type="button" onclick="showPage('future')"><small>Agenda</small><strong class="fut">${fmt(agenda)}</strong></button>
+        <button type="button" onclick="showPage('transactions')"><small>Livre</small><strong class="pos">${fmt(canSpend)}</strong></button>
+      </div>
+      ${over?`<div class="daily-flow-over">Acima da base em ${fmt(over)}</div>`:''}
+    </div>
+  </div>`;
+}
 function widgetDailyWeek(){
   const bounds=dashboardPeriodBounds('week');
   const todayIso=today();
@@ -408,6 +467,7 @@ function widgetDailyMonth(){
       ${dailyFlowMetric('Agendado até o fim',agenda,`${remainingDays} dia${remainingDays===1?'':'s'} restantes no mês`,'forecast','🔮','future')}
       ${dailyFlowMetric('Pode gastar por dia',canSpendDaily,canSpendMeta,'safe','🌱','transactions')}
     </div>
+    ${dailyFlowMonthlyCharts(bounds,realized,agenda,monthlyBase,spendingBase,plannedSpent,canSpend,todayIso,scheduledFrom,txScheduledFrom)}
   </div>`;
 }
 function widgetDailyYear(){
