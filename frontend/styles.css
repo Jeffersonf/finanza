@@ -916,10 +916,12 @@ body::before {
 }
 .daily-flow-chart-card {
   min-width: 0;
-  padding: 14px 16px;
+  padding: 16px 18px;
   border: 1px solid var(--bd);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--sf2) 92%, transparent);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.018), transparent 34%),
+    color-mix(in srgb, var(--sf2) 94%, transparent);
 }
 .daily-flow-chart-head {
   display: flex;
@@ -941,42 +943,54 @@ body::before {
 .daily-flow-line-chart {
   display: block;
   width: 100%;
-  min-height: 178px;
+  min-height: 232px;
   overflow: visible;
 }
-.daily-flow-grid-lines line {
+.daily-flow-y-axis line {
   stroke: rgba(148,163,184,.1);
   stroke-width: 1;
 }
+.daily-flow-y-axis text {
+  fill: var(--mt);
+  font-size: 17px;
+  font-weight: 800;
+}
+.daily-flow-grid-lines line {
+  stroke: rgba(148,163,184,.055);
+  stroke-width: 1;
+}
 .daily-flow-grid-lines line.planned {
-  stroke: rgba(167,139,250,.14);
+  stroke: rgba(167,139,250,.09);
 }
 .daily-flow-grid-lines line.today {
   stroke: transparent;
 }
 .daily-flow-today-line {
   stroke: var(--fut);
-  stroke-width: 3;
+  stroke-width: 2;
   stroke-linecap: round;
-  filter: drop-shadow(0 0 7px rgba(167,139,250,.5));
+  opacity: .88;
+  filter: drop-shadow(0 0 7px rgba(167,139,250,.36));
 }
 .daily-flow-line-real,
 .daily-flow-line-planned {
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 5;
+  stroke-width: 3;
 }
 .daily-flow-line-real {
   stroke: var(--dan);
+  filter: drop-shadow(0 6px 12px rgba(245,112,90,.12));
 }
 .daily-flow-line-planned {
   stroke: var(--fut);
-  stroke-dasharray: 8 8;
+  stroke-dasharray: 6 8;
+  filter: drop-shadow(0 6px 12px rgba(167,139,250,.12));
 }
 .daily-flow-labels text {
   fill: var(--mt);
-  font-size: 21px;
+  font-size: 15px;
   font-weight: 800;
 }
 .daily-flow-labels text.planned {
@@ -992,7 +1006,7 @@ body::before {
 .daily-flow-dot circle {
   fill: var(--sf);
   stroke: rgba(148,163,184,.45);
-  stroke-width: 3;
+  stroke-width: 2;
   transition: r .16s ease, stroke-width .16s ease, filter .16s ease;
 }
 .daily-flow-dot.real circle {
@@ -1003,13 +1017,13 @@ body::before {
 }
 .daily-flow-dot.today circle {
   stroke: var(--ac);
-  stroke-width: 4;
+  stroke-width: 3;
   filter: drop-shadow(0 0 8px rgba(200,245,90,.35));
 }
 .daily-flow-dot:hover circle,
 .daily-flow-dot:focus-visible circle {
-  r: 7;
-  stroke-width: 5;
+  r: 5.6;
+  stroke-width: 3.5;
 }
 .daily-flow-hit {
   fill: transparent;
@@ -3115,7 +3129,9 @@ select:focus-visible,
   .daily-flow-widget { padding: 16px; }
   .daily-flow-metric { min-height: 0; }
   .daily-flow-chart-head { align-items: flex-start; flex-direction: column; gap: 4px; }
-  .daily-flow-line-chart { min-height: 150px; }
+  .daily-flow-line-chart { min-height: 190px; }
+  .daily-flow-y-axis text { font-size: 15px; }
+  .daily-flow-labels text { font-size: 13px; }
 }
 
 
